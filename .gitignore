@@ -1,0 +1,42 @@
+# Secrets
+.env
+*.env
+!.env.example
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/*.egg-info/
+**/.venv/
+**/venv/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+
+# Logs
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Chess.com driver: temp profile dirs (we use tempfile.mkdtemp per game now,
+# but the legacy persistent profile may still exist on developer machines).
+backend/chesscom-profile/
+
+# Maia weights — large binary artifacts, downloaded from
+# https://github.com/CSSLab/maia-chess/releases/download/v1.0/maia-{elo}.pb.gz
+backend/engines/maia/weights/*.pb.gz
+
+# Stray screenshot dir created by the IDE when viewing .env attachments
+backend/image/
