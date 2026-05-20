@@ -1,4 +1,4 @@
-import type { GameState, GameSummary, PlayerConfig, PlayerTypeInfo } from './types';
+import type { AgentElo, Batch, BatchPool, GameState, GameSummary, PlayerConfig, PlayerTypeInfo } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000';
 
@@ -64,4 +64,57 @@ export function loadGame(gameId: string): Promise<GameState> {
 
 export function deleteGame(gameId: string): Promise<void> {
   return request<void>(`/api/games/${gameId}`, { method: 'DELETE' });
+}
+
+export function pauseGame(gameId: string): Promise<GameState> {
+  return request<GameState>(`/api/games/${gameId}/pause`, { method: 'POST' });
+}
+
+export function resumeGame(gameId: string): Promise<GameState> {
+  return request<GameState>(`/api/games/${gameId}/resume`, { method: 'POST' });
+}
+
+// ── Batches ───────────────────────────────────────────────────────────────
+
+export function listBatches(): Promise<Batch[]> {
+  return request<Batch[]>('/api/batches');
+}
+
+export function getActiveBatch(): Promise<Batch | null> {
+  return request<Batch | null>('/api/batches/active');
+}
+
+export function createBatch(label: string, pool: BatchPool, totalGames: number): Promise<Batch> {
+  return request<Batch>('/api/batches', {
+    method: 'POST',
+    body: JSON.stringify({ label, pool, total_games: totalGames }),
+  });
+}
+
+export function getBatch(batchId: string): Promise<Batch> {
+  return request<Batch>(`/api/batches/${batchId}`);
+}
+
+export function startBatch(batchId: string): Promise<Batch> {
+  return request<Batch>(`/api/batches/${batchId}/start`, { method: 'POST' });
+}
+
+export function pauseBatch(batchId: string): Promise<Batch> {
+  return request<Batch>(`/api/batches/${batchId}/pause`, { method: 'POST' });
+}
+
+export function stopBatch(batchId: string): Promise<Batch> {
+  return request<Batch>(`/api/batches/${batchId}/stop`, { method: 'POST' });
+}
+
+export function deleteBatch(batchId: string): Promise<void> {
+  return request<void>(`/api/batches/${batchId}`, { method: 'DELETE' });
+}
+
+export function getAgentElo(): Promise<AgentElo> {
+  return request<AgentElo>('/api/agent-elo');
+}
+
+export function resetAgentElo(): Promise<AgentElo> {
+  return request<AgentElo>('/api/agent-elo/reset', { method: 'POST' });
 }

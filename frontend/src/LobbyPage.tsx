@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { createGame, deleteGame, listGames, playerTypes } from './api';
 import type { Color, GameSummary, PlayerConfig, PlayerTypeInfo } from './types';
 
@@ -161,9 +161,12 @@ export function LobbyPage() {
     <main className="lobby">
       <div className="lobby-header">
         <h1>Chess Experiment</h1>
-        <button type="button" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Cancel' : '+ New Game'}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Link to="/batch" className="back-link" style={{ alignSelf: 'center' }}>Batches →</Link>
+          <button type="button" onClick={() => setShowForm((v) => !v)}>
+            {showForm ? 'Cancel' : '+ New Game'}
+          </button>
+        </div>
       </div>
 
       {showForm && (

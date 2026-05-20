@@ -24,6 +24,9 @@ export interface GameState {
   status: 'active' | 'finished';
   result: string | null;
   termination: string | null;
+  eval_cp: number | null;
+  eval_mate: number | null;
+  paused: boolean;
 }
 
 export interface GameSummary {
@@ -36,4 +39,35 @@ export interface GameSummary {
   move_count: number;
   last_move_san: string | null;
   created_at: string;
+}
+
+export type BatchStatus = 'pending' | 'running' | 'paused' | 'completed' | 'stopped' | 'failed';
+export type BatchPool = 'maia' | 'chesscom';
+export type BatchResult = 'win' | 'loss' | 'draw' | null;
+
+export interface GameRecord {
+  game_id: string;
+  opponent_elo: number;
+  result: BatchResult;
+  agent_elo_before: number;
+  agent_elo_after: number;
+}
+
+export interface Batch {
+  batch_id: string;
+  label: string;
+  pool: BatchPool;
+  total_games: number;
+  status: BatchStatus;
+  created_at: string;
+  games: GameRecord[];
+  current_game_id: string | null;
+  last_error: string;
+}
+
+export interface AgentElo {
+  elo: number;
+  games_played: number;
+  last_result: BatchResult;
+  streak: number;
 }

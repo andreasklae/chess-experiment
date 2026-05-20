@@ -171,15 +171,18 @@ class BatchRunner:
 
     async def _create_next_game(self, batch: Batch) -> None:
         agent_state = self._batches.load_agent_elo()
-        request, opp_elo = self._batches.next_create_request(batch, agent_state.elo)
+        request, opp_elo = self._batches.next_create_request(
+            batch, agent_state.elo, agent_state.streak
+        )
         elo_before = agent_state.elo
 
         logger.info(
-            "batch %s · next game (%d/%d) · agent ELO %.0f vs %s %d",
+            "batch %s · next game (%d/%d) · agent ELO %.0f (streak %+d) vs %s %d",
             batch.batch_id[:8],
             batch.completed_count + 1,
             batch.total_games,
             elo_before,
+            agent_state.streak,
             batch.pool,
             opp_elo,
         )
@@ -248,13 +251,14 @@ class BatchRunner:
                             batch.batch_id[:8], batch.completed_count, batch.total_games)
             self._batches.save(batch)
             logger.info(
-                "batch %s · game %d done · result=%s · ELO %.0f → %.0f (vs opp %d)",
+                "batch %s · game %d done · result=%s · ELO %.0f → %.0f (vs opp %d) · streak %+d",
                 batch.batch_id[:8],
                 batch.completed_count,
                 normalized or "aborted",
                 elo_before,
                 agent_state.elo,
                 game_record.opponent_elo,
+                agent_state.streak,
             )
 
             # Also stamp elo_after on the (already-recorded) Game for any

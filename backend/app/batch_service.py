@@ -165,16 +165,16 @@ class BatchService:
 
     # ── Helpers for building the next CreateGameRequest ──────────────────
 
-    def next_create_request(self, batch: Batch, agent_elo: float) -> tuple[CreateGameRequest, int]:
+    def next_create_request(
+        self, batch: Batch, agent_elo: float, streak: int
+    ) -> tuple[CreateGameRequest, int]:
         """Return (request, opponent_elo) for the next game in the batch.
 
-        Uses the *last completed game's* result (or None if this is the first
-        game) to drive the opponent-selection algorithm.
+        Opponent selection uses the agent's persistent `streak` counter
+        (signed; positive = wins, negative = losses), not just the most
+        recent result. See `app.elo.step_from_streak` for the doubling rule.
         """
-        last_result = None
-        if batch.games:
-            last_result = batch.games[-1].result  # type: ignore[assignment]
-        opp_elo = pick_opponent_elo(agent_elo, last_result, batch.pool)
+        opp_elo = pick_opponent_elo(agent_elo, streak, batch.pool)
         opp_config = PlayerConfig(type=batch.pool, elo=opp_elo)
         white = PlayerConfig(type="agent")
         return CreateGameRequest(white=white, black=opp_config), opp_elo

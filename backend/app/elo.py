@@ -1,15 +1,23 @@
 """Agent ELO state, classical Elo update formula, and opponent selection.
 
 Methodology choices recorded in
-[knowledge-base/decisions/2026-05-20-elo-and-batch-runner.md].
+[knowledge-base/decisions/2026-05-20-elo-and-batch-runner.md] (initial design)
+and the 2026-05-20 update covering adaptive K and streak-based opponent
+stepping (same file, "Matchmaking strategy" section).
 
-- K-factor: 32 (online-chess default; aggressive enough to converge within
-  ~30 games starting from 1200).
-- Initial ELO: 1200.
-- Opponent selection: closest available rating strictly above (last won) or
-  strictly below (lost or drew) the current agent ELO. Draws round down so
-  that a stuck draw streak does not inflate the agent's effective ladder.
-- Expected score: standard Elo logistic with 400-point scale.
+In brief:
+
+- Classical Elo update. K is *adaptive*: 40 for the first
+  `PROVISIONAL_GAMES` games (FIDE's provisional-player rule), then 20.
+- Initial ELO 1200 (standard "unrated default" used by FIDE for new players
+  pre-2014, by Lichess for its global mean, and the conventional value in
+  the chess literature for "unknown skill"; see decision record).
+- Opponent selection uses **streak-based stepping** on the discrete pool
+  (Maia 9-rating grid, chess.com 25-rating grid). A run of consecutive
+  wins doubles the step up the ladder; a run of losses doubles the step
+  down. Single results (no streak) step one notch in the natural direction.
+  This is the cheap-and-defensible version of exponential search and
+  matches how online "rating calibration" tournaments behave.
 """
 
 from __future__ import annotations
@@ -20,12 +28,19 @@ from pathlib import Path
 from typing import Literal
 
 
-K_FACTOR = 32
+# ── Constants ────────────────────────────────────────────────────────────────
+
 INITIAL_ELO = 1200
 
-# Maia weights covering the mid-range. Single source of truth referenced from
-# `app.schemas.MAIA_ELOS`; duplicated here to avoid an import cycle and to
-# make this module self-contained for unit testing.
+# Adaptive K-factor: high during the calibration phase so the rating moves
+# fast, then drops to a stable value matching common online-chess defaults
+# (chess.com casual K=20; FIDE for established players is also in this band).
+K_PROVISIONAL = 40
+K_STABLE = 20
+PROVISIONAL_GAMES = 15
+
+# Maia weights covering the mid-range. Duplicated from app.schemas.MAIA_ELOS
+# to keep this module self-contained for unit testing.
 MAIA_ELOS = (1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900)
 
 # chess.com Engine bot 25 discrete ratings.
@@ -34,8 +49,23 @@ CHESSCOM_ELOS = (
     1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500, 2600, 2800, 3000, 3200,
 )
 
+# Cap on how far we may jump on a single batch transition. Without a cap a
+# 6-loss streak would try to jump 32 steps; with the Maia grid that's
+# meaningless and with chess.com it overshoots wildly.
+MAX_STEP = 4
+
 OpponentPool = Literal["maia", "chesscom"]
 Result = Literal["win", "loss", "draw"]
+
+
+# ── Rating update ────────────────────────────────────────────────────────────
+
+
+def k_factor(games_played: int) -> int:
+    """Adaptive K-factor — high for the first PROVISIONAL_GAMES games, then
+    stable. Mirrors the FIDE provisional-player rule used for unrated entrants.
+    """
+    return K_PROVISIONAL if games_played < PROVISIONAL_GAMES else K_STABLE
 
 
 def expected_score(own: float, opponent: float) -> float:
@@ -43,8 +73,13 @@ def expected_score(own: float, opponent: float) -> float:
     return 1.0 / (1.0 + 10.0 ** ((opponent - own) / 400.0))
 
 
-def update_elo(own: float, opponent: float, result: Result, k: int = K_FACTOR) -> float:
-    """Return new own-side ELO after one game."""
+def update_elo(own: float, opponent: float, result: Result, k: int) -> float:
+    """Return new own-side ELO after one game.
+
+    Caller supplies K explicitly — usually via `k_factor(games_played)`.
+    Keeping K as a parameter (instead of looking it up here) keeps this
+    function pure and testable.
+    """
     score = {"win": 1.0, "draw": 0.5, "loss": 0.0}[result]
     return own + k * (score - expected_score(own, opponent))
 
@@ -66,32 +101,79 @@ def parse_game_result(result_string: str | None, agent_color: str) -> Result | N
     return None
 
 
+# ── Streak bookkeeping ───────────────────────────────────────────────────────
+
+
+def update_streak(streak: int, result: Result) -> int:
+    """Apply a result to the running win/loss streak.
+
+    Convention: positive streak = consecutive wins, negative = consecutive
+    losses. Draws decay the streak toward zero (halving), so a single draw
+    in the middle of a long win streak doesn't fully reset the search.
+
+    - Win after wins  : streak + 1
+    - Loss after losses: streak - 1
+    - Win after losses: reset to +1 (direction flipped)
+    - Loss after wins: reset to -1 (direction flipped)
+    - Draw: streak //= 2 (toward zero); a draw at streak 0 stays at 0
+    """
+    if result == "win":
+        return streak + 1 if streak >= 0 else 1
+    if result == "loss":
+        return streak - 1 if streak <= 0 else -1
+    # draw — pull half-way toward zero
+    if streak > 0:
+        return streak // 2
+    if streak < 0:
+        return -((-streak) // 2)
+    return 0
+
+
+def step_from_streak(streak: int) -> int:
+    """How many pool-grid notches to move based on the current streak.
+
+    Doubling: |streak|=1 → 1 notch, 2 → 2, 3 → 4, 4 → 8 (capped at MAX_STEP).
+    Sign of the result matches the sign of the streak (positive = up).
+    A zero streak (only after a streak-resetting draw) returns 0 — the
+    caller treats that as "stay at the same opponent."
+    """
+    if streak == 0:
+        return 0
+    magnitude = min(2 ** (abs(streak) - 1), MAX_STEP)
+    return magnitude if streak > 0 else -magnitude
+
+
+# ── Opponent selection ──────────────────────────────────────────────────────
+
+
 def pick_opponent_elo(
     agent_elo: float,
-    last_result: Result | None,
+    streak: int,
     pool: OpponentPool,
 ) -> int:
     """Choose the next opponent's ELO from the given pool.
 
-    Rules:
-    - Won last game: closest opponent rating strictly above `agent_elo`. If
-      `agent_elo` is at or above the pool ceiling, return the ceiling.
-    - Lost or drew: closest opponent rating strictly below `agent_elo`. If
-      `agent_elo` is at or below the pool floor, return the floor.
-    - No previous result (first game of a batch): closest available rating to
-      `agent_elo` (ties broken downward).
+    Strategy:
+    - The agent's current ELO is anchored to the nearest pool rating
+      (ties round down). That's the "where we are now" position.
+    - `step_from_streak(streak)` says how many grid notches to move from
+      that anchor: positive for wins, negative for losses, zero after a
+      draw that nulled the streak.
+    - First game of a batch (streak=0, never played) anchors at the
+      nearest rating.
+
+    Clamps to the pool's floor/ceiling.
     """
     ratings = MAIA_ELOS if pool == "maia" else CHESSCOM_ELOS
     sorted_ratings = sorted(ratings)
-
-    if last_result == "win":
-        above = [r for r in sorted_ratings if r > agent_elo]
-        return above[0] if above else sorted_ratings[-1]
-    if last_result in ("loss", "draw"):
-        below = [r for r in sorted_ratings if r < agent_elo]
-        return below[-1] if below else sorted_ratings[0]
-    # First game of batch: nearest available.
-    return min(sorted_ratings, key=lambda r: (abs(r - agent_elo), r))
+    # Anchor to the nearest grid point.
+    anchor_idx = min(
+        range(len(sorted_ratings)),
+        key=lambda i: (abs(sorted_ratings[i] - agent_elo), sorted_ratings[i]),
+    )
+    step = step_from_streak(streak)
+    new_idx = max(0, min(len(sorted_ratings) - 1, anchor_idx + step))
+    return sorted_ratings[new_idx]
 
 
 # ── Persistent state ─────────────────────────────────────────────────────────
@@ -101,14 +183,23 @@ def pick_opponent_elo(
 class AgentEloState:
     """Single-source-of-truth ELO state for the agent.
 
-    Persisted to `<games_dir>/agent_elo.json`. The CSV log is an event stream;
-    this file is the materialised current state, derivable from the CSV but
-    cheaper to read directly.
+    Persisted to `<games_dir>/agent_elo.json`. The CSV log is an event
+    stream; this file is the materialised current state, derivable from
+    the CSV but cheaper to read directly.
+
+    Fields:
+    - `elo` — current rating after the last game.
+    - `games_played` — count for K-factor adaptation.
+    - `last_result` — most recent W/L/D (for the UI; matchmaking uses
+      `streak`).
+    - `streak` — signed streak counter driving opponent step. See
+      `update_streak` / `step_from_streak`.
     """
 
     elo: float = float(INITIAL_ELO)
     games_played: int = 0
     last_result: Result | None = None
+    streak: int = 0
 
     @classmethod
     def load(cls, path: Path) -> "AgentEloState":
@@ -120,6 +211,7 @@ class AgentEloState:
                 elo=float(data.get("elo", INITIAL_ELO)),
                 games_played=int(data.get("games_played", 0)),
                 last_result=data.get("last_result"),
+                streak=int(data.get("streak", 0)),
             )
         except Exception:
             return cls()
@@ -131,12 +223,15 @@ class AgentEloState:
                     "elo": self.elo,
                     "games_played": self.games_played,
                     "last_result": self.last_result,
+                    "streak": self.streak,
                 },
                 indent=2,
             )
         )
 
     def apply_result(self, opponent_elo: int, result: Result) -> None:
-        self.elo = update_elo(self.elo, float(opponent_elo), result)
+        k = k_factor(self.games_played)
+        self.elo = update_elo(self.elo, float(opponent_elo), result, k)
         self.games_played += 1
         self.last_result = result
+        self.streak = update_streak(self.streak, result)

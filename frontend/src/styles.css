@@ -125,14 +125,13 @@ select {
 
 .game-layout {
   display: grid;
-  grid-template-columns: minmax(320px, 640px) minmax(260px, 1fr);
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
   align-items: start;
 }
 
-.game-layout.with-agent {
-  grid-template-columns: minmax(320px, 540px) minmax(200px, 280px) minmax(280px, 1fr);
-}
+/* Older 3-column "with-agent" rule is no longer needed — the agent panel
+   replaces the status panel and shares equal width with the board. */
 
 .board-panel {
   min-width: 0;
@@ -436,7 +435,10 @@ dd {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  max-height: 80vh;
+  container-type: inline-size;
+  /* Match the board's responsive sizing so chat and board are visually
+     paired. Same min() shape as .board-frame and .eval-bar. */
+  height: min(80vh, 100cqw);
 }
 
 .agent-panel h2 {
@@ -542,14 +544,327 @@ dd {
   color: #1d6b35;
 }
 
-/* 3-column layout collapses to stacked on narrow screens */
-@media (max-width: 1100px) {
-  .game-layout.with-agent {
-    grid-template-columns: minmax(320px, 640px) minmax(260px, 1fr);
+/* On narrow screens, board and agent panel stack vertically. */
+@media (max-width: 900px) {
+  .game-layout {
+    grid-template-columns: 1fr;
   }
 
   .agent-panel {
-    grid-column: 1 / -1;
     max-height: 50vh;
   }
+}
+
+/* ── Evaluation bar (advantage needle) ── */
+
+.board-with-eval {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+.board-with-eval > .board-panel {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.eval-bar {
+  position: relative;
+  flex: 0 0 18px;
+  /* Height tracks the board's responsive size: same min() pattern as
+     .board-frame, but the container here is .board-with-eval. */
+  height: min(80vh, calc(100cqw - 26px));
+  background: #1a1a1a;
+  border: 1px solid #26352a;
+  border-radius: 3px;
+  overflow: hidden;
+  align-self: start;
+  margin-top: 36px; /* clear the turn-hint above the board */
+}
+
+.eval-bar-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #f5f5e8;
+  transition: height 0.25s ease-out;
+}
+
+.eval-bar-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  padding: 2px 0;
+}
+
+.eval-bar-label-top {
+  top: 0;
+  color: #f5f5e8;
+}
+
+.eval-bar-label-bottom {
+  bottom: 0;
+  color: #1a1a1a;
+}
+
+/* ── Pause/resume controls ── */
+
+.game-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #253529;
+  border: 1px solid #cfd6cc;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: #eef3eb;
+}
+
+.paused-indicator {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #f4e0a8;
+  border: 1px solid #b08a3a;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #5a4519;
+}
+
+/* ── Batch runner ── */
+
+.agent-elo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #cfd6cc;
+  border-radius: 8px;
+  background: #fffef9;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.agent-elo-label {
+  font-size: 0.78rem;
+  color: #59675c;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 10px;
+}
+
+.agent-elo-value {
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: #17201a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.agent-elo-meta {
+  margin-left: 12px;
+  color: #59675c;
+  font-size: 0.8rem;
+}
+
+.batch-active {
+  border: 1px solid #cfd6cc;
+  border-radius: 8px;
+  background: #fffef9;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.batch-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.batch-header h2 {
+  margin-bottom: 4px;
+}
+
+.batch-subtitle {
+  margin: 0;
+  color: #59675c;
+  font-size: 0.85rem;
+}
+
+.batch-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.status-running {
+  background: #d9efdf;
+  color: #134e23;
+}
+
+.status-paused {
+  background: #f4e0a8;
+  color: #5a4519;
+}
+
+.status-pending {
+  background: #e3eaf2;
+  color: #2a3f8f;
+}
+
+.status-completed,
+.status-stopped {
+  background: #e0e3df;
+  color: #435044;
+}
+
+.status-failed {
+  background: #f3d3cf;
+  color: #7a1a14;
+}
+
+.batch-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.batch-progress {
+  margin: 10px 0 14px;
+}
+
+.progress-bar {
+  height: 8px;
+  background: #e0e3df;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #1d6b35;
+  transition: width 0.4s ease-out;
+}
+
+.batch-current-link {
+  margin-bottom: 12px;
+}
+
+.batch-last10 h3 {
+  margin-bottom: 8px;
+}
+
+.result-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.result-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-weight: 800;
+  font-size: 0.78rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.chip-win { background: #d9efdf; color: #134e23; }
+.chip-loss { background: #f3d3cf; color: #7a1a14; }
+.chip-draw { background: #f1efe6; color: #4d4528; }
+.chip-unknown { background: #e0e3df; color: #59675c; }
+
+.batch-history {
+  margin-top: 16px;
+}
+
+.batch-history summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #253529;
+}
+
+.batch-table {
+  width: 100%;
+  margin-top: 10px;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.batch-table th, .batch-table td {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid #e0e3df;
+}
+
+.batch-table th {
+  color: #59675c;
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── Top-of-board status bar ── */
+
+.status-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px 18px;
+  padding: 12px 16px;
+  background: #fffef9;
+  border: 1px solid #cfd6cc;
+  border-radius: 8px;
+}
+
+.status-bar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.status-bar-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #59675c;
+}
+
+.status-bar-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #17201a;
+  overflow-wrap: anywhere;
+}
+
+.status-bar-value.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.78rem;
+}
+
+.status-bar-fen {
+  grid-column: 1 / -1;
 }

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AgentPanel } from './AgentPanel';
 import { ChessBoard } from './ChessBoard';
-import { gameEventsUrl, getGame, loadGame, submitMove } from './api';
+import { EvalBar } from './EvalBar';
+import { gameEventsUrl, getGame, loadGame, pauseGame, resumeGame, submitMove } from './api';
 import type { GameState, PlayerConfig } from './types';
 
 function formatPlayer(config: PlayerConfig): string {
@@ -83,6 +84,19 @@ export function BoardPage() {
     }
   }, [game, isHumanTurn]);
 
+  const handlePauseToggle = useCallback(async () => {
+    if (!game) return;
+    setMessage('');
+    try {
+      setGame(game.paused ? await resumeGame(game.game_id) : await pauseGame(game.game_id));
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Could not toggle pause.');
+    }
+  }, [game]);
+
+  const hasAgent = game?.white.type === 'agent' || game?.black.type === 'agent';
+  const showPauseControls = Boolean(hasAgent && game && game.status === 'active');
+
   return (
     <main className="app-shell">
       <section className="setup-panel" aria-label="Game navigation">
@@ -107,41 +121,68 @@ export function BoardPage() {
         );
       })()}
 
+      {showPauseControls && (
+        <div className="game-controls">
+          <button type="button" onClick={handlePauseToggle}>
+            {game?.paused ? '▶ Resume' : '⏸ Pause'}
+          </button>
+          {game?.paused && <span className="paused-indicator">Paused — current turn finishes, then pauses</span>}
+        </div>
+      )}
+
+      {game && (
+        <section className="status-bar" aria-label="Game status">
+          <div className="status-bar-item">
+            <span className="status-bar-label">Game</span>
+            <span className="status-bar-value mono">{game.game_id.slice(0, 8)}</span>
+          </div>
+          <div className="status-bar-item">
+            <span className="status-bar-label">White</span>
+            <span className="status-bar-value">{formatPlayer(game.white)}</span>
+          </div>
+          <div className="status-bar-item">
+            <span className="status-bar-label">Black</span>
+            <span className="status-bar-value">{formatPlayer(game.black)}</span>
+          </div>
+          <div className="status-bar-item">
+            <span className="status-bar-label">Turn</span>
+            <span className="status-bar-value">{game.turn}</span>
+          </div>
+          <div className="status-bar-item">
+            <span className="status-bar-label">Result</span>
+            <span className="status-bar-value">
+              {game.result ?? game.status}
+              {game.termination ? ` · ${formatTermination(game.termination)}` : ''}
+            </span>
+          </div>
+          <div className="status-bar-item status-bar-fen">
+            <span className="status-bar-label">FEN</span>
+            <span className="status-bar-value mono">{game.fen}</span>
+          </div>
+        </section>
+      )}
+
       <section className={`game-layout${game?.white.type === 'agent' ? ' with-agent' : ''}`}>
-        <ChessBoard game={game} canMove={isHumanTurn} onMove={handleMove} />
-        <aside className="status-panel" aria-label="Game status">
-          <h2>Status</h2>
-          {game ? (
-            <>
-              <dl>
-                <dt>Game</dt>
-                <dd>{game.game_id.slice(0, 8)}</dd>
-                <dt>White</dt>
-                <dd>{formatPlayer(game.white)}</dd>
-                <dt>Black</dt>
-                <dd>{formatPlayer(game.black)}</dd>
-                <dt>Turn</dt>
-                <dd>{game.turn}</dd>
-                <dt>Result</dt>
-                <dd>
-                  {game.result ?? game.status}
-                  {game.termination ? ` (${formatTermination(game.termination)})` : ''}
-                </dd>
-                <dt>FEN</dt>
-                <dd className="fen">{game.fen}</dd>
-              </dl>
-              <h3>Moves</h3>
+        <div className="board-with-eval">
+          <EvalBar game={game} />
+          <ChessBoard game={game} canMove={isHumanTurn} onMove={handleMove} />
+        </div>
+        {game?.white.type === 'agent' ? (
+          <AgentPanel gameId={game.game_id} />
+        ) : (
+          <aside className="status-panel" aria-label="Move list">
+            <h3>Moves</h3>
+            {game ? (
               <ol className="move-list">
                 {game.san_moves.map((move, index) => (
                   <li key={`${move}-${index}`}>{move}</li>
                 ))}
               </ol>
-            </>
-          ) : (
-            <p>Loading game…</p>
-          )}
-        </aside>
-        {game?.white.type === 'agent' && <AgentPanel gameId={game.game_id} />}
+            ) : (
+              <p>Loading game…</p>
+            )}
+          </aside>
+        )}
       </section>
     </main>
   );

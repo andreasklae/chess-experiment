@@ -117,6 +117,7 @@ class AgentEloResponse(BaseModel):
     elo: float
     games_played: int
     last_result: str | None
+    streak: int
 
 
 @app.get("/api/health")
@@ -288,13 +289,13 @@ async def delete_batch(batch_id: str, runner: BatchRunnerDep) -> Response:
 @app.get("/api/agent-elo")
 async def get_agent_elo(service: BatchServiceDep) -> AgentEloResponse:
     state = service.load_agent_elo()
-    return AgentEloResponse(elo=state.elo, games_played=state.games_played, last_result=state.last_result)
+    return AgentEloResponse(elo=state.elo, games_played=state.games_played, last_result=state.last_result, streak=state.streak)
 
 
 @app.post("/api/agent-elo/reset")
 async def reset_agent_elo(service: BatchServiceDep) -> AgentEloResponse:
     state = service.reset_agent_elo()
-    return AgentEloResponse(elo=state.elo, games_played=state.games_played, last_result=state.last_result)
+    return AgentEloResponse(elo=state.elo, games_played=state.games_played, last_result=state.last_result, streak=state.streak)
 
 
 @app.get("/api/games/{game_id}/agent-events")
