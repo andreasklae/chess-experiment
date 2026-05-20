@@ -34,7 +34,7 @@ def save_game(
     }
     path = _game_path(games_dir, game_id)
     tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(data), encoding="utf-8")
+    tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
     os.replace(tmp, path)
 
 

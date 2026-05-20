@@ -1,14 +1,45 @@
 import asyncio
+import logging
+import os
 import shutil
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 from typing import Annotated
 
+
+def _configure_logging() -> None:
+    """One-shot logging setup for the FastAPI process.
+
+    Honours CHESS_LOG_LEVEL env var (defaults to INFO). Uvicorn installs its
+    own handler on root; we just set the level on `app.*` loggers so our
+    info/debug calls are visible without making uvicorn extra noisy.
+    """
+    level_name = os.getenv("CHESS_LOG_LEVEL", "INFO").upper()
+    level = getattr(logging, level_name, logging.INFO)
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter(
+        "%(asctime)s %(levelname)s %(name)s · %(message)s",
+        datefmt="%H:%M:%S",
+    ))
+    root = logging.getLogger("app")
+    root.setLevel(level)
+    root.handlers = [handler]
+    root.propagate = False
+
+
+_configure_logging()
+logger = logging.getLogger("app.main")
+
 from fastapi import Depends, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
+from pydantic import BaseModel, Field
+
+from app.batch_runner import BatchRunner
+from app.batch_service import Batch, BatchService
 from app.config import Settings, get_settings
+from app.eval_service import EvalService
 from app.game_service import GameService
 from app.players import PlayerFactory
 from app.schemas import CHESSCOM_ELOS, CreateGameRequest, GameState, GameSummary, HealthResponse, MAIA_ELOS, MoveRequest, PlayerTypeInfo
@@ -16,11 +47,21 @@ from app.schemas import CHESSCOM_ELOS, CreateGameRequest, GameState, GameSummary
 
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
+    logger.info("startup · games_dir=%s batches_dir=%s", settings.games_dir, settings.batches_dir)
+    logger.info("startup · stockfish=%r lc0=%r", settings.stockfish_path, settings.lc0_path)
     fastapi_app.state.game_service = build_game_service()
+    batch_service = BatchService(settings.batches_dir, settings.games_dir)
+    fastapi_app.state.batch_service = batch_service
+    fastapi_app.state.batch_runner = BatchRunner(batch_service, fastapi_app.state.game_service)
+    logger.info("startup · ready")
     try:
         yield
     finally:
+        logger.info("shutdown · closing game service and eval service")
         await fastapi_app.state.game_service.shutdown()
+        if hasattr(fastapi_app.state, "eval_service"):
+            fastapi_app.state.eval_service.close()
 
 
 app = FastAPI(title="Chess Experiment Backend", lifespan=lifespan)
@@ -35,7 +76,13 @@ app.add_middleware(
 
 def build_game_service() -> GameService:
     settings = get_settings()
-    return GameService(PlayerFactory(settings), games_dir=settings.games_dir)
+    eval_service = EvalService(settings.stockfish_path, settings.stockfish_eval_depth)
+    app.state.eval_service = eval_service
+    return GameService(
+        PlayerFactory(settings),
+        games_dir=settings.games_dir,
+        eval_service=eval_service,
+    )
 
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
@@ -46,6 +93,30 @@ def get_game_service() -> GameService:
 
 
 GameServiceDep = Annotated[GameService, Depends(get_game_service)]
+
+
+def get_batch_runner() -> BatchRunner:
+    return app.state.batch_runner
+
+
+def get_batch_service() -> BatchService:
+    return app.state.batch_service
+
+
+BatchRunnerDep = Annotated[BatchRunner, Depends(get_batch_runner)]
+BatchServiceDep = Annotated[BatchService, Depends(get_batch_service)]
+
+
+class CreateBatchRequest(BaseModel):
+    label: str = Field(default="", max_length=80)
+    pool: str = Field(..., pattern="^(maia|chesscom)$")
+    total_games: int = Field(..., ge=1, le=500)
+
+
+class AgentEloResponse(BaseModel):
+    elo: float
+    games_played: int
+    last_result: str | None
 
 
 @app.get("/api/health")
@@ -109,6 +180,20 @@ async def submit_move(game_id: str, request: MoveRequest, service: GameServiceDe
     return await service.submit_human_move(game_id, request.move)
 
 
+@app.post("/api/games/{game_id}/pause")
+async def pause_game(game_id: str, service: GameServiceDep) -> GameState:
+    service.get_state(game_id)  # 404 if not the current game
+    service.set_paused(True)
+    return service.get_state(game_id)
+
+
+@app.post("/api/games/{game_id}/resume")
+async def resume_game(game_id: str, service: GameServiceDep) -> GameState:
+    service.get_state(game_id)
+    service.set_paused(False)
+    return service.get_state(game_id)
+
+
 @app.get("/api/game/events")
 async def current_game_events(service: GameServiceDep) -> StreamingResponse:
     queue = await service.subscribe_current()
@@ -141,6 +226,75 @@ async def game_events(game_id: str, service: GameServiceDep) -> StreamingRespons
             service.unsubscribe(game_id, queue)
 
     return StreamingResponse(stream(), media_type="text/event-stream")
+
+
+@app.get("/api/batches")
+async def list_batches(runner: BatchRunnerDep) -> list[Batch]:
+    return runner.list_all()
+
+
+@app.get("/api/batches/active")
+async def active_batch(runner: BatchRunnerDep) -> Batch | None:
+    return runner.get_active()
+
+
+@app.post("/api/batches")
+async def create_batch(request: CreateBatchRequest, service: BatchServiceDep) -> Batch:
+    return service.create(label=request.label, pool=request.pool, total_games=request.total_games)
+
+
+@app.get("/api/batches/{batch_id}")
+async def get_batch(batch_id: str, runner: BatchRunnerDep) -> Batch:
+    batch = runner.get(batch_id)
+    if batch is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Batch not found.")
+    return batch
+
+
+@app.post("/api/batches/{batch_id}/start")
+async def start_batch(batch_id: str, runner: BatchRunnerDep) -> Batch:
+    try:
+        return await runner.start(batch_id)
+    except (ValueError, RuntimeError) as exc:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/batches/{batch_id}/pause")
+async def pause_batch(batch_id: str, runner: BatchRunnerDep) -> Batch:
+    try:
+        return await runner.pause(batch_id)
+    except ValueError as exc:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/api/batches/{batch_id}/stop")
+async def stop_batch(batch_id: str, runner: BatchRunnerDep) -> Batch:
+    try:
+        return await runner.stop(batch_id)
+    except ValueError as exc:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.delete("/api/batches/{batch_id}", status_code=204)
+async def delete_batch(batch_id: str, runner: BatchRunnerDep) -> Response:
+    await runner.delete(batch_id)
+    return Response(status_code=204)
+
+
+@app.get("/api/agent-elo")
+async def get_agent_elo(service: BatchServiceDep) -> AgentEloResponse:
+    state = service.load_agent_elo()
+    return AgentEloResponse(elo=state.elo, games_played=state.games_played, last_result=state.last_result)
+
+
+@app.post("/api/agent-elo/reset")
+async def reset_agent_elo(service: BatchServiceDep) -> AgentEloResponse:
+    state = service.reset_agent_elo()
+    return AgentEloResponse(elo=state.elo, games_played=state.games_played, last_result=state.last_result)
 
 
 @app.get("/api/games/{game_id}/agent-events")

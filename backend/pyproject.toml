@@ -12,10 +12,12 @@ dependencies = [
     "pytest-asyncio>=0.24.0",
     "python-dotenv>=1.0.0",
     "skill-agent",
+    "chesscom-driver",
 ]
 
 [tool.uv.sources]
 skill-agent = { git = "https://github.com/andreasklae/skillful-agent", branch = "main" }
+chesscom-driver = { workspace = true }
 
 [tool.fastapi]
 entrypoint = "app.main:app"

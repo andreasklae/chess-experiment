@@ -20,6 +20,14 @@ class Settings(BaseSettings):
     chesscom_headless: bool = False
     chesscom_chrome_channel: str = "chrome"
 
+    # Stockfish path for live evaluation (advantage needle). If empty or
+    # missing, evals are skipped silently.
+    stockfish_path: str = "stockfish"
+    stockfish_eval_depth: int = 15
+
+    # Batch runner working directory.
+    batches_dir: Path = BACKEND_DIR / "batches"
+
     model_config = SettingsConfigDict(env_prefix="CHESS_", extra="ignore")
 
     def maia_weight_path(self, elo: int) -> Path:

@@ -1,15 +1,21 @@
 import asyncio
 import json
+import logging
 import os
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import chess
 from fastapi import HTTPException
+
+if TYPE_CHECKING:
+    from app.eval_service import EvalService
+
+logger = logging.getLogger(__name__)
 
 from app.logging_service import LoggingService
 from app.persistence import (
@@ -42,6 +48,16 @@ class Game:
     agent_event_subscribers: set[asyncio.Queue[str]] = field(default_factory=set)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     task: asyncio.Task[None] | None = None
+    paused: bool = False
+    eval_cp: int | None = None
+    eval_mate: int | None = None
+    # Optional batch coupling — see BatchService. Empty string for ad-hoc games.
+    batch_id: str = ""
+    batch_name: str = ""
+    # Agent ELO snapshot used for CSV provenance. Strings so an empty value
+    # serialises cleanly to "".
+    agent_elo_before: str = ""
+    agent_elo_after: str = ""
 
     def player_to_move(self) -> Player:
         return self.white_player if self.board.turn == chess.WHITE else self.black_player
@@ -93,6 +109,9 @@ class Game:
             status="finished" if result else "active",
             result=result,
             termination=termination,
+            eval_cp=self.eval_cp,
+            eval_mate=self.eval_mate,
+            paused=self.paused,
         )
 
     def summary(self) -> GameSummary:
@@ -116,6 +135,7 @@ class GameService:
         player_factory: PlayerFactory,
         games_dir: Path | None = None,
         logging_service: LoggingService | None = None,
+        eval_service: "EvalService | None" = None,
     ):
         self._player_factory = player_factory
         self._game: Game | None = None
@@ -123,9 +143,56 @@ class GameService:
         self._games_dir: Path = games_dir if games_dir is not None else BACKEND_DIR / "games"
         ensure_dir(self._games_dir)
         self._logging = logging_service or LoggingService(self._games_dir)
+        self._eval = eval_service
+        # Callback fired when a game finishes naturally (game-over detected in
+        # the bot loop). Used by BatchRunner to advance the batch. Receives
+        # the finished Game.
+        self._on_game_finished: Callable[[Game], None] | None = None
+
+    def set_on_game_finished(self, cb: Callable[[Game], None] | None) -> None:
+        self._on_game_finished = cb
+
+    async def cancel_current_game(self) -> None:
+        """Forcibly end the active game (used when a batch is stopped).
+
+        Cancels the bot-loop task, closes player resources, clears the game
+        slot. The on-game-finished callback will not fire because we don't
+        go through the normal game-over branch.
+        """
+        game = self._game
+        if game is None:
+            return
+        logger.info("cancel_current_game · %s", game.game_id[:8])
+        if game.task is not None and not game.task.done():
+            game.task.cancel()
+            try:
+                await game.task
+            except (asyncio.CancelledError, Exception):
+                pass
+        await game.close_players()
+        self._game = None
+        logger.info("cancel_current_game · cleared")
+
+    def set_paused(self, paused: bool) -> bool:
+        """Pause/resume the active game. Returns the new state."""
+        game = self._game
+        if game is None:
+            return False
+        game.paused = paused
+        if not paused:
+            # Resuming kicks the bot loop in case it had stopped at a pause.
+            self._schedule_bot_turns(game)
+        # Publish so the UI sees the new flag.
+        asyncio.create_task(self._publish(game))
+        return paused
 
     async def create_game(self, request: CreateGameRequest) -> GameState:
+        logger.info("create_game · white=%s black=%s%s",
+                    request.white.type,
+                    request.black.type,
+                    f" (elo {request.black.elo})" if request.black.elo is not None else "")
         if self._game is not None:
+            logger.info("create_game · closing prior game %s", self._game.game_id[:8])
             await self._game.close_players()
         try:
             self._player_factory.validate_config(request.white)
@@ -155,11 +222,14 @@ class GameService:
         try:
             await game.start_players()
         except Exception as exc:
+            logger.exception("create_game · failed to start players: %s", exc)
             await game.close_players()
             raise HTTPException(status_code=502, detail=f"Failed to start player: {exc}") from exc
 
         self._game = game
+        logger.info("create_game · started %s", game.game_id[:8])
         self._persist(game)
+        asyncio.create_task(self._update_eval(game))
         self._schedule_bot_turns(game)
         return game.state()
 
@@ -210,6 +280,7 @@ class GameService:
             san_moves=list(data["san_moves"]),
         )
         self._game = game
+        asyncio.create_task(self._update_eval(game))
         if not game_over:
             self._schedule_bot_turns(game)
         return game.state()
@@ -315,10 +386,29 @@ class GameService:
             if not game.player_to_move().is_human:
                 raise HTTPException(status_code=400, detail=f"It is {color_name(game.board.turn)}'s turn, and that player is not human.")
             self._push_uci_move(game, move_uci)
+            asyncio.create_task(self._update_eval(game))
             await self._publish(game)
 
         self._schedule_bot_turns(game)
         return game.state()
+
+    async def _update_eval(self, game: Game) -> None:
+        """Compute a fresh stockfish evaluation and publish the new state."""
+        if self._eval is None:
+            return
+        try:
+            board_copy = game.board.copy(stack=False)
+            result = await self._eval.evaluate(board_copy)
+        except Exception:
+            return
+        # Skip if the game moved on (we don't want a stale eval to clobber a
+        # newer one — naive sequencing, but evals take ~100-300ms and the bot
+        # loop is sequential so racing in practice is rare).
+        if self._game is not game or game.board.fen() != board_copy.fen():
+            return
+        game.eval_cp = result.get("cp")
+        game.eval_mate = result.get("mate")
+        await self._publish(game)
 
     async def _subscribe(self, game: Game) -> asyncio.Queue[str]:
         queue: asyncio.Queue[str] = asyncio.Queue(maxsize=20)
@@ -346,8 +436,19 @@ class GameService:
             async with game.lock:
                 if game.is_over() or game.player_to_move().is_human:
                     if game.is_over():
+                        logger.info("game over · %s result=%s moves=%d",
+                                    game.game_id[:8], game.result(), len(game.uci_moves))
+                        # Pre-CSV hook: lets BatchRunner stamp ELO updates
+                        # onto the Game before the row is written.
+                        if self._on_game_finished is not None:
+                            try:
+                                self._on_game_finished(game)
+                            except Exception:
+                                logger.exception("on_game_finished callback failed")
                         self._record_game_end(game)
                         await game.close_players()
+                    return
+                if game.paused:
                     return
                 player = game.player_to_move()
                 board = game.board.copy(stack=False)
@@ -367,6 +468,8 @@ class GameService:
             try:
                 move = await player.get_move(board, last_san=last_san)
             except Exception as exc:
+                logger.exception("move · %s player %s raised: %s",
+                                 game.game_id[:8], type(player).__name__, exc)
                 await self._publish_error(game, str(exc))
                 self._logging.close_agent_turn(game.game_id, None)
                 return
@@ -375,7 +478,14 @@ class GameService:
                 if game.is_over() or game.player_to_move().is_human:
                     self._logging.close_agent_turn(game.game_id, None)
                     return
+                logger.info("move · %s %s (%s) move=%s",
+                            game.game_id[:8],
+                            "white" if game.board.turn == chess.WHITE else "black",
+                            type(player).__name__,
+                            move.uci())
                 self._push_move(game, move)
+                # Kick off an evaluation in the background; don't block the loop.
+                asyncio.create_task(self._update_eval(game))
                 await self._publish(game)
 
             self._logging.close_agent_turn(game.game_id, move.uci())
@@ -418,21 +528,40 @@ class GameService:
         )
 
     def _record_game_end(self, game: Game) -> None:
-        result = game.result()
+        # Only agent games are logged — non-agent games (e.g. human vs Maia)
+        # are not part of the experiment record.
         white_type = game.white_config.type
         black_type = game.black_config.type
+        if white_type != "agent" and black_type != "agent":
+            return
+
+        from app.repo_state import agent_model, agent_temperature, chess_repo_sha
+
+        result = game.result()
         opponent = (
             f"maia-{game.black_config.elo}" if black_type == "maia"
-            else black_type
+            else (f"chesscom-{game.black_config.elo}" if black_type == "chesscom"
+                  else black_type)
         )
-        model = os.getenv("SKILL_AGENT_OPENAI_MODEL", "") if white_type == "agent" else ""
+        opponent_elo = (
+            str(game.black_config.elo)
+            if black_type in ("maia", "chesscom") and game.black_config.elo is not None
+            else ""
+        )
         self._logging.record_game(
             game_id=game.game_id,
             white_type=white_type,
             black_type=black_type,
             opponent=opponent,
+            opponent_elo=opponent_elo,
             result=result,
-            model=model,
+            model=agent_model(),
+            temperature=agent_temperature(),
+            skill_repo_sha=chess_repo_sha(),
+            batch_id=game.batch_id,
+            batch_name=getattr(game, "batch_name", ""),
+            elo_before=getattr(game, "agent_elo_before", ""),
+            elo_after=getattr(game, "agent_elo_after", ""),
         )
 
     async def _publish(self, game: Game) -> None:

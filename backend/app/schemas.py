@@ -77,6 +77,15 @@ class GameState(BaseModel):
     status: Literal["active", "finished"]
     result: str | None
     termination: str | None = None
+    # Stockfish evaluation from White's perspective. `eval_cp` is centipawns
+    # (positive = White better). `eval_mate` is +N for White mating in N,
+    # -N for Black mating in N. Exactly one is non-null when an eval is
+    # available; both null means the eval is pending or unavailable.
+    eval_cp: int | None = None
+    eval_mate: int | None = None
+    # Paused state — see GameService.set_paused. Pause is honoured between
+    # turns: an in-flight bot turn finishes, then the loop stops.
+    paused: bool = False
 
 
 class GameSummary(BaseModel):
