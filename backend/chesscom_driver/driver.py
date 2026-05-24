@@ -156,27 +156,39 @@ class ChessComDriver:
     async def _dismiss_first_run_modal(self) -> None:
         """Dismiss any first-run overlays that block clicks on the bot picker.
 
-        On a fresh user-data dir two overlays appear in this z-order:
+        On a fresh user-data dir (we use one per game) two overlays appear:
 
-        1. The chess.com "Play the bots" intro modal (``dialog[data-cy="intro-modal"]``).
-           This sits on top and intercepts everything, so it must go first.
-        2. The OneTrust cookie banner (``#onetrust-consent-sdk``). Once the
-           intro modal is gone, the cookie banner is still there and
-           intercepts clicks on the bot picker further down. The Accept button
-           may not always be clickable across locales, so we just hide the
-           container via JS — that's enough to release pointer events.
+        1. The chess.com intro modal (``dialog[data-cy="intro-modal"]``).
+           This sits on top and intercepts everything. We try clicking the
+           Start button first; if that doesn't work within a short window we
+           force-hide it via JS so subsequent clicks always land correctly.
+        2. The OneTrust cookie banner (``#onetrust-consent-sdk``). Hidden via
+           JS — clicking it is unreliable across locales.
+
+        Because we use an ephemeral temp dir for every game, the intro modal
+        appears on every single launch and must be reliably dismissed.
         """
         assert self._page is not None
 
-        # Intro modal — click Start.
+        # Intro modal — try clicking Start, then force-hide as fallback.
         try:
             start_btn = self._page.get_by_role("button", name=re.compile(r"^Start$", re.I))
             await start_btn.first.click(timeout=4_000)
+            # Wait for the modal to actually leave the DOM before continuing.
+            await self._page.locator('dialog[data-cy="intro-modal"]').wait_for(
+                state="hidden", timeout=4_000
+            )
         except Exception:
-            pass  # Not present after the first run.
+            # Force-hide as fallback (covers timing races and DOM changes).
+            try:
+                await self._page.evaluate(
+                    "() => { const el = document.querySelector('dialog[data-cy=\"intro-modal\"]');"
+                    " if (el) el.style.display = 'none'; }"
+                )
+            except Exception:
+                pass
 
-        # OneTrust cookie banner — hide via JS (clicking it is unreliable
-        # across locales and not necessary for the workflow).
+        # OneTrust cookie banner — hide via JS.
         try:
             await self._page.evaluate(
                 "() => { const el = document.getElementById('onetrust-consent-sdk');"
@@ -255,6 +267,16 @@ class ChessComDriver:
         no-op.
         """
         assert self._page is not None
+
+        # Belt-and-suspenders: force-hide the intro modal in case it is still
+        # present (e.g. dismiss timing race between launch() and start_game()).
+        try:
+            await self._page.evaluate(
+                "() => { const el = document.querySelector('dialog[data-cy=\"intro-modal\"]');"
+                " if (el) el.style.display = 'none'; }"
+            )
+        except Exception:
+            pass
 
         engine_group = self._page.locator('[data-cy="bot-group-Engine"]')
         toggle = engine_group.locator('[data-cy="bot-group-Engine-toggle"]')
