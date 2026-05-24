@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 # Recover from a broken uv venv state.
 #
-# Symptoms this fixes:
-# - "chess.com players require the chesscom-driver package" at runtime
-# - ImportError on pydantic internals
-# - any package's .dist-info is present but the module won't import
+# Root cause: the project path contains an em-dash ("Dokumenter – MacBook Air")
+# which Python's .pth processor silently skips. uv's editable installs write
+# .pth files with this path, so neither `app` nor `chesscom_driver` end up on
+# sys.path even though their .dist-info entries are present.
 #
-# Root cause: uv sometimes leaves the project's editable installs in a
-# broken state after reconciling unrelated packages. Reinstalling the
-# editable workspace members restores them.
+# Fix: symlink both packages directly into site-packages. Symlinks are
+# resolved at import time and bypass the .pth processor entirely. uv sync
+# does not touch manually-placed symlinks, so this fix persists across syncs.
+#
+# Run this once after initial uv sync, and again if you ever wipe .venv.
 #
 # Usage:
 #   ./scripts/repair-env.sh
@@ -17,8 +19,17 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-echo "Repairing uv environment at $(pwd)/.venv …"
-uv sync --reinstall-package chess-experiment-backend --reinstall-package chesscom-driver
+REPO_ROOT="$(pwd)"
+SITE="$REPO_ROOT/.venv/lib/python3.12/site-packages"
+
+echo "Syncing uv workspace …"
+uv sync
+
+echo "Symlinking packages into site-packages …"
+ln -sfn "$REPO_ROOT/backend/app"             "$SITE/app"
+ln -sfn "$REPO_ROOT/backend/chesscom_driver" "$SITE/chesscom_driver"
+echo "  app            → $SITE/app"
+echo "  chesscom_driver → $SITE/chesscom_driver"
 
 echo "Verifying imports …"
 .venv/bin/python -c "from chesscom_driver import ChessComPlayer; from app.main import app; print('  ok')"

@@ -1,71 +1,72 @@
 # Chess Experiment
 
-Phase 1 scaffold for the chess skill-acquisition experiment. The app is split into:
+Phase 1 of the chess skill-acquisition experiment. The agent (Gemma 4 31B-it
+via eX3 vLLM) plays white against bots from two opponent pools: Maia (1100–1900
+ELO) and chess.com Engine bots (250–3200 ELO). Games run in batches with
+adaptive ELO matchmaking. Results are logged to `backend/games/games.csv`.
 
-- `backend/` — FastAPI + python-chess orchestration.
-- `frontend/` — React + Vite + chessground inspection UI.
-- `diary/` — local testing notes for this experiment.
+## Layout
 
-`progress/` is intentionally reserved for the later experiment-tracking system. Do not add it until the agent phase starts and the tracking schema is defined.
+```
+backend/          FastAPI + python-chess orchestration + agent harness
+backend/app/      Backend application code
+backend/chesscom_driver/  Playwright driver for chess.com Engine bots
+backend/skills/   Skill scripts used by the agent (list_legal_moves, make_move)
+backend/games/    Persisted game state + CSV log
+backend/batches/  Batch state files
+chesscom-driver/  Original standalone package — kept for reference, not on import path
+frontend/         React + Vite + chessground UI
+scripts/          Maintenance scripts (repair-env.sh)
+```
 
-## Backend
+## Running
 
 ```bash
-cd experiments/chess/backend
-uv sync
+# First time / after wiping .venv:
+./scripts/repair-env.sh
+
+# Start eX3 vLLM server (required for agent games):
+python3 ../../software/ex3/serve.py
+
+# Start backend (from experiments/chess/backend/):
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+# Start frontend (from experiments/chess/frontend/):
+bun run dev
 ```
 
-The backend serves:
+The frontend opens at `http://localhost:5173`. The backend API is at
+`http://localhost:8000`.
 
-- `GET /api/health`
-- `GET /api/player-types`
-- `POST /api/games`
-- `GET /api/game`
-- `GET /api/game/events`
-- `POST /api/game/moves`
-- `GET /api/games/{game_id}`
-- `GET /api/games/{game_id}/events`
-- `POST /api/games/{game_id}/moves`
+## Opponent pools
 
-The backend intentionally owns one current in-memory game at a time. Creating a game replaces the current game. Refreshing the frontend reloads `GET /api/game`; restarting the backend clears the game.
+| Pool | ELO range | Notes |
+|---|---|---|
+| Maia | 1100–1900 | Local lc0 + Maia-1 weights in `backend/engines/maia/weights/` |
+| chess.com | 250–3200 | 25 discrete steps; driven via Playwright (requires Chrome) |
 
-## Frontend
+## Agent
 
-```bash
-cd experiments/chess/frontend
-npm install
-npm run dev -- --host 127.0.0.1
-```
+The agent is `pydantic-ai` + `skillful-agent` SDK. Backend selection is
+controlled by `backend/.env`:
 
-The frontend expects the backend at `http://localhost:8000`. Override with:
+- `SKILL_AGENT_EX3_BASE_URL` set → local Gemma 4 31B-it on eX3 (active)
+- `SKILL_AGENT_AZURE_ENDPOINT` set → Azure OpenAI (inactive)
+- Neither → OpenAI public API
 
-```bash
-VITE_API_BASE=http://localhost:8001 npm run dev
-```
+Current model: `google/gemma-4-31B-it` at `http://localhost:11500/v1`.
+Initial ELO: 600 (informed prior from testing; see
+`knowledge-base/decisions/2026-05-24-initial-elo-600.md`).
 
-## Maia Setup
+## Maia setup
 
-Maia is run locally through Lc0 as a UCI engine. Configure:
+Lc0 installed via Homebrew. Maia-1 weights in `backend/engines/maia/weights/`:
+`maia-1100.pb.gz` through `maia-1900.pb.gz`.
 
-- `CHESS_LC0_PATH`, default `lc0`
-- `CHESS_MAIA_WEIGHTS_DIR`, default `backend/engines/maia/weights` resolved inside this experiment's backend folder
+Sources: https://github.com/CSSLab/maia-chess · https://lczero.org/play/quickstart/
 
-On this machine, Lc0 has been installed with Homebrew and the Maia-1 weights have been downloaded into `backend/engines/maia/weights/`.
+## Broken venv
 
-Expected weight filenames:
-
-- `maia-1100.pb.gz`
-- `maia-1200.pb.gz`
-- `maia-1300.pb.gz`
-- `maia-1400.pb.gz`
-- `maia-1500.pb.gz`
-- `maia-1600.pb.gz`
-- `maia-1700.pb.gz`
-- `maia-1800.pb.gz`
-- `maia-1900.pb.gz`
-
-Sources:
-
-- https://github.com/CSSLab/maia-chess
-- https://lczero.org/play/quickstart/
+If imports fail after `uv sync`, run `./scripts/repair-env.sh`. See
+`CLAUDE.md` for the root cause (em-dash in project path bypasses Python's
+`.pth` processor).

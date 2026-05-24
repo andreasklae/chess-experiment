@@ -5,26 +5,29 @@ for the chess experiment. Read it before doing work in this repo.
 
 ## What this repo is
 
-A self-contained chess experiment with three sibling packages:
+A self-contained chess experiment with two active packages and one
+reference directory:
 
-- `backend/` — FastAPI + python-chess service that owns one game at a time,
-  drives bot turns, persists state to `games/`, runs batch experiments,
-  and serves the React frontend over SSE.
-- `chesscom-driver/` — Playwright-backed Python library that drives a real
-  Chrome window to play chess.com Engine bots. Used as an opponent
-  provider; loaded as a `Player` ABC adapter from the backend.
+- `backend/` — FastAPI + python-chess service that owns one game at a
+  time, drives bot turns, persists state to `games/`, runs batch
+  experiments, and serves the React frontend over SSE. The
+  `chesscom_driver` package lives inside `backend/` as a regular
+  subdirectory.
 - `frontend/` — React + Vite + chessground UI. Lobby for ad-hoc games,
   a batch page for running calibration sequences, and a per-game board
   page with live Stockfish evaluation.
+- `chesscom-driver/` — original standalone package directory; kept for
+  reference. The live copy used at runtime is `backend/chesscom_driver/`.
 
-The agent itself is `pydantic-ai` + the `skillful-agent` SDK; it plays
-white and only ever invokes two skill scripts (`list_legal_moves.py`,
-`make_move.py`) — see [`backend/skills/chess-player/`](backend/skills/chess-player/).
+The agent is `pydantic-ai` + the `skillful-agent` SDK running against a
+local Gemma 4 31B-it model on eX3 via vLLM. It plays white and invokes
+two skill scripts (`list_legal_moves.py`, `make_move.py`) — see
+[`backend/skills/chess-player/`](backend/skills/chess-player/).
 
 ## Workspace layout
 
 This is a **uv workspace**. The root `pyproject.toml` declares `backend`
-and `chesscom-driver` as members. One shared venv lives at `./.venv/`.
+as the sole member. One shared venv lives at `./.venv/`.
 
 ```bash
 uv sync                        # install workspace into .venv/ at chess root
@@ -37,15 +40,24 @@ bun run dev                    # start frontend (from frontend/)
 ### Recovering from a broken venv
 
 If you see `ImportError` on a known-installed package — most commonly
-`chesscom_driver` failing to import or `pydantic._internal_dataclass`
-missing — uv has left the editable workspace members in a broken
-state. Fix:
+`chesscom_driver` failing to import or `app` not found — run:
 
 ```bash
 ./scripts/repair-env.sh
 ```
 
-The script reinstalls both workspace members and verifies the imports.
+**Root cause:** the project path contains an em-dash (`Dokumenter – MacBook Air`)
+which Python's `.pth` processor silently skips. uv's editable installs write
+`.pth` files using this path, so neither `app` nor `chesscom_driver` land on
+`sys.path` even though their `.dist-info` entries are present. The repair
+script works around this by symlinking both packages directly into
+`site-packages`, bypassing the `.pth` mechanism entirely. The symlinks
+survive `uv sync` — you only need to re-run `repair-env.sh` if you wipe
+`.venv` from scratch.
+
+Note: `chesscom_driver` now lives inside `backend/` (not as a separate
+workspace member). The `chesscom-driver/` sibling directory is kept for
+reference but is no longer on the import path.
 
 ## Where to read first
 
@@ -108,8 +120,9 @@ don't silently rewrite.
 Before committing:
 
 ```bash
-uv run python -c "from app.main import app; print('ok')"   # backend imports
-uv run pytest tests/ -v                                     # backend tests if applicable
+# Run from experiments/chess/ — uses the chess venv directly
+.venv/bin/python -c "from chesscom_driver import ChessComPlayer; from app.main import app; print('ok')"
+cd backend && uv run pytest tests/ -v
 ```
 
 For UI changes, start the dev server and exercise the path manually.

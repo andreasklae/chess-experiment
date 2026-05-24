@@ -1,20 +1,16 @@
 [project]
 name = "chess-experiment"
 version = "0.1.0"
-description = "Chess experiment workspace — backend + chesscom-driver library"
+description = "Chess experiment workspace — backend"
 requires-python = ">=3.12"
-# The workspace root depends on both members. This makes `uv sync` (from
-# any directory in the workspace) install everything as one venv at
-# `experiments/chess/.venv/`. Member packages are installed as proper
-# editable installs and import normally across the workspace.
+# The workspace root depends on the backend member. This makes `uv sync`
+# install everything as one venv at `experiments/chess/.venv/`.
 dependencies = [
     "chess-experiment-backend",
-    "chesscom-driver",
 ]
 
 [tool.uv.sources]
 chess-experiment-backend = { workspace = true }
-chesscom-driver = { workspace = true }
 
 [tool.uv.workspace]
-members = ["backend", "chesscom-driver"]
+members = ["backend"]

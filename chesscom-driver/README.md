@@ -33,8 +33,8 @@ white-only](#why-white-only).
 ## Why this exists
 
 The chess experiment evaluates an agent at multiple ELOs. Maia covers
-1100-1900, but the agent (gpt-4o-mini at this stage) plays around 300 ELO
-raw, so the experiment needs sub-1100 opponents. Lichess has bots in that
+1100-1900, but the agent plays in the sub-1100 range during calibration,
+so the experiment needs sub-1100 opponents. Lichess has bots in that
 range but imposes time controls, which break the experiment's
 no-time-pressure design. Chess.com has Engine bots from 250 to 3200 ELO
 with no time pressure — and no public API. Hence Playwright.
