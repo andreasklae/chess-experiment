@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AgentPanel } from './AgentPanel';
 import { ChessBoard } from './ChessBoard';
 import { EvalBar } from './EvalBar';
-import { gameEventsUrl, getGame, loadGame, pauseGame, resumeGame, submitMove } from './api';
-import type { GameState, PlayerConfig } from './types';
+import { gameEventsUrl, getActiveBatch, getAgentElo, getGame, loadGame, pauseGame, resumeGame, submitMove } from './api';
+import type { AgentElo, Batch, GameState, PlayerConfig } from './types';
 
 function formatPlayer(config: PlayerConfig): string {
   if (config.type === 'maia') return `maia ${config.elo}`;
@@ -45,8 +45,11 @@ function describeOutcome(game: GameState): { headline: string; detail: string; k
 
 export function BoardPage() {
   const { gameId } = useParams<{ gameId: string }>();
+  const navigate = useNavigate();
   const [game, setGame] = useState<GameState | null>(null);
   const [message, setMessage] = useState('');
+  const [agentElo, setAgentElo] = useState<AgentElo | null>(null);
+  const [activeBatch, setActiveBatch] = useState<Batch | null>(null);
 
   useEffect(() => {
     if (!gameId) return;
@@ -57,6 +60,42 @@ export function BoardPage() {
       .then(setGame)
       .catch(() => loadGame(gameId).then(setGame).catch((e: Error) => setMessage(e.message)));
   }, [gameId]);
+
+  // Poll backend for agent ELO + active batch state. Two purposes:
+  //   (1) keep the status bar's ELO and batch-progress fields fresh,
+  //   (2) auto-navigate to the next game when the active batch advances.
+  useEffect(() => {
+    if (!gameId) return undefined;
+    let cancelled = false;
+    async function tick() {
+      try {
+        const [active, elo] = await Promise.all([getActiveBatch(), getAgentElo()]);
+        if (cancelled) return;
+        setActiveBatch(active);
+        setAgentElo(elo);
+        if (
+          active?.current_game_id &&
+          active.current_game_id !== gameId &&
+          active.status === 'running'
+        ) {
+          navigate(`/games/${active.current_game_id}`);
+        }
+      } catch {
+        // ignore — keep polling
+      }
+    }
+    void tick();
+    const id = setInterval(tick, 1500);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [gameId, navigate]);
+
+  // Is the current game part of the active batch? If so we show the
+  // batch's game number and label in the status bar.
+  const batchForThisGame =
+    activeBatch && activeBatch.current_game_id === gameId ? activeBatch : null;
+  const batchProgress = batchForThisGame
+    ? `${batchForThisGame.games.length + 1}/${batchForThisGame.total_games}`
+    : null;
 
   useEffect(() => {
     if (!game) return undefined;
@@ -155,10 +194,23 @@ export function BoardPage() {
               {game.termination ? ` · ${formatTermination(game.termination)}` : ''}
             </span>
           </div>
-          <div className="status-bar-item status-bar-fen">
-            <span className="status-bar-label">FEN</span>
-            <span className="status-bar-value mono">{game.fen}</span>
-          </div>
+          {hasAgent && (
+            <div className="status-bar-item">
+              <span className="status-bar-label">Agent ELO</span>
+              <span className="status-bar-value mono">
+                {agentElo ? agentElo.elo.toFixed(0) : '—'}
+              </span>
+            </div>
+          )}
+          {batchForThisGame && (
+            <div className="status-bar-item">
+              <span className="status-bar-label">Batch</span>
+              <span className="status-bar-value">
+                {batchProgress}
+                {batchForThisGame.label ? ` · ${batchForThisGame.label}` : ''}
+              </span>
+            </div>
+          )}
         </section>
       )}
 

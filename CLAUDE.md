@@ -27,12 +27,25 @@ This is a **uv workspace**. The root `pyproject.toml` declares `backend`
 and `chesscom-driver` as members. One shared venv lives at `./.venv/`.
 
 ```bash
-uv sync --all-packages         # install everything (run from chess/, backend/, or chesscom-driver/)
+uv sync                        # install workspace into .venv/ at chess root
 uv run uvicorn app.main:app    # start backend (from backend/)
 bun run dev                    # start frontend (from frontend/)
 ```
 
 `bun`, not `npm`, for the frontend. The user explicitly prefers it.
+
+### Recovering from a broken venv
+
+If you see `ImportError` on a known-installed package — most commonly
+`chesscom_driver` failing to import or `pydantic._internal_dataclass`
+missing — uv has left the editable workspace members in a broken
+state. Fix:
+
+```bash
+./scripts/repair-env.sh
+```
+
+The script reinstalls both workspace members and verifies the imports.
 
 ## Where to read first
 

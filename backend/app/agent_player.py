@@ -16,7 +16,7 @@ from app.players import Player, PlayerError
 SKILLS_DIR = BACKEND_DIR / "skills"
 API_BASE = os.getenv("CHESS_API_BASE", "http://localhost:8000")
 
-# Load Azure credentials from skillful-agent's .env (only if not already in environment)
+# Load credentials from skillful-agent's .env (only if not already in environment)
 load_dotenv(SKILLFUL_AGENT_ENV, override=False)
 
 
@@ -25,24 +25,40 @@ def _build_agent(game_id: str):
 
     CHESS_GAME_ID and CHESS_API_BASE are injected into the environment so scripts
     can read them without the agent having to pass them as CLI arguments.
+
+    Backend selection (matches skillful-agent's server/app.py priority):
+      1. SKILL_AGENT_EX3_BASE_URL set → local vLLM on eX3 via OpenAIProvider(base_url=...)
+      2. SKILL_AGENT_AZURE_ENDPOINT set → Azure OpenAI
+      3. Otherwise → OpenAI public API (requires OPENAI_API_KEY)
     """
     from pydantic_ai.models.openai import OpenAIChatModel
-    from pydantic_ai.providers.azure import AzureProvider
     from skill_agent import Agent, AgentConfig
 
     # Inject game context for scripts — they read these instead of accepting CLI args
     os.environ["CHESS_GAME_ID"] = game_id
     os.environ["CHESS_API_BASE"] = API_BASE
 
-    provider = AzureProvider(
-        azure_endpoint=os.environ["SKILL_AGENT_AZURE_ENDPOINT"],
-        api_version=os.getenv("SKILL_AGENT_AZURE_API_VERSION", "2024-07-01-preview"),
-        api_key=os.environ["SKILL_AGENT_AZURE_API_KEY"],
-    )
-    model = OpenAIChatModel(
-        os.getenv("SKILL_AGENT_OPENAI_MODEL", "gpt-4o-mini"),
-        provider=provider,
-    )
+    ex3_base_url = os.getenv("SKILL_AGENT_EX3_BASE_URL")
+    azure_endpoint = os.getenv("SKILL_AGENT_AZURE_ENDPOINT")
+
+    if ex3_base_url:
+        from pydantic_ai.providers.openai import OpenAIProvider
+        provider = OpenAIProvider(base_url=ex3_base_url, api_key="dummy")
+        model_name = os.getenv("SKILL_AGENT_OPENAI_MODEL", "google/gemma-4-31B-it")
+    elif azure_endpoint:
+        from pydantic_ai.providers.azure import AzureProvider
+        provider = AzureProvider(
+            azure_endpoint=azure_endpoint,
+            api_version=os.getenv("SKILL_AGENT_AZURE_API_VERSION", "2024-07-01-preview"),
+            api_key=os.environ["SKILL_AGENT_AZURE_API_KEY"],
+        )
+        model_name = os.getenv("SKILL_AGENT_OPENAI_MODEL", "gpt-4o-mini")
+    else:
+        from pydantic_ai.providers.openai import OpenAIProvider
+        provider = OpenAIProvider(api_key=os.environ["OPENAI_API_KEY"])
+        model_name = os.getenv("SKILL_AGENT_OPENAI_MODEL", "gpt-4o-mini")
+
+    model = OpenAIChatModel(model_name, provider=provider)
     cfg = AgentConfig(
         system_prompt_extra=(
             "You are a chess engine playing white. "
@@ -84,7 +100,10 @@ def _extract_move_from_tool_log(tool_log: list[Any]) -> str | None:
 
 
 class AgentPlayer(Player):
-    """White-only player backed by the skillful-agent SDK (Azure OpenAI).
+    """White-only player backed by the skillful-agent SDK.
+
+    Backend (Azure / OpenAI / eX3 vLLM) is selected by environment variables —
+    see `_build_agent` for the priority order.
 
     The agent uses the chess-player skill's scripts/ directory for its tools:
       - list_legal_moves.py  — GET /api/games/{id} → legal_moves array

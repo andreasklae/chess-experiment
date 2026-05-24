@@ -3,12 +3,14 @@
 - `skill_repo_sha`: HEAD commit of the chess experiment repo. The skills live
   at `backend/skills/chess-player/`, so the chess repo's HEAD is the unit
   of agent-configuration provenance — every commit advances the experiment.
-- `model`, `temperature`: Azure OpenAI model + sampling temperature. The
-  skillful-agent SDK does not currently configure a temperature (see
+- `model`, `temperature`: Model name + sampling temperature. The model is
+  read from SKILL_AGENT_OPENAI_MODEL; when running locally via eX3 vLLM
+  this is typically "google/gemma-4-31B-it". The skillful-agent SDK does
+  not currently configure a temperature (see
   knowledge-base/decisions/2026-05-20-elo-and-batch-runner.md), so the
-  effective temperature is the Azure server-side default of 1.0. We write
-  "1.0" so downstream analysis has the actual sampling temperature
-  recorded, not an empty string.
+  effective temperature is the server-side default of 1.0. We write "1.0"
+  so downstream analysis has the actual sampling temperature recorded,
+  not an empty string.
 """
 
 from __future__ import annotations
@@ -39,6 +41,7 @@ def chess_repo_sha() -> str:
 
 
 def agent_model() -> str:
+    """Return the model name from SKILL_AGENT_OPENAI_MODEL (e.g. 'google/gemma-4-31B-it')."""
     return os.getenv("SKILL_AGENT_OPENAI_MODEL", "")
 
 

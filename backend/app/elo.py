@@ -9,9 +9,8 @@ In brief:
 
 - Classical Elo update. K is *adaptive*: 40 for the first
   `PROVISIONAL_GAMES` games (FIDE's provisional-player rule), then 20.
-- Initial ELO 1200 (standard "unrated default" used by FIDE for new players
-  pre-2014, by Lichess for its global mean, and the conventional value in
-  the chess literature for "unknown skill"; see decision record).
+- Initial ELO 600 (educated guess based on observed gameplay during testing
+  with comparable models; see decisions/2026-05-24-initial-elo-600.md).
 - Opponent selection uses **streak-based stepping** on the discrete pool
   (Maia 9-rating grid, chess.com 25-rating grid). A run of consecutive
   wins doubles the step up the ladder; a run of losses doubles the step
@@ -30,7 +29,7 @@ from typing import Literal
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
-INITIAL_ELO = 1200
+INITIAL_ELO = 600
 
 # Adaptive K-factor: high during the calibration phase so the rating moves
 # fast, then drops to a stable value matching common online-chess defaults
