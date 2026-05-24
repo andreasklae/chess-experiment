@@ -11,6 +11,7 @@ import {
   startBatch,
   stopBatch,
 } from './api';
+import { RepoStateBanner } from './RepoStateBanner';
 import type { AgentElo, Batch, BatchPool, BatchResult } from './types';
 
 function statusLabel(status: Batch['status']): string {
@@ -275,6 +276,7 @@ export function BatchPage() {
 
   return (
     <main className="lobby">
+      <RepoStateBanner />
       <div className="lobby-header">
         <h1>Batches</h1>
         <Link to="/" className="back-link">← Lobby</Link>

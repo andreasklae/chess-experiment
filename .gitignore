@@ -40,3 +40,12 @@ backend/engines/maia/weights/*.pb.gz
 
 # Stray screenshot dir created by the IDE when viewing .env attachments
 backend/image/
+
+# Game data — INTENTIONALLY NOT GITIGNORED
+#
+# `backend/games/` and `backend/batches/` are tracked. The CSVs (ranked.csv,
+# experimental.csv), agent_elo.json, per-game JSON state, per-game agent
+# reasoning traces, and batch state files are all part of the experiment's
+# auditable record. Reverting a PR reverts its calibration rows too — this
+# is by design. See:
+#   knowledge-base/decisions/2026-05-24-ranked-vs-experimental.md

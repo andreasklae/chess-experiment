@@ -65,6 +65,7 @@ Baseline calibration invariants (see [`CLAUDE.md`](CLAUDE.md) for the full list 
 - Initial ELO **600** — [`2026-05-24-initial-elo-600.md`](../../knowledge-base/decisions/2026-05-24-initial-elo-600.md)
 - Reasoning must precede the move — [`2026-05-24-reason-before-move.md`](../../knowledge-base/decisions/2026-05-24-reason-before-move.md)
 - Per-turn fresh context — [`2026-05-24-per-turn-fresh-context.md`](../../knowledge-base/decisions/2026-05-24-per-turn-fresh-context.md)
+- Ranked vs experimental logging (PR-as-version) — [`2026-05-24-ranked-vs-experimental.md`](../../knowledge-base/decisions/2026-05-24-ranked-vs-experimental.md)
 
 ## Maia setup
 

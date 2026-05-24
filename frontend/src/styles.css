@@ -953,3 +953,78 @@ dd {
 .status-bar-fen {
   grid-column: 1 / -1;
 }
+
+/* ── Repo-state banner ───────────────────────────────────────────────── */
+/* Surfaces whether the current run is ranked (clean main, ELO updates)
+   or experimental (everything else). See AGENT_PLAYER docs. */
+
+.repo-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  margin-bottom: 12px;
+  border: 1px solid transparent;
+}
+
+.repo-banner-loading,
+.repo-banner-error {
+  background: #f3f3f0;
+  color: #7a8a7d;
+  border-color: #dcdcd4;
+}
+
+.repo-banner-ranked {
+  background: #e7f5ec;
+  color: #1d6b35;
+  border-color: #b8d4be;
+}
+
+.repo-banner-experimental {
+  background: #fff4e6;
+  color: #8a5a1a;
+  border-color: #f0d6a8;
+}
+
+.repo-banner-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.repo-banner-detail {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.repo-banner-git {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.74rem;
+}
+
+.repo-banner-git code {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.repo-banner-dirty {
+  font-weight: 700;
+  color: #b04e1f;
+  background: rgba(176, 78, 31, 0.1);
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.7rem;
+}

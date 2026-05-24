@@ -79,8 +79,11 @@ methods; the code is downstream of those decisions.
 - **Single active game.** `GameService._game` is a single slot. Creating
   a new game closes the prior one's players. This is intentional — no
   parallel games.
-- **Only agent games are logged to `games.csv`.** Human-vs-Maia ad-hoc
-  testing is not part of the experiment record.
+- **Only agent games are logged.** They go to one of two CSVs:
+  `games/ranked.csv` (when on clean `main` — also updates ELO) or
+  `games/experimental.csv` (any other git state — ELO frozen).
+  Human-vs-Maia ad-hoc games are not logged at all. See
+  [`../../knowledge-base/decisions/2026-05-24-ranked-vs-experimental.md`](../../knowledge-base/decisions/2026-05-24-ranked-vs-experimental.md).
 - **Each batch game gets a fresh `Agent` instance.** No conversation
   state carries between games. This is enforced by `PlayerFactory.create`
   building a new `AgentPlayer` each call.
@@ -102,10 +105,14 @@ methods; the code is downstream of those decisions.
 - Commits should be detailed and include rationale, not just a list of
   files changed. The git history is part of the thesis's reproducibility
   story — `git log` should read like a methods journal.
-- The chess experiment is a fresh git repo as of 2026-05-20; the HEAD SHA
-  is stamped into every agent game's CSV row (`skill_repo_sha`). Commits
-  that change agent behaviour (skills, prompts, model config, driver)
-  should be a single coherent change so the SHA boundary is meaningful.
+- The chess experiment is a fresh git repo as of 2026-05-20. Every agent
+  game's CSV row carries `branch` + `commit_sha` for forensic precision.
+  But the unit of "agent configuration version" is the **PR**, not the
+  commit: iterate on a branch, merge to `main`, run the official
+  calibration batch on `main` post-merge. `git revert` is the recovery
+  primitive — it reverses both code and the calibration CSV rows the PR
+  produced. See
+  [`../../knowledge-base/decisions/2026-05-24-ranked-vs-experimental.md`](../../knowledge-base/decisions/2026-05-24-ranked-vs-experimental.md).
 
 ### Knowledge base
 
@@ -133,10 +140,13 @@ Type-checking via tsc isn't currently wired into the workflow.
 - python-chess is the single source of truth for game state on the host.
 - The bot loop runs serially, one move at a time, with a single
   `Game.lock`.
-- Persistent ELO state lives at `games/agent_elo.json` and is written
-  only by `BatchRunner`. Ad-hoc games never touch it.
-- `skill_repo_sha` is the chess repo HEAD; if you change what counts as
-  "the agent configuration", update the rationale in the decision record.
+- Persistent ELO state lives at `games/agent_elo.json`. **It is updated
+  only when the live git state is clean `main`.** Branches, dirty trees,
+  and ad-hoc lobby games never touch it. Enforced in
+  `BatchRunner._handle_game_finished` via `repo_state.is_ranked_context()`.
+- All game data (`ranked.csv`, `experimental.csv`, `agent_elo.json`,
+  per-game JSONs, batch state) is tracked in git, not gitignored. The
+  experiment's history is auditable from `git log` alone.
 
 ## Baseline calibration invariants (Phase 1 floor)
 
@@ -162,6 +172,11 @@ must be accompanied by a new decision record.
   exception fires (context overflow, illegal move, browser crash), the
   game record carries `result=""` and an `aborted_reason`; ELO is
   unchanged; the batch advances. Same ADR as above.
+- **Ranked-vs-experimental gating** decides which CSV a game lands in
+  and whether ELO updates. Clean `main` → `ranked.csv` + ELO update;
+  anything else → `experimental.csv` with ELO frozen. The frontend
+  banner shows the current mode. See
+  [`../../knowledge-base/decisions/2026-05-24-ranked-vs-experimental.md`](../../knowledge-base/decisions/2026-05-24-ranked-vs-experimental.md).
 
 The full experiment design page lives at
 [`../../knowledge-base/work/experiment-chess.md`](../../knowledge-base/work/experiment-chess.md).

@@ -66,6 +66,7 @@ Copy or edit `backend/.env`. Key variables:
 | `GET` | `/api/elo` | Current agent ELO state |
 | `POST` | `/api/elo/reset` | Reset ELO to initial value (600) |
 | `GET` | `/api/player-types` | Available player types and ELO ranges |
+| `GET` | `/api/repo-state` | Live git state + ranked/experimental phase (drives the frontend banner) |
 | `GET` | `/api/health` | Health check |
 
 ## Architecture
@@ -73,8 +74,10 @@ Copy or edit `backend/.env`. Key variables:
 - **Single active game.** `GameService._game` is one slot. Creating a new
   game closes the prior one's players.
 - **Agent is white-only.** Enforced by schema validators and the frontend.
-- **Only agent games are logged to `games.csv`.** Human-vs-Maia ad-hoc
-  testing is not part of the experiment record.
+- **Only agent games are logged.** They go to `games/ranked.csv` (when
+  on clean `main`, also updates ELO) or `games/experimental.csv` (any
+  other git state, ELO frozen). Human-vs-Maia ad-hoc games are not
+  logged. See `Ranked vs experimental` below.
 - **Each batch game gets a fresh `Agent` instance.** No conversation state
   carries between games.
 - **Each turn within a game gets fresh context too.** `AgentPlayer.get_move()`
@@ -98,11 +101,40 @@ Implementation: `AgentPlayer.get_move()` calls
 Error handling: when a model rejects a request for context overflow (or any
 other reason), `skill_agent` raises `AgentContextOverflowError`, the chess
 backend converts it to a `PlayerError`, and the game is aborted with the
-reason recorded in `games.csv` under a new `aborted_reason` column. ELO is
-unchanged for aborted games; the batch advances to the next opponent.
+reason recorded in `ranked.csv` or `experimental.csv` under the
+`aborted_reason` column. ELO is unchanged for aborted games; the batch
+advances to the next opponent.
 
 Full rationale and consequences:
 [`knowledge-base/decisions/2026-05-24-per-turn-fresh-context.md`](../../../knowledge-base/decisions/2026-05-24-per-turn-fresh-context.md).
+
+## Ranked vs experimental
+
+Every agent game lands in one of two CSVs based on the **live git state**
+at game-record time:
+
+| State | CSV | Updates `agent_elo.json`? |
+|---|---|---|
+| On `main` with a clean working tree | `games/ranked.csv` | yes |
+| Anything else (branch, dirty tree, no repo) | `games/experimental.csv` | no |
+
+Policy lives in [`app/repo_state.py`](app/repo_state.py)
+(`is_ranked_context()` / `current_phase()`). Enforcement is in two places:
+
+1. [`app/logging_service.py`](app/logging_service.py) — `record_game`
+   routes the row to the correct CSV.
+2. [`app/batch_runner.py`](app/batch_runner.py) — `_handle_game_finished`
+   refuses to update ELO unless `is_ranked_context()` is true.
+
+The frontend polls [`/api/repo-state`](app/main.py) every 5 seconds and
+shows a coloured banner on the lobby and batch pages so the operator
+knows which mode the next batch will run in.
+
+**All game data is tracked in git** — both CSVs, `agent_elo.json`, every
+per-game board JSON and reasoning JSON, and the batch state files. The
+intent is that `git revert` on a PR reverses both the code change and
+its calibration rows together. See:
+[`knowledge-base/decisions/2026-05-24-ranked-vs-experimental.md`](../../../knowledge-base/decisions/2026-05-24-ranked-vs-experimental.md).
 
 ## Packages
 

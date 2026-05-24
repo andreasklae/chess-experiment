@@ -545,14 +545,16 @@ class GameService:
         )
 
     def _record_game_end(self, game: Game) -> None:
-        # Only agent games are logged — non-agent games (e.g. human vs Maia)
-        # are not part of the experiment record.
+        # Only agent games are logged. Lobby agent games and batch agent games
+        # both end up in the CSVs; `LoggingService.record_game` decides ranked
+        # vs experimental based on the live git state. Human-vs-Maia ad-hoc
+        # games are not part of the experiment record.
         white_type = game.white_config.type
         black_type = game.black_config.type
         if white_type != "agent" and black_type != "agent":
             return
 
-        from app.repo_state import agent_model, agent_temperature, chess_repo_sha
+        from app.repo_state import agent_model, agent_temperature
 
         result = game.result()
         opponent = (
@@ -574,7 +576,6 @@ class GameService:
             result=result,
             model=agent_model(),
             temperature=agent_temperature(),
-            skill_repo_sha=chess_repo_sha(),
             batch_id=game.batch_id,
             batch_name=getattr(game, "batch_name", ""),
             elo_before=getattr(game, "agent_elo_before", ""),

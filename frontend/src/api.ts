@@ -118,3 +118,23 @@ export function getAgentElo(): Promise<AgentElo> {
 export function resetAgentElo(): Promise<AgentElo> {
   return request<AgentElo>('/api/agent-elo/reset', { method: 'POST' });
 }
+
+// ── Repo state ────────────────────────────────────────────────────────────
+//
+// Surfaces whether the next batch will be ranked (clean main) or
+// experimental (any other git state). The frontend renders this as a
+// banner so the operator knows what mode they're working in.
+
+export interface RepoState {
+  phase: 'ranked' | 'experimental';
+  reason: string;
+  branch: string;
+  commit_sha: string;
+  short_sha: string;
+  dirty: boolean;
+  is_repo: boolean;
+}
+
+export function getRepoState(): Promise<RepoState> {
+  return request<RepoState>('/api/repo-state');
+}

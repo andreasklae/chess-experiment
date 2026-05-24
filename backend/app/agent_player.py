@@ -65,16 +65,9 @@ def _build_agent(game_id: str):
             "Required sequence for every move — follow it strictly:\n"
             "  1. Call `use_skill` with skill_name='chess-player' (only on the very first move).\n"
             "  2. Call `run_script` to invoke list_legal_moves.py and read the legal moves.\n"
-            "  3. **Before calling make_move.py, write 2–4 sentences of explicit reasoning** "
-            "as plain text: name 2–3 candidate moves, compare them briefly, and state which "
-            "one you will play and why. This reasoning step is mandatory and must come before "
-            "the make_move.py call, not after.\n"
+            "  3. **Before calling make_move.py, write reasoning** "
             "  4. Call `run_script` to invoke make_move.py with your chosen move.\n"
-            "  5. End the turn. Do not write any more text after make_move.py — the move is "
-            "already committed and further commentary serves no purpose.\n\n"
-            "Reasoning before the move is the only commentary the experiment records as "
-            "informing the choice. Reasoning written after make_move.py is treated as "
-            "post-hoc and is discarded for analysis."
+            "  5. End the turn. Do not write any more text after make_move.py"
         ),
         max_turns=20,
     )

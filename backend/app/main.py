@@ -130,6 +130,29 @@ async def health(settings: SettingsDep) -> HealthResponse:
     )
 
 
+@app.get("/api/repo-state")
+async def repo_state() -> dict:
+    """Live git state and ranked/experimental phase for the UI banner.
+
+    The frontend uses this to surface whether the next batch will be
+    ranked (writes to ranked.csv, updates ELO) or experimental (writes to
+    experimental.csv, ELO frozen). See
+    knowledge-base/decisions/2026-05-24-ranked-vs-experimental.md.
+    """
+    from app.repo_state import is_ranked_context, live_git_state
+    git = live_git_state()
+    ranked, reason = is_ranked_context()
+    return {
+        "phase": "ranked" if ranked else "experimental",
+        "reason": reason,
+        "branch": git.branch,
+        "commit_sha": git.commit_sha,
+        "short_sha": git.short_sha,
+        "dirty": git.dirty,
+        "is_repo": git.is_repo,
+    }
+
+
 @app.get("/api/player-types")
 async def player_types() -> list[PlayerTypeInfo]:
     return [

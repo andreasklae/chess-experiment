@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createGame, deleteGame, listGames, playerTypes } from './api';
+import { RepoStateBanner } from './RepoStateBanner';
 import type { Color, GameSummary, PlayerConfig, PlayerTypeInfo } from './types';
 
 const defaultElo = 1500;
@@ -159,6 +160,7 @@ export function LobbyPage() {
 
   return (
     <main className="lobby">
+      <RepoStateBanner />
       <div className="lobby-header">
         <h1>Chess Experiment</h1>
         <div style={{ display: 'flex', gap: 8 }}>

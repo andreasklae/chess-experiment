@@ -227,12 +227,29 @@ class BatchRunner:
             normalized = normalize_result(result_string, agent_color="white")
             aborted_reason = getattr(game, "aborted_reason", "")
 
+            # ENFORCEMENT: ranked ELO only advances when the live git state is
+            # 'main, clean'. On a branch or with a dirty tree, the game still
+            # gets logged (to experimental.csv via LoggingService) but ELO is
+            # frozen. This makes ELO a function of merged main, not whatever
+            # code happened to be running. See
+            # knowledge-base/decisions/2026-05-24-ranked-vs-experimental.md
+            from app.repo_state import is_ranked_context
+            ranked_ok, ranked_reason = is_ranked_context()
+
             agent_state = self._batches.load_agent_elo()
             elo_before = agent_state.elo
-            if normalized is not None:
+            if normalized is not None and ranked_ok:
                 opp_elo = int(game.black_config.elo) if game.black_config.elo is not None else int(elo_before)
                 agent_state.apply_result(opp_elo, normalized)
                 self._batches.save_agent_elo(agent_state)
+            elif normalized is not None and not ranked_ok:
+                logger.info(
+                    "batch %s · game %s EXPERIMENTAL · ELO unchanged · reason=%s · result=%s",
+                    batch.batch_id[:8],
+                    game.game_id[:8],
+                    ranked_reason,
+                    normalized,
+                )
             elif aborted_reason:
                 logger.warning(
                     "batch %s · game %s ABORTED · ELO unchanged · reason=%s",
