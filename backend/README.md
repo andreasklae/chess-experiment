@@ -77,7 +77,32 @@ Copy or edit `backend/.env`. Key variables:
   testing is not part of the experiment record.
 - **Each batch game gets a fresh `Agent` instance.** No conversation state
   carries between games.
+- **Each turn within a game gets fresh context too.** `AgentPlayer.get_move()`
+  calls `self._agent.clear_conversation()` at the top of every turn. See
+  Context management below.
 - **Stockfish eval is UX-only.** The agent has no access to it.
+
+## Context management
+
+Baseline calibration runs with **per-turn fresh context**: the agent enters
+each turn seeing only the system prompt, skill list, and one user message
+(opponent's last move + FEN). No accumulated history from prior turns.
+The FEN encodes complete game state; cross-turn memory is a separate
+experimental variable that future configurations will introduce and measure
+against this baseline.
+
+Implementation: `AgentPlayer.get_move()` calls
+`self._agent.clear_conversation()` before building the prompt
+([`app/agent_player.py`](app/agent_player.py)).
+
+Error handling: when a model rejects a request for context overflow (or any
+other reason), `skill_agent` raises `AgentContextOverflowError`, the chess
+backend converts it to a `PlayerError`, and the game is aborted with the
+reason recorded in `games.csv` under a new `aborted_reason` column. ELO is
+unchanged for aborted games; the batch advances to the next opponent.
+
+Full rationale and consequences:
+[`knowledge-base/decisions/2026-05-24-per-turn-fresh-context.md`](../../../knowledge-base/decisions/2026-05-24-per-turn-fresh-context.md).
 
 ## Packages
 

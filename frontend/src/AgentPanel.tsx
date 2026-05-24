@@ -1,30 +1,46 @@
 import { useEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { agentEventsUrl } from './api';
 
-interface PromptEntry {
-  kind: 'prompt';
+interface TurnEntry {
+  kind: 'turn';
   content: string;
 }
 
-interface ThinkingEntry {
-  kind: 'thinking';
+interface ReasoningEntry {
+  kind: 'reasoning';
   content: string;
   complete: boolean;
 }
 
-interface ToolCallEntry {
-  kind: 'tool_call';
+interface PostMoveEntry {
+  kind: 'post-move';
+  content: string;
+  complete: boolean;
+}
+
+interface ActionEntry {
+  kind: 'action';
   tool: string;
   args: Record<string, unknown>;
 }
 
-interface ToolResultEntry {
-  kind: 'tool_result';
+interface ResultEntry {
+  kind: 'result';
   tool: string;
   result: unknown;
 }
 
-type ChatEntry = PromptEntry | ThinkingEntry | ToolCallEntry | ToolResultEntry;
+type ChatEntry = TurnEntry | ReasoningEntry | PostMoveEntry | ActionEntry | ResultEntry;
+
+// Gemma 4 wraps its chain of thought in <|channel>thought ... <channel|> markers.
+// Strip the markers; keep the prose between them as the visible reasoning text.
+function stripGemmaChannelMarkers(text: string): string {
+  return text
+    .replace(/<\|channel\|?>thought\s*/g, '')
+    .replace(/<channel\|?>\s*/g, '');
+}
 
 function friendlyToolCall(tool: string, args: Record<string, unknown>): string {
   if (tool === 'run_script') {
@@ -45,17 +61,14 @@ function friendlyToolResult(tool: string, result: unknown): { label: string; det
   if (typeof result === 'string') {
     try {
       const outer = JSON.parse(result);
-      // run_script wrapper: {"ok": bool, "stdout": "...", "stderr": "..."}
       if (typeof outer === 'object' && 'stdout' in outer) {
         const stdout = (outer.stdout as string).trim();
-        // list_legal_moves returns a JSON array
         try {
           const moves = JSON.parse(stdout);
           if (Array.isArray(moves)) {
             return { label: `${moves.length} legal moves`, detail: null };
           }
         } catch { /* not an array */ }
-        // make_move returns {"ok": true, "move": "e2e4"}
         try {
           const inner = JSON.parse(stdout);
           if (inner?.ok && inner?.move) {
@@ -74,9 +87,22 @@ function friendlyToolResult(tool: string, result: unknown): { label: string; det
   return { label: JSON.stringify(result).slice(0, 80), detail: null };
 }
 
+// True when the given tool_call event is a make_move.py invocation. Text deltas
+// that arrive after this is true (within the same turn) are post-hoc commentary,
+// not reasoning that informed the move.
+function isMakeMoveCall(event: Record<string, unknown>): boolean {
+  if (event.type !== 'tool_call') return false;
+  if (event.tool !== 'run_script') return false;
+  const args = (event.args as Record<string, unknown> | undefined) ?? {};
+  return args.filename === 'make_move.py';
+}
+
 export function AgentPanel({ gameId }: { gameId: string }) {
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // Tracks whether make_move.py has been called this turn. Reset on every
+  // new `prompt` event (which marks the start of a turn).
+  const moveCommittedRef = useRef(false);
 
   useEffect(() => {
     const source = new EventSource(agentEventsUrl(gameId));
@@ -88,22 +114,29 @@ export function AgentPanel({ gameId }: { gameId: string }) {
         const next = [...prev];
 
         if (event.type === 'prompt') {
-          next.push({ kind: 'prompt', content: event.content as string });
+          moveCommittedRef.current = false;
+          next.push({ kind: 'turn', content: event.content as string });
         } else if (event.type === 'text_delta') {
+          const cleaned = stripGemmaChannelMarkers(event.content as string);
+          if (!cleaned) return next;
+          const targetKind: 'reasoning' | 'post-move' = moveCommittedRef.current ? 'post-move' : 'reasoning';
           const last = next[next.length - 1];
-          if (last?.kind === 'thinking' && !last.complete) {
-            next[next.length - 1] = { ...last, content: last.content + (event.content as string) };
+          if (last?.kind === targetKind && !last.complete) {
+            next[next.length - 1] = { ...last, content: last.content + cleaned };
           } else {
-            next.push({ kind: 'thinking', content: event.content as string, complete: false });
+            next.push({ kind: targetKind, content: cleaned, complete: false });
           }
         } else if (event.type === 'tool_call') {
           const last = next[next.length - 1];
-          if (last?.kind === 'thinking' && !last.complete) {
+          if ((last?.kind === 'reasoning' || last?.kind === 'post-move') && !last.complete) {
             next[next.length - 1] = { ...last, complete: true };
           }
-          next.push({ kind: 'tool_call', tool: event.tool as string, args: (event.args as Record<string, unknown>) ?? {} });
+          if (isMakeMoveCall(event)) {
+            moveCommittedRef.current = true;
+          }
+          next.push({ kind: 'action', tool: event.tool as string, args: (event.args as Record<string, unknown>) ?? {} });
         } else if (event.type === 'tool_result') {
-          next.push({ kind: 'tool_result', tool: event.tool as string, result: event.result });
+          next.push({ kind: 'result', tool: event.tool as string, result: event.result });
         }
 
         return next;
@@ -123,37 +156,48 @@ export function AgentPanel({ gameId }: { gameId: string }) {
       <div className="agent-feed">
         {entries.length === 0 && <p className="agent-idle">Waiting for agent turn…</p>}
         {entries.map((entry, i) => {
-          if (entry.kind === 'prompt') {
+          if (entry.kind === 'turn') {
             return (
-              <div key={i} className="agent-entry agent-prompt">
-                <span className="entry-label">prompt</span>
+              <div key={i} className="agent-entry agent-turn">
+                <span className="entry-label">turn</span>
                 <span className="entry-text">{entry.content}</span>
               </div>
             );
           }
-          if (entry.kind === 'thinking') {
+          if (entry.kind === 'reasoning') {
             return (
-              <div key={i} className={`agent-entry agent-thinking${entry.complete ? ' complete' : ' streaming'}`}>
-                <span className="entry-label">thinking</span>
-                <span className="entry-text">
-                  {entry.content}
+              <div key={i} className={`agent-entry agent-reasoning${entry.complete ? ' complete' : ' streaming'}`}>
+                <span className="entry-label">reasoning</span>
+                <div className="entry-text markdown-body">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{entry.content}</ReactMarkdown>
                   {!entry.complete && <span className="cursor" aria-hidden="true" />}
-                </span>
+                </div>
               </div>
             );
           }
-          if (entry.kind === 'tool_call') {
+          if (entry.kind === 'post-move') {
             return (
-              <div key={i} className="agent-entry agent-tool-call">
-                <span className="entry-label">tool</span>
+              <div key={i} className={`agent-entry agent-post-move${entry.complete ? ' complete' : ' streaming'}`}>
+                <span className="entry-label">post-move</span>
+                <div className="entry-text markdown-body">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{entry.content}</ReactMarkdown>
+                  {!entry.complete && <span className="cursor" aria-hidden="true" />}
+                </div>
+              </div>
+            );
+          }
+          if (entry.kind === 'action') {
+            return (
+              <div key={i} className="agent-entry agent-action">
+                <span className="entry-label">action</span>
                 <code className="entry-text">⚙ {friendlyToolCall(entry.tool, entry.args)}</code>
               </div>
             );
           }
-          if (entry.kind === 'tool_result') {
+          if (entry.kind === 'result') {
             const { label, detail } = friendlyToolResult(entry.tool, entry.result);
             return (
-              <div key={i} className="agent-entry agent-tool-result">
+              <div key={i} className="agent-entry agent-result">
                 <span className="entry-label">result</span>
                 <span className="entry-text">
                   ✓ {label}

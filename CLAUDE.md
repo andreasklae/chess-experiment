@@ -137,3 +137,38 @@ Type-checking via tsc isn't currently wired into the workflow.
   only by `BatchRunner`. Ad-hoc games never touch it.
 - `skill_repo_sha` is the chess repo HEAD; if you change what counts as
   "the agent configuration", update the rationale in the decision record.
+
+## Baseline calibration invariants (Phase 1 floor)
+
+The current Phase 1 batches measure the **bare model's** chess strength.
+Any change to the items below alters what the baseline ELO means and
+must be accompanied by a new decision record.
+
+- **Initial agent ELO is 600.** Informed prior from observation, not the
+  conventional 1200. See
+  [`../../knowledge-base/decisions/2026-05-24-initial-elo-600.md`](../../knowledge-base/decisions/2026-05-24-initial-elo-600.md).
+- **Reasoning must precede the move.** The system prompt enforces an
+  explicit ordered sequence; text the model produces after `make_move.py`
+  is labelled "post-move" in the UI and discarded for analysis (recorded
+  but not cited as the move's justification). See
+  [`../../knowledge-base/decisions/2026-05-24-reason-before-move.md`](../../knowledge-base/decisions/2026-05-24-reason-before-move.md).
+- **Per-turn fresh context.** `AgentPlayer.get_move()` calls
+  `self._agent.clear_conversation()` at the start of every turn. The
+  agent sees only system prompt + skill list + one user message (opponent
+  move + FEN). No cross-turn memory. The FEN is the complete game state.
+  See
+  [`../../knowledge-base/decisions/2026-05-24-per-turn-fresh-context.md`](../../knowledge-base/decisions/2026-05-24-per-turn-fresh-context.md).
+- **Aborted games are recorded but do not affect ELO.** When a player
+  exception fires (context overflow, illegal move, browser crash), the
+  game record carries `result=""` and an `aborted_reason`; ELO is
+  unchanged; the batch advances. Same ADR as above.
+
+The full experiment design page lives at
+[`../../knowledge-base/work/experiment-chess.md`](../../knowledge-base/work/experiment-chess.md).
+The full ADR set for this experiment:
+
+- [`2026-05-20-elo-and-batch-runner.md`](../../knowledge-base/decisions/2026-05-20-elo-and-batch-runner.md) — ELO formula, batch runner, opponent stepping
+- [`2026-05-23-ex3-llm-inference-server-architecture.md`](../../knowledge-base/decisions/2026-05-23-ex3-llm-inference-server-architecture.md) — self-hosted inference architecture
+- [`2026-05-24-initial-elo-600.md`](../../knowledge-base/decisions/2026-05-24-initial-elo-600.md)
+- [`2026-05-24-reason-before-move.md`](../../knowledge-base/decisions/2026-05-24-reason-before-move.md)
+- [`2026-05-24-per-turn-fresh-context.md`](../../knowledge-base/decisions/2026-05-24-per-turn-fresh-context.md)

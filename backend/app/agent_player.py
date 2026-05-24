@@ -61,9 +61,20 @@ def _build_agent(game_id: str):
     model = OpenAIChatModel(model_name, provider=provider)
     cfg = AgentConfig(
         system_prompt_extra=(
-            "You are a chess engine playing white. "
-            "Think out loud before every move. "
-            "Load the chess-player skill, then use its scripts to list legal moves and make your move."
+            "You are a chess engine playing white.\n\n"
+            "Required sequence for every move — follow it strictly:\n"
+            "  1. Call `use_skill` with skill_name='chess-player' (only on the very first move).\n"
+            "  2. Call `run_script` to invoke list_legal_moves.py and read the legal moves.\n"
+            "  3. **Before calling make_move.py, write 2–4 sentences of explicit reasoning** "
+            "as plain text: name 2–3 candidate moves, compare them briefly, and state which "
+            "one you will play and why. This reasoning step is mandatory and must come before "
+            "the make_move.py call, not after.\n"
+            "  4. Call `run_script` to invoke make_move.py with your chosen move.\n"
+            "  5. End the turn. Do not write any more text after make_move.py — the move is "
+            "already committed and further commentary serves no purpose.\n\n"
+            "Reasoning before the move is the only commentary the experiment records as "
+            "informing the choice. Reasoning written after make_move.py is treated as "
+            "post-hoc and is discarded for analysis."
         ),
         max_turns=20,
     )
@@ -122,6 +133,24 @@ class AgentPlayer(Player):
 
     async def get_move(self, board: chess.Board, last_san: str | None = None) -> chess.Move:
         from skill_agent import TextDeltaEvent, ToolCallEvent, ToolResultEvent
+        try:
+            from skill_agent import AgentContextOverflowError
+        except ImportError:
+            # Older skillful-agent versions (pre-2026-05-24) don't expose the
+            # typed overflow exception. Fall back to a never-matched sentinel
+            # so the try/except below compiles; provider 400s will then bubble
+            # up as plain Exceptions, caught by game_service's outer handler.
+            class AgentContextOverflowError(Exception):  # type: ignore[no-redef]
+                requested_input_tokens: int | None = None
+                model_context_limit: int | None = None
+
+        # Baseline calibration runs with per-turn fresh context: the agent sees
+        # the system prompt, skill list, and one user message (opponent move + FEN).
+        # Nothing from prior turns carries over. The FEN encodes complete game
+        # state; cross-turn memory is a separate experimental variable that future
+        # configurations will introduce and measure against this baseline.
+        # See knowledge-base/decisions/2026-05-24-per-turn-fresh-context.md
+        self._agent.clear_conversation()
 
         if last_san:
             prompt = f"Opponent played {last_san}.\n\nCurrent position (FEN):\n{board.fen()}"
@@ -139,36 +168,47 @@ class AgentPlayer(Player):
                 turn_events.append(evt)
                 _thinking_buf = ""
 
-        async for event in self._agent.run_stream(prompt):
-            if isinstance(event, TextDeltaEvent):
-                _thinking_buf += event.content
-                # Still stream individual deltas to SSE for live UI updates
-                self._event_sink({"type": "text_delta", "content": event.content})
-            elif isinstance(event, ToolCallEvent):
-                _flush_thinking()
-                evt = {
-                    "type": "tool_call",
-                    "tool": event.name,
-                    "args": getattr(event, "args", {}),
-                }
-                self._event_sink(evt)
-                turn_events.append(evt)
-            elif isinstance(event, ToolResultEvent):
-                # ToolResultEvent only has .name — no content/payload.
-                # Enrich with output_preview from the tool_log if available.
-                tool_log = list(self._agent._deps.tool_log)
-                result_preview = ""
-                for record in reversed(tool_log):
-                    if record.tool == event.name:
-                        result_preview = record.output_preview
-                        break
-                evt = {
-                    "type": "tool_result",
-                    "tool": event.name,
-                    "result": result_preview,
-                }
-                self._event_sink(evt)
-                turn_events.append(evt)
+        try:
+            async for event in self._agent.run_stream(prompt):
+                if isinstance(event, TextDeltaEvent):
+                    _thinking_buf += event.content
+                    # Still stream individual deltas to SSE for live UI updates
+                    self._event_sink({"type": "text_delta", "content": event.content})
+                elif isinstance(event, ToolCallEvent):
+                    _flush_thinking()
+                    evt = {
+                        "type": "tool_call",
+                        "tool": event.name,
+                        "args": getattr(event, "args", {}),
+                    }
+                    self._event_sink(evt)
+                    turn_events.append(evt)
+                elif isinstance(event, ToolResultEvent):
+                    # ToolResultEvent only has .name — no content/payload.
+                    # Enrich with output_preview from the tool_log if available.
+                    tool_log = list(self._agent._deps.tool_log)
+                    result_preview = ""
+                    for record in reversed(tool_log):
+                        if record.tool == event.name:
+                            result_preview = record.output_preview
+                            break
+                    evt = {
+                        "type": "tool_result",
+                        "tool": event.name,
+                        "result": result_preview,
+                    }
+                    self._event_sink(evt)
+                    turn_events.append(evt)
+        except AgentContextOverflowError as exc:
+            # Surface to the bot loop as a PlayerError, which game_service
+            # turns into an aborted game with this message as the reason.
+            # Baseline calibration uses per-turn fresh context so this should
+            # rarely fire; when it does, it usually means a single turn's
+            # output was itself bigger than the window.
+            raise PlayerError(
+                f"context_overflow: requested {exc.requested_input_tokens} input "
+                f"tokens, model limit {exc.model_context_limit}."
+            ) from exc
 
         _flush_thinking()
 

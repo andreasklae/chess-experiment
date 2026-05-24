@@ -21,6 +21,7 @@ CSV_COLUMNS = [
     "opponent",
     "opponent_elo",
     "result",
+    "aborted_reason",
     "elo_before",
     "elo_after",
     "skill_repo_sha",
@@ -90,8 +91,14 @@ class LoggingService:
         elo_after: str = "",
         skill_repo_sha: str = "",
         temperature: str = "",
+        aborted_reason: str = "",
     ) -> None:
-        """Append one row to games.csv and write the agent JSON if applicable."""
+        """Append one row to games.csv and write the agent JSON if applicable.
+
+        Aborted games (player exception mid-play) have result="" and a
+        non-empty aborted_reason. ELO before/after will be equal because
+        BatchRunner skips ELO updates when parse_game_result returns None.
+        """
         agent_log_path = ""
         if game_id in self._agent_turns or game_id in self._current_turns:
             agent_log_path = self._write_agent_log(game_id, model)
@@ -106,6 +113,7 @@ class LoggingService:
             "opponent": opponent,
             "opponent_elo": opponent_elo,
             "result": result or "",
+            "aborted_reason": aborted_reason,
             "elo_before": elo_before,
             "elo_after": elo_after,
             "skill_repo_sha": skill_repo_sha,

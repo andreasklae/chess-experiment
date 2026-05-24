@@ -5,6 +5,11 @@ via eX3 vLLM) plays white against bots from two opponent pools: Maia (1100–190
 ELO) and chess.com Engine bots (250–3200 ELO). Games run in batches with
 adaptive ELO matchmaking. Results are logged to `backend/games/games.csv`.
 
+**Read first:**
+- [`CLAUDE.md`](CLAUDE.md) — operating manual for working in this repo (conventions, invariants, baseline calibration rules, ADR list)
+- [`backend/README.md`](backend/README.md) — backend API surface, architecture, context management
+- [`knowledge-base/work/experiment-chess.md`](../../knowledge-base/work/experiment-chess.md) — full experiment design page (methodology, opponent pool, logging schema)
+
 ## Layout
 
 ```
@@ -55,8 +60,11 @@ controlled by `backend/.env`:
 - Neither → OpenAI public API
 
 Current model: `google/gemma-4-31B-it` at `http://localhost:11500/v1`.
-Initial ELO: 600 (informed prior from testing; see
-`knowledge-base/decisions/2026-05-24-initial-elo-600.md`).
+
+Baseline calibration invariants (see [`CLAUDE.md`](CLAUDE.md) for the full list and ADR links):
+- Initial ELO **600** — [`2026-05-24-initial-elo-600.md`](../../knowledge-base/decisions/2026-05-24-initial-elo-600.md)
+- Reasoning must precede the move — [`2026-05-24-reason-before-move.md`](../../knowledge-base/decisions/2026-05-24-reason-before-move.md)
+- Per-turn fresh context — [`2026-05-24-per-turn-fresh-context.md`](../../knowledge-base/decisions/2026-05-24-per-turn-fresh-context.md)
 
 ## Maia setup
 
@@ -68,5 +76,5 @@ Sources: https://github.com/CSSLab/maia-chess · https://lczero.org/play/quickst
 ## Broken venv
 
 If imports fail after `uv sync`, run `./scripts/repair-env.sh`. See
-`CLAUDE.md` for the root cause (em-dash in project path bypasses Python's
-`.pth` processor).
+[`CLAUDE.md`](CLAUDE.md) for the root cause (em-dash in project path bypasses
+Python's `.pth` processor).

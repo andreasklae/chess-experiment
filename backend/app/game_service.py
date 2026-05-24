@@ -58,6 +58,10 @@ class Game:
     # serialises cleanly to "".
     agent_elo_before: str = ""
     agent_elo_after: str = ""
+    # Set when a player exception aborts the game mid-play. Non-empty value
+    # means "game did not finish naturally"; recorded in games.csv and
+    # signals the batch runner not to update ELO for this game.
+    aborted_reason: str = ""
 
     def player_to_move(self) -> Player:
         return self.white_player if self.board.turn == chess.WHITE else self.black_player
@@ -472,6 +476,19 @@ class GameService:
                                  game.game_id[:8], type(player).__name__, exc)
                 await self._publish_error(game, str(exc))
                 self._logging.close_agent_turn(game.game_id, None)
+                # Mark the game as aborted, record it (CSV + agent JSON),
+                # fire the on-game-finished callback so the batch advances,
+                # and tear down players. Aborted games carry result=None,
+                # so BatchRunner skips the ELO update for them (see
+                # parse_game_result returning None for non-1-0/0-1/draw).
+                game.aborted_reason = str(exc) or type(exc).__name__
+                if self._on_game_finished is not None:
+                    try:
+                        self._on_game_finished(game)
+                    except Exception:
+                        logger.exception("on_game_finished callback failed on abort")
+                self._record_game_end(game)
+                await game.close_players()
                 return
 
             async with game.lock:
@@ -562,6 +579,7 @@ class GameService:
             batch_name=getattr(game, "batch_name", ""),
             elo_before=getattr(game, "agent_elo_before", ""),
             elo_after=getattr(game, "agent_elo_after", ""),
+            aborted_reason=getattr(game, "aborted_reason", ""),
         )
 
     async def _publish(self, game: Game) -> None:

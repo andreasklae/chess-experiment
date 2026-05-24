@@ -225,6 +225,7 @@ class BatchRunner:
             # Determine the result from agent's perspective.
             result_string = game.result()
             normalized = normalize_result(result_string, agent_color="white")
+            aborted_reason = getattr(game, "aborted_reason", "")
 
             agent_state = self._batches.load_agent_elo()
             elo_before = agent_state.elo
@@ -232,6 +233,13 @@ class BatchRunner:
                 opp_elo = int(game.black_config.elo) if game.black_config.elo is not None else int(elo_before)
                 agent_state.apply_result(opp_elo, normalized)
                 self._batches.save_agent_elo(agent_state)
+            elif aborted_reason:
+                logger.warning(
+                    "batch %s · game %s ABORTED · ELO unchanged · reason=%s",
+                    batch.batch_id[:8],
+                    game.game_id[:8],
+                    aborted_reason[:120],
+                )
 
             # Record game outcome in batch + persist before stamping the
             # finished Game so logging picks it up too (race-free because
@@ -250,11 +258,12 @@ class BatchRunner:
                 logger.info("batch %s · COMPLETED (%d/%d games)",
                             batch.batch_id[:8], batch.completed_count, batch.total_games)
             self._batches.save(batch)
+            result_label = normalized or (f"aborted ({aborted_reason[:60]})" if aborted_reason else "aborted")
             logger.info(
                 "batch %s · game %d done · result=%s · ELO %.0f → %.0f (vs opp %d) · streak %+d",
                 batch.batch_id[:8],
                 batch.completed_count,
-                normalized or "aborted",
+                result_label,
                 elo_before,
                 agent_state.elo,
                 game_record.opponent_elo,
