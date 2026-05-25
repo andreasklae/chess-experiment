@@ -41,9 +41,11 @@ PROVISIONAL_GAMES = 15
 # to keep this module self-contained for unit testing.
 MAIA_ELOS = (1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900)
 
-# chess.com Engine bot 25 discrete ratings.
+# chess.com Engine bots selectable in this experiment. Bottom 3 positions
+# (250, 400, 550) excluded — see knowledge-base/decisions/2026-05-25-chesscom-pool-floor.md.
+# Must match app.schemas.CHESSCOM_ELOS.
 CHESSCOM_ELOS = (
-    250, 400, 550, 700, 850, 1000, 1100, 1200, 1300, 1400, 1500, 1600,
+    700, 850, 1000, 1100, 1200, 1300, 1400, 1500, 1600,
     1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500, 2600, 2800, 3000, 3200,
 )
 

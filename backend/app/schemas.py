@@ -4,10 +4,16 @@ from pydantic import BaseModel, Field, model_validator
 
 
 MAIA_ELOS = (1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900)
-# chess.com Engine bot ratings — 25 discrete slider positions. Duplicated here
-# so schema validation doesn't need to import the driver package.
+# chess.com Engine bot ratings selectable in this experiment. The chess.com
+# slider physically supports 25 positions (250–3200); we exclude the three
+# lowest (250, 400, 550) because games at those ratings converge on time-cap
+# draws regardless of the agent's true skill (the bots play moves erratic
+# enough that neither side reliably converts within the 150-half-move cap).
+# See knowledge-base/decisions/2026-05-25-chesscom-pool-floor.md.
+# The chesscom_driver package's mapping.py keeps the full 25-position table
+# unchanged — only the experiment's selectable pool is trimmed.
 CHESSCOM_ELOS = (
-    250, 400, 550, 700, 850, 1000, 1100, 1200, 1300, 1400, 1500, 1600,
+    700, 850, 1000, 1100, 1200, 1300, 1400, 1500, 1600,
     1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500, 2600, 2800, 3000, 3200,
 )
 
