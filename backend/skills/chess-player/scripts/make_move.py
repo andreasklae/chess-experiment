@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Select and submit a move for the current game.
+"""Submit a move for the current game. This actually commits the move on the board.
 
 Usage: make_move.py --uci <move>
 
 Reads CHESS_API_BASE and CHESS_GAME_ID from environment (injected by AgentPlayer).
-Validates the move against the legal moves list, then prints the chosen UCI to stdout.
+POSTs the move to the backend, which validates and applies it immediately.
 
-The backend (not this script) is responsible for actually applying the move.
+Calling this tool ends your turn. The board advances and it becomes the opponent's turn.
 
 Prints on success:
-  {"ok": true, "move": "e2e4"}
+  {"ok": true, "move": "e2e4", "message": "Move committed. Your turn is over."}
 
 Prints on error (illegal or invalid):
-  {"ok": false, "error": "..."}
+  {"ok": false, "error": "...", "legal_moves": [...]}
 """
 
 import argparse
@@ -33,24 +33,46 @@ def main() -> None:
         print(json.dumps({"ok": False, "error": "CHESS_GAME_ID not set"}))
         sys.exit(1)
 
-    url = f"{api_base}/api/games/{game_id}"
+    url = f"{api_base}/api/games/{game_id}/agent-move"
+    payload = json.dumps({"move": args.uci}).encode()
+    req = urllib.request.Request(
+        url,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
     try:
-        with urllib.request.urlopen(url, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode())
-    except Exception as exc:
-        print(json.dumps({"ok": False, "error": f"Could not fetch game state: {exc}"}))
-        sys.exit(1)
-
-    legal_moves = data.get("legal_moves", [])
-    if args.uci not in legal_moves:
+            print(json.dumps({
+                "ok": True,
+                "move": args.uci,
+                "message": "Move committed. Your turn is over.",
+            }))
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode(errors="replace")
+        try:
+            detail = json.loads(body).get("detail", body)
+        except Exception:
+            detail = body
+        # Fetch legal moves to help the model recover
+        legal_moves = []
+        try:
+            with urllib.request.urlopen(
+                f"{api_base}/api/games/{game_id}", timeout=5
+            ) as r:
+                legal_moves = json.loads(r.read().decode()).get("legal_moves", [])
+        except Exception:
+            pass
         print(json.dumps({
             "ok": False,
-            "error": f"{args.uci!r} is not a legal move. Legal moves: {legal_moves}"
+            "error": str(detail),
+            "legal_moves": legal_moves,
         }))
         sys.exit(1)
-
-    # Declare the move — the backend applies it
-    print(json.dumps({"ok": True, "move": args.uci}))
+    except Exception as exc:
+        print(json.dumps({"ok": False, "error": f"Request failed: {exc}"}))
+        sys.exit(1)
 
 
 if __name__ == "__main__":

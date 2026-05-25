@@ -349,6 +349,27 @@ class GameService:
     async def submit_human_move(self, game_id: str, move_uci: str) -> GameState:
         return await self._submit_human_move(self._get_game(game_id), move_uci)
 
+    async def submit_agent_move(self, game_id: str, move_uci: str) -> GameState:
+        """Apply a move submitted by the agent script (no is_human check).
+
+        Called via POST /api/games/{id}/agent-move from make_move.py.
+        The agent's turn is running inside AgentPlayer.get_move(), which holds
+        no lock — so we can acquire it here safely.
+        """
+        game = self._get_game(game_id)
+        async with game.lock:
+            if game.is_over():
+                raise HTTPException(status_code=400, detail="Game is already finished.")
+            if game.board.turn != chess.WHITE or game.white_config.type != "agent":
+                raise HTTPException(
+                    status_code=400,
+                    detail="It is not the agent's turn.",
+                )
+            self._push_uci_move(game, move_uci)
+            asyncio.create_task(self._update_eval(game))
+            await self._publish(game)
+        return game.state()
+
     async def subscribe_current(self) -> asyncio.Queue[str]:
         return await self._subscribe(self._get_current_game())
 
@@ -505,12 +526,21 @@ class GameService:
                 if game.is_over() or game.player_to_move().is_human:
                     self._logging.close_agent_turn(game.game_id, None)
                     return
-                logger.info("move · %s %s (%s) move=%s",
-                            game.game_id[:8],
-                            "white" if game.board.turn == chess.WHITE else "black",
-                            type(player).__name__,
-                            move.uci())
-                self._push_move(game, move)
+                # Agent scripts may commit the move directly via /agent-move,
+                # advancing the board before we reach here. If the move count
+                # already reflects the committed move, skip _push_move to avoid
+                # applying it a second time.
+                already_applied = len(game.uci_moves) >= move_number
+                if already_applied:
+                    logger.info("move · %s already applied by agent script, skipping push",
+                                game.game_id[:8])
+                else:
+                    logger.info("move · %s %s (%s) move=%s",
+                                game.game_id[:8],
+                                "white" if game.board.turn == chess.WHITE else "black",
+                                type(player).__name__,
+                                move.uci())
+                    self._push_move(game, move)
                 # Kick off an evaluation in the background; don't block the loop.
                 asyncio.create_task(self._update_eval(game))
                 await self._publish(game)

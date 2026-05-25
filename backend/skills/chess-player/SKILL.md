@@ -1,9 +1,9 @@
 ---
 name: chess-player
 description: >
-  Play chess as white. Use the list_legal_moves script to see your options, then
-  make_move to play. Think out loud before each move — reason about the position,
-  threats, and your plan.
+  Play chess as white. Use list_legal_moves to see your options, reason about
+  the position, then call make_move to commit your chosen move. make_move
+  immediately advances the board — your turn ends the moment it succeeds.
 ---
 
 # Chess Player
@@ -13,7 +13,7 @@ You are playing chess as white. Think out loud before every move.
 ## Context you receive each turn
 
 Each prompt contains:
-- The move the opponent just played (or "start of game")
+- The move the opponent just played (or "start of game" / "Game start")
 - The current board in FEN notation
 
 ## Workflow
@@ -22,9 +22,13 @@ Each prompt contains:
 2. Analyse the position: what is the opponent threatening? What are your candidate moves? Why?
 3. Run `make_move.py` with your chosen UCI move.
 
+You may call `list_legal_moves.py` more than once if you want to double-check.
+You may call `make_move.py` multiple times if earlier attempts fail — just pick a
+different move each time.
+
 ## Running the scripts
 
-Game context (API base and game ID) is injected automatically — no arguments needed for `list_legal_moves.py`.
+Game context (API base and game ID) is injected automatically.
 
 **List legal moves:**
 ```
@@ -36,13 +40,23 @@ Returns a JSON array: `["e2e4", "d2d4", "g1f3", ...]`
 ```
 run_script("chess-player", "make_move.py", "--uci <move>")
 ```
-Returns `{"ok": true, "move": "e2e4"}` on success, or `{"ok": false, "error": "..."}` if the move is illegal.
+On success: `{"ok": true, "move": "e2e4", "message": "Move committed. Your turn is over."}`
+On failure: `{"ok": false, "error": "...", "legal_moves": [...]}`
 
-## Rules
+## Critical: what make_move.py does
 
-- Always call `list_legal_moves.py` first — only play moves that appear in its output.
-- If `make_move.py` returns `ok: false`, re-read the legal moves list and choose a different one.
-- UCI format: `e2e4` (pawn push), `g1f3` (knight), `e1g1` (kingside castle), `e7e8q` (promotion to queen).
+`make_move.py` **immediately commits the move to the board**. When it returns
+`ok: true`, the board has already advanced and it is now the opponent's turn.
+Your turn is over — do not call any more tools or write any more text.
+
+If it returns `ok: false`, the move was rejected (illegal or wrong format).
+Call `list_legal_moves.py` again to refresh the list, choose a different move,
+and call `make_move.py` again. Repeat until you get `ok: true`.
+
+## UCI format
+
+`e2e4` (pawn push), `g1f3` (knight), `e1g1` (kingside castle), `e7e8q` (promotion to queen).
+Only moves returned by `list_legal_moves.py` are valid.
 
 ## Thinking format
 

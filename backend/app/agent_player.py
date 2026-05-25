@@ -19,6 +19,11 @@ API_BASE = os.getenv("CHESS_API_BASE", "http://localhost:8000")
 # Load credentials from skillful-agent's .env (only if not already in environment)
 load_dotenv(SKILLFUL_AGENT_ENV, override=False)
 
+# Max attempts per chess turn. Each attempt is a fresh run_stream with cleared
+# conversation. Retries handle the case where the model finishes a run without
+# calling make_move.py (observed with Gemma 4 after illegal-move recovery).
+_MAX_ATTEMPTS = 3
+
 
 def _build_agent(game_id: str):
     """Create a skillful-agent Agent. Chess tools live in the skill's scripts/.
@@ -62,59 +67,55 @@ def _build_agent(game_id: str):
     cfg = AgentConfig(
         system_prompt_extra=(
             "You are a chess engine playing white.\n\n"
-            "Required sequence for every move — follow it strictly:\n"
-            "  1. Call `use_skill` with skill_name='chess-player' (only on the very first move).\n"
-            "  2. Call `run_script` to invoke list_legal_moves.py and read the legal moves.\n"
-            "  3. Write 2–4 sentences of reasoning: candidate moves, threats, why you chose this move.\n"
-            "  4. Call `run_script` to invoke make_move.py with your chosen move.\n"
-            "make_move.py is always the last action of your turn."
+            "On each turn:\n"
+            "  1. Call `use_skill` with skill_name='chess-player' (first move only).\n"
+            "  2. Call `run_script` to invoke list_legal_moves.py.\n"
+            "  3. Write 2–4 sentences of reasoning.\n"
+            "  4. Call `run_script` to invoke make_move.py with your chosen move.\n\n"
+            "make_move.py COMMITS the move immediately — the board advances and your "
+            "turn ends the moment it returns ok=true. Do not continue after that.\n"
+            "If make_move.py returns ok=false, call list_legal_moves.py again and "
+            "choose a different move from the returned list. Repeat until ok=true."
         ),
         max_turns=20,
     )
     return Agent(model=model, skills_dir=SKILLS_DIR, config=cfg)
 
 
-def _extract_move_from_tool_log(tool_log: list[Any]) -> str | None:
-    """Scan agent._deps.tool_log for a successful make_move.py call and return the UCI string.
+def _committed_move_from_tool_log(tool_log: list[Any]) -> str | None:
+    """Return the UCI move from the last successful make_move.py call, or None.
 
-    ToolResultEvent has no payload — the actual script stdout is only accessible via the
-    tool_log that skillful-agent maintains in _deps throughout the run.
+    make_move.py POSTs to /agent-move and on success prints
+    {"ok": true, "move": "..."}. run_script wraps it as
+    {"ok": bool, "stdout": str, ...} in output_preview.
     """
-    for record in tool_log:
+    for record in reversed(tool_log):
         if record.tool != "run_script":
             continue
         if record.input.get("filename") != "make_move.py":
             continue
-        preview = record.output_preview or ""
-        # output_preview is a JSON string: {"ok": true, "stdout": "{...}", ...}
-        # or the raw response string — try both layers
         try:
-            outer = json.loads(preview)
-            # run_script wraps as {"ok": bool, "stdout": str, ...}
-            stdout = outer.get("stdout", "")
-            inner = json.loads(stdout) if stdout else {}
-            if isinstance(inner, dict) and inner.get("ok") and inner.get("move"):
-                return inner["move"]
-            # Fallback: maybe output_preview is the inner JSON directly
-            if isinstance(outer, dict) and outer.get("ok") and outer.get("move"):
-                return outer["move"]
+            outer = json.loads(record.output_preview or "")
+            inner = json.loads(outer.get("stdout") or "")
         except (json.JSONDecodeError, TypeError):
-            pass
+            continue
+        if inner.get("ok") and inner.get("move"):
+            return inner["move"]
     return None
 
 
 class AgentPlayer(Player):
     """White-only player backed by the skillful-agent SDK.
 
-    Backend (Azure / OpenAI / eX3 vLLM) is selected by environment variables —
-    see `_build_agent` for the priority order.
+    make_move.py commits the move to the board via POST /api/games/{id}/agent-move.
+    The harness breaks the stream as soon as make_move.py returns ok=true — the
+    move is already applied at that point and the turn is over.
 
-    The agent uses the chess-player skill's scripts/ directory for its tools:
-      - list_legal_moves.py  — GET /api/games/{id} → legal_moves array
-      - make_move.py         — POST /api/games/{id}/moves → confirms the move
-
-    The move chosen by the agent is detected by watching for a successful
-    make_move.py result in the event stream, then validated against python-chess.
+    If a run finishes without a committed move (Gemma 4 sometimes reasons
+    correctly but dispatches the wrong tool), the same prompt is retried with a
+    cleared conversation. Per-turn fresh context is already the baseline (see
+    decisions/2026-05-24-per-turn-fresh-context.md), so the retry is just another
+    attempt — no special framing needed.
     """
 
     is_human = False
@@ -129,21 +130,9 @@ class AgentPlayer(Player):
         try:
             from skill_agent import AgentContextOverflowError
         except ImportError:
-            # Older skillful-agent versions (pre-2026-05-24) don't expose the
-            # typed overflow exception. Fall back to a never-matched sentinel
-            # so the try/except below compiles; provider 400s will then bubble
-            # up as plain Exceptions, caught by game_service's outer handler.
             class AgentContextOverflowError(Exception):  # type: ignore[no-redef]
                 requested_input_tokens: int | None = None
                 model_context_limit: int | None = None
-
-        # Baseline calibration runs with per-turn fresh context: the agent sees
-        # the system prompt, skill list, and one user message (opponent move + FEN).
-        # Nothing from prior turns carries over. The FEN encodes complete game
-        # state; cross-turn memory is a separate experimental variable that future
-        # configurations will introduce and measure against this baseline.
-        # See knowledge-base/decisions/2026-05-24-per-turn-fresh-context.md
-        self._agent.clear_conversation()
 
         if last_san:
             prompt = f"Opponent played {last_san}.\n\nCurrent position (FEN):\n{board.fen()}"
@@ -151,84 +140,60 @@ class AgentPlayer(Player):
             prompt = f"Game start.\n\nCurrent position (FEN):\n{board.fen()}"
         self._event_sink({"type": "prompt", "content": prompt})
 
-        turn_events: list[dict[str, Any]] = []
-        _thinking_buf: str = ""  # accumulate text deltas; flushed on tool_call or run end
-        _move_submitted = False   # set True once make_move.py succeeds; stream breaks immediately
+        _thinking_buf = ""
 
         def _flush_thinking() -> None:
             nonlocal _thinking_buf
             if _thinking_buf:
-                evt = {"type": "thinking", "content": _thinking_buf}
-                turn_events.append(evt)
+                self._event_sink({"type": "thinking", "content": _thinking_buf})
                 _thinking_buf = ""
 
-        try:
-            async for event in self._agent.run_stream(prompt):
-                if isinstance(event, TextDeltaEvent):
-                    # Discard any text the model emits after make_move.py has
-                    # already been called — it's post-hoc commentary and has no
-                    # bearing on the chosen move.
-                    if _move_submitted:
-                        continue
-                    _thinking_buf += event.content
-                    # Still stream individual deltas to SSE for live UI updates
-                    self._event_sink({"type": "text_delta", "content": event.content})
-                elif isinstance(event, ToolCallEvent):
-                    _flush_thinking()
-                    evt = {
-                        "type": "tool_call",
-                        "tool": event.name,
-                        "args": getattr(event, "args", {}),
-                    }
-                    self._event_sink(evt)
-                    turn_events.append(evt)
-                elif isinstance(event, ToolResultEvent):
-                    # ToolResultEvent only has .name — no content/payload.
-                    # Enrich with output_preview from the tool_log if available.
-                    tool_log = list(self._agent._deps.tool_log)
-                    result_preview = ""
-                    for record in reversed(tool_log):
-                        if record.tool == event.name:
-                            result_preview = record.output_preview
-                            break
-                    evt = {
-                        "type": "tool_result",
-                        "tool": event.name,
-                        "result": result_preview,
-                    }
-                    self._event_sink(evt)
-                    turn_events.append(evt)
-                    # Break as soon as make_move.py returns successfully — any
-                    # further model output is post-move and irrelevant.
-                    if event.name == "run_script":
-                        chosen_so_far = _extract_move_from_tool_log(tool_log)
-                        if chosen_so_far is not None:
-                            _move_submitted = True
-                            break
-        except AgentContextOverflowError as exc:
-            # Surface to the bot loop as a PlayerError, which game_service
-            # turns into an aborted game with this message as the reason.
-            # Baseline calibration uses per-turn fresh context so this should
-            # rarely fire; when it does, it usually means a single turn's
-            # output was itself bigger than the window.
-            raise PlayerError(
-                f"context_overflow: requested {exc.requested_input_tokens} input "
-                f"tokens, model limit {exc.model_context_limit}."
-            ) from exc
+        for attempt in range(1, _MAX_ATTEMPTS + 1):
+            # Per-turn fresh context — see ADR 2026-05-24-per-turn-fresh-context.
+            self._agent.clear_conversation()
+            if attempt > 1:
+                self._event_sink({"type": "retry", "attempt": attempt})
 
-        _flush_thinking()
+            try:
+                async for event in self._agent.run_stream(prompt):
+                    if isinstance(event, TextDeltaEvent):
+                        _thinking_buf += event.content
+                        self._event_sink({"type": "text_delta", "content": event.content})
 
-        # After the stream ends, tool_log has all records for this run.
-        chosen = _extract_move_from_tool_log(list(self._agent._deps.tool_log))
-        if chosen is None:
-            raise PlayerError("Agent did not successfully call make_move.py this turn.")
+                    elif isinstance(event, ToolCallEvent):
+                        _flush_thinking()
+                        self._event_sink({
+                            "type": "tool_call",
+                            "tool": event.name,
+                            "args": getattr(event, "args", {}),
+                        })
 
-        try:
-            move = chess.Move.from_uci(chosen)
-        except ValueError as exc:
-            raise PlayerError(f"Agent chose invalid UCI: {chosen}") from exc
+                    elif isinstance(event, ToolResultEvent):
+                        _flush_thinking()
+                        tool_log = list(self._agent._deps.tool_log)
+                        result_preview = next(
+                            (r.output_preview for r in reversed(tool_log) if r.tool == event.name),
+                            "",
+                        )
+                        self._event_sink({
+                            "type": "tool_result",
+                            "tool": event.name,
+                            "result": result_preview,
+                        })
+                        # As soon as make_move.py committed, the backend has
+                        # already advanced the board. Stop streaming.
+                        if event.name == "run_script":
+                            committed = _committed_move_from_tool_log(tool_log)
+                            if committed is not None:
+                                return chess.Move.from_uci(committed)
 
-        if move not in board.legal_moves:
-            raise PlayerError(f"Agent chose illegal move: {chosen}")
+            except AgentContextOverflowError as exc:
+                raise PlayerError(
+                    f"context_overflow: requested {exc.requested_input_tokens} input "
+                    f"tokens, model limit {exc.model_context_limit}."
+                ) from exc
 
-        return move
+            _flush_thinking()
+            # Run ended without a committed move — loop and retry.
+
+        raise PlayerError(f"Agent did not commit a move after {_MAX_ATTEMPTS} attempts.")

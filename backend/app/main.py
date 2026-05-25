@@ -204,6 +204,11 @@ async def submit_move(game_id: str, request: MoveRequest, service: GameServiceDe
     return await service.submit_human_move(game_id, request.move)
 
 
+@app.post("/api/games/{game_id}/agent-move")
+async def submit_agent_move(game_id: str, request: MoveRequest, service: GameServiceDep) -> GameState:
+    return await service.submit_agent_move(game_id, request.move)
+
+
 @app.post("/api/games/{game_id}/pause")
 async def pause_game(game_id: str, service: GameServiceDep) -> GameState:
     service.get_state(game_id)  # 404 if not the current game
