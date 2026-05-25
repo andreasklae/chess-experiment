@@ -23,6 +23,12 @@ from app.game_service import Game, GameService
 
 logger = logging.getLogger(__name__)
 
+# Halt the batch when this many consecutive draws are recorded. Repeated draws
+# signal that neither the agent nor the opponent can force a result at this
+# rating level (typically a move-cap draw in a won position the agent cannot
+# convert). Stopping early surfaces the issue without wasting games.
+MAX_CONSECUTIVE_DRAWS = 3
+
 
 class BatchRunner:
     def __init__(self, batch_service: BatchService, game_service: GameService):
@@ -270,7 +276,27 @@ class BatchRunner:
             )
             batch.games.append(game_record)
             batch.current_game_id = None
-            if batch.completed_count >= batch.total_games:
+
+            # Track consecutive draws and halt if we hit the cap.
+            if normalized == "draw":
+                batch.consecutive_draws += 1
+            else:
+                batch.consecutive_draws = 0
+
+            if batch.consecutive_draws >= MAX_CONSECUTIVE_DRAWS:
+                batch.status = "stopped"
+                batch.last_error = (
+                    f"Halted after {MAX_CONSECUTIVE_DRAWS} consecutive draws — "
+                    "agent cannot convert won positions at this rating level."
+                )
+                self._active_batch_id = None
+                logger.warning(
+                    "batch %s · HALTED (consecutive draws=%d >= %d)",
+                    batch.batch_id[:8],
+                    batch.consecutive_draws,
+                    MAX_CONSECUTIVE_DRAWS,
+                )
+            elif batch.completed_count >= batch.total_games:
                 batch.status = "completed"
                 logger.info("batch %s · COMPLETED (%d/%d games)",
                             batch.batch_id[:8], batch.completed_count, batch.total_games)

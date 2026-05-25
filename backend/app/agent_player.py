@@ -65,9 +65,9 @@ def _build_agent(game_id: str):
             "Required sequence for every move — follow it strictly:\n"
             "  1. Call `use_skill` with skill_name='chess-player' (only on the very first move).\n"
             "  2. Call `run_script` to invoke list_legal_moves.py and read the legal moves.\n"
-            "  3. **Before calling make_move.py, write reasoning** "
+            "  3. Write 2–4 sentences of reasoning: candidate moves, threats, why you chose this move.\n"
             "  4. Call `run_script` to invoke make_move.py with your chosen move.\n"
-            "  5. End the turn. Do not write any more text after make_move.py"
+            "make_move.py is always the last action of your turn."
         ),
         max_turns=20,
     )
@@ -153,6 +153,7 @@ class AgentPlayer(Player):
 
         turn_events: list[dict[str, Any]] = []
         _thinking_buf: str = ""  # accumulate text deltas; flushed on tool_call or run end
+        _move_submitted = False   # set True once make_move.py succeeds; stream breaks immediately
 
         def _flush_thinking() -> None:
             nonlocal _thinking_buf
@@ -164,6 +165,11 @@ class AgentPlayer(Player):
         try:
             async for event in self._agent.run_stream(prompt):
                 if isinstance(event, TextDeltaEvent):
+                    # Discard any text the model emits after make_move.py has
+                    # already been called — it's post-hoc commentary and has no
+                    # bearing on the chosen move.
+                    if _move_submitted:
+                        continue
                     _thinking_buf += event.content
                     # Still stream individual deltas to SSE for live UI updates
                     self._event_sink({"type": "text_delta", "content": event.content})
@@ -192,6 +198,13 @@ class AgentPlayer(Player):
                     }
                     self._event_sink(evt)
                     turn_events.append(evt)
+                    # Break as soon as make_move.py returns successfully — any
+                    # further model output is post-move and irrelevant.
+                    if event.name == "run_script":
+                        chosen_so_far = _extract_move_from_tool_log(tool_log)
+                        if chosen_so_far is not None:
+                            _move_submitted = True
+                            break
         except AgentContextOverflowError as exc:
             # Surface to the bot loop as a PlayerError, which game_service
             # turns into an aborted game with this message as the reason.

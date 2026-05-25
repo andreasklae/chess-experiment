@@ -64,6 +64,9 @@ class Batch:
     games: list[GameRecord] = field(default_factory=list)
     current_game_id: str | None = None
     last_error: str = ""
+    # Number of consecutive drawn games. Batch halts when this reaches
+    # MAX_CONSECUTIVE_DRAWS (see batch_runner.py).
+    consecutive_draws: int = 0
 
     @property
     def completed_count(self) -> int:
@@ -91,6 +94,7 @@ class Batch:
             games=games,
             current_game_id=data.get("current_game_id"),
             last_error=data.get("last_error", ""),
+            consecutive_draws=int(data.get("consecutive_draws", 0)),
         )
 
 

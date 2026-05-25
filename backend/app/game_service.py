@@ -62,6 +62,10 @@ class Game:
     # means "game did not finish naturally"; recorded in games.csv and
     # signals the batch runner not to update ELO for this game.
     aborted_reason: str = ""
+    # Forced-draw cap. When the half-move count reaches this limit the game
+    # is declared a draw (1/2-1/2) regardless of position. Prevents infinite
+    # endgames where neither bot can deliver mate. Default 150 = 75 full moves.
+    max_half_moves: int = 150
 
     def player_to_move(self) -> Player:
         return self.white_player if self.board.turn == chess.WHITE else self.black_player
@@ -76,10 +80,16 @@ class Game:
         return not has_chesscom
 
     def is_over(self) -> bool:
+        if len(self.uci_moves) >= self.max_half_moves:
+            return True
         return self.board.is_game_over(claim_draw=self._claim_draw)
 
     def result(self) -> str | None:
-        return self.board.result(claim_draw=self._claim_draw) if self.is_over() else None
+        if not self.is_over():
+            return None
+        if len(self.uci_moves) >= self.max_half_moves and not self.board.is_game_over(claim_draw=self._claim_draw):
+            return "1/2-1/2"
+        return self.board.result(claim_draw=self._claim_draw)
 
     def outcome(self):
         return self.board.outcome(claim_draw=self._claim_draw)
