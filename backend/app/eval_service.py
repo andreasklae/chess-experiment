@@ -53,11 +53,23 @@ class EvalService:
             self._unavailable = True
             return False
 
-    async def evaluate(self, board: chess.Board) -> dict[str, int | None]:
+    async def evaluate(
+        self,
+        board: chess.Board,
+        *,
+        depth: int | None = None,
+        time_limit_ms: int | None = None,
+    ) -> dict[str, int | None]:
         """Return {"cp": int|None, "mate": int|None} from White's perspective.
 
         Runs the blocking python-chess engine call in a thread; serialised
         via a per-service asyncio lock so callers don't trample the engine.
+
+        ``depth`` overrides the configured depth for this single call (useful
+        for the per-move log, which wants a faster shallower probe than the
+        UX-facing advantage needle). ``time_limit_ms`` caps the search by
+        wall-clock time instead of (or in addition to) depth. If neither is
+        passed, the service's configured depth is used.
         """
         empty = {"cp": None, "mate": None}
         if board.is_game_over(claim_draw=False):
@@ -66,10 +78,14 @@ class EvalService:
             if not self._ensure_engine():
                 return empty
             try:
+                if time_limit_ms is not None:
+                    limit = chess.engine.Limit(time=time_limit_ms / 1000.0)
+                else:
+                    limit = chess.engine.Limit(depth=depth if depth is not None else self._depth)
                 info = await asyncio.to_thread(
                     self._engine.analyse,  # type: ignore[union-attr]
                     board.copy(stack=False),
-                    chess.engine.Limit(depth=self._depth),
+                    limit,
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Stockfish evaluation failed (%s); disabling.", exc)

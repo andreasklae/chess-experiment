@@ -24,13 +24,16 @@ def im():
 
 
 def test_render_includes_all_sections(im):
+    """Output is markdown; check the section headings/labels are present."""
     out = im.render_imagine(chess.Board(), chess.Move.from_uci("e2e4"))
     for section in [
-        "FEN: ", "Side to move: ", "Move:", "Check:", "Discovered attacks:",
-        "Moved piece status", "No longer attacking:", "No longer defending:",
-        "Newly hanging own pieces:", "Opponent legal moves:",
+        "## Move:", "**Check:**", "## Discovered attacks",
+        "## Moved piece status", "## Side-effects on other own pieces",
+        "**no longer attacking:**", "**no longer defending:**",
+        "## Newly hanging own pieces", "## Opponent legal replies",
+        "**FEN:**", "**Side to move:**",
     ]:
-        assert section in out
+        assert section in out, f"missing section: {section!r}"
 
 
 def test_render_does_not_mutate_input_board(im):
@@ -43,7 +46,7 @@ def test_render_does_not_mutate_input_board(im):
 def test_render_shows_resulting_fen(im):
     out = im.render_imagine(chess.Board(), chess.Move.from_uci("e2e4"))
     # After 1.e4, side to move is black.
-    assert "Side to move: black" in out
+    assert "**Side to move:** black" in out
     # FEN should contain the e-pawn on e4.
     assert "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR" in out
 
@@ -108,7 +111,7 @@ def test_check_detection(im):
 
 def test_no_check_when_quiet_move(im):
     out = im.render_imagine(chess.Board(), chess.Move.from_uci("e2e4"))
-    assert "Check:              none" in out
+    assert "**Check:** none" in out
 
 
 # ── Discovered attacks ─────────────────────────────────────────────────────
@@ -119,9 +122,9 @@ def test_discovered_attack_bishop_behind_pawn(im):
     # opens diagonal c1-h6.
     board = chess.Board("rnbqkbnr/ppp1pppp/7p/3p4/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 2")
     out = im.render_imagine(board, chess.Move.from_uci("d2d4"))
-    assert "Discovered attacks:" in out
+    assert "## Discovered attacks" in out
     # The bishop on c1 should now attack the pawn on h6.
-    discoveries_section = out.split("Discovered attacks:")[1].split("Moved piece status")[0]
+    discoveries_section = out.split("## Discovered attacks")[1].split("## Moved piece status")[0]
     assert "bishop on c1" in discoveries_section
     assert "h6" in discoveries_section
 
@@ -130,7 +133,9 @@ def test_no_discovered_attacks_when_none(im):
     # Standard 1.e4 has no discovered attacks (no piece behind e2 of the same color
     # that can attack along the e-file).
     out = im.render_imagine(chess.Board(), chess.Move.from_uci("e2e4"))
-    assert "Discovered attacks: (none)" in out
+    # Section heading present, then a "- (none)" bullet underneath.
+    section = out.split("## Discovered attacks")[1].split("##")[0]
+    assert "(none)" in section
 
 
 # ── Newly hanging own pieces ───────────────────────────────────────────────
@@ -141,28 +146,25 @@ def test_newly_hanging_after_queen_abandons_pawn(im):
     # Moving the queen away leaves d4 hanging.
     board = chess.Board("4k3/8/4r3/3pp3/3P4/8/8/3QK3 w - - 0 1")
     out = im.render_imagine(board, chess.Move.from_uci("d1h5"))
-    assert "Newly hanging own pieces:" in out
-    hanging_section = out.split("Newly hanging own pieces:")[1].split("Opponent legal moves:")[0]
+    assert "## Newly hanging own pieces" in out
+    hanging_section = out.split("## Newly hanging own pieces")[1].split("##")[0]
     assert "pawn on d4" in hanging_section
     assert "defended by nothing" in hanging_section
 
 
 def test_no_newly_hanging_when_safe(im):
     out = im.render_imagine(chess.Board(), chess.Move.from_uci("e2e4"))
-    assert "Newly hanging own pieces: (none)" in out
+    section = out.split("## Newly hanging own pieces")[1].split("##")[0]
+    assert "(none)" in section
 
 
 def test_moved_piece_itself_not_in_newly_hanging(im):
     """The moved piece's own attack/defense status belongs in 'Moved piece status',
     not 'Newly hanging'. Confirm a knight moving to an attacked square is not
     double-counted."""
-    # White knight g1 moves to f3, attacked by nothing in start position — non-test.
-    # Build: white knight moves to an attacked square.
     board = chess.Board("4k3/8/8/8/8/2n5/8/4K1N1 w - - 0 1")
     out = im.render_imagine(board, chess.Move.from_uci("g1e2"))
-    # Knight on e2 — let's not even bother with attacks here, just confirm
-    # the moved piece isn't echoed in newly-hanging.
-    hanging_section = out.split("Newly hanging own pieces:")[1].split("Opponent legal moves:")[0]
+    hanging_section = out.split("## Newly hanging own pieces")[1].split("##")[0]
     assert "on e2" not in hanging_section
 
 
@@ -170,15 +172,10 @@ def test_moved_piece_itself_not_in_newly_hanging(im):
 
 
 def test_no_longer_attacking_lists_previous_targets(im):
-    # Knight on f3 attacks e5, d4, g5, h4 (and back-rank squares). Move it to h4.
-    # After the move, f3 squares it controlled but h4 doesn't are "no longer attacking"
-    # — but the section only lists squares with enemy pieces. We need an enemy on a square
-    # f3 was hitting that h4 isn't.
-    # f3 attacks e5; h4 doesn't.
+    # Knight on f3 attacks e5; knight on h4 doesn't.
     board = chess.Board("4k3/8/8/4p3/8/5N2/8/4K3 w - - 0 1")
     out = im.render_imagine(board, chess.Move.from_uci("f3h4"))
-    # Knight on f3 was attacking pawn on e5; knight on h4 isn't.
-    no_longer_section = out.split("No longer attacking:")[1].split("No longer defending:")[0]
+    no_longer_section = out.split("**no longer attacking:**")[1].split("**no longer defending:**")[0]
     assert "pawn on e5" in no_longer_section
 
 
@@ -187,9 +184,7 @@ def test_no_longer_defending_excludes_from_square(im):
     that 'defended' from-square is the moved piece itself, which is gone."""
     board = chess.Board()
     out = im.render_imagine(board, chess.Move.from_uci("g1f3"))
-    no_longer_def = out.split("No longer defending:")[1].split("Newly hanging")[0]
-    # Knight on g1 defended e2 (no — knights from g1 attack e2, f3, h3).
-    # The g1 square itself shouldn't be in the "no longer defending" list.
+    no_longer_def = out.split("**no longer defending:**")[1].split("##")[0]
     assert "on g1" not in no_longer_def
 
 
@@ -213,31 +208,36 @@ def test_en_passant_not_offered_when_no_adjacent_pawn(im):
 
 
 def test_opponent_legal_moves_count_matches_python_chess(im):
+    """The 'N legal replies' line should match python-chess's count."""
     board = chess.Board()
     board.push_uci("e2e4")
     expected = board.legal_moves.count()
-    # Roll back for the test
     board = chess.Board()
     out = im.render_imagine(board, chess.Move.from_uci("e2e4"))
-    assert f"Opponent legal moves: {expected}" in out
+    assert f"_{expected} legal replies_" in out
 
 
-def test_opponent_legal_moves_truncates_at_12(im):
-    """Output preview shows up to 12 moves with a +N more suffix."""
+def test_opponent_legal_moves_show_full_list_not_truncated(im):
+    """Per user request: the opponent-replies table now shows all moves, not
+    the first 12 — so the agent can see the killer reply."""
     out = im.render_imagine(chess.Board(), chess.Move.from_uci("e2e4"))
-    # Black has 20 legal replies after 1.e4. Should see "+8 more" or similar.
-    line = next(l for l in out.split("\n") if l.startswith("Opponent legal moves:"))
-    assert "+" in line and "more" in line
+    table_section = out.split("## Opponent legal replies")[1]
+    # Black has 20 legal replies; every UCI should appear in the table.
+    expected_uci_strings = sorted(m.uci() for m in chess.Board("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1").legal_moves)
+    assert len(expected_uci_strings) == 20
+    for uci in expected_uci_strings:
+        assert uci in table_section, f"missing UCI {uci!r} in opponent table"
 
 
 def test_opponent_legal_moves_zero_on_mate(im):
     # Fool's mate position before the final move.
-    # 1.f3 e5 2.g4 Qh4# — let's set up the position before 2...Qh4#.
     board = chess.Board()
     for uci in ["f2f3", "e7e5", "g2g4"]:
         board.push_uci(uci)
     out = im.render_imagine(board, chess.Move.from_uci("d8h4"))
-    assert "Opponent legal moves: 0" in out
+    # New phrasing: "_None — game over (gives checkmate)._"
+    section = out.split("## Opponent legal replies")[1]
+    assert "None" in section
     assert "checkmate" in out.lower()
 
 

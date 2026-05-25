@@ -320,5 +320,13 @@ class BatchRunner:
             # this game, which we now know).
             game.agent_elo_after = f"{agent_state.elo:.1f}"
 
+            # Re-persist the per-game JSON so its agent_elo block now carries
+            # both before and after. (The first persist captured `before`
+            # only; this final write fixes that.)
+            try:
+                self._games._persist(game)  # type: ignore[attr-defined]
+            except Exception:
+                logger.exception("failed to re-persist game with agent_elo_after")
+
         finally:
             self._next_game_event.set()

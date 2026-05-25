@@ -638,10 +638,82 @@ dd {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 0.78rem;
   line-height: 1.35;
-  white-space: pre;
+  /* pre-wrap rather than pre: long lines wrap within the container instead
+     of forcing a horizontal scrollbar that the user can't see by default. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   overflow-x: auto;
   max-height: 320px;
   overflow-y: auto;
+}
+
+/* Markdown rendering for tool results (show_position, imagine_move,
+   list_legal_moves). Inherits markdown-body for heading/list/strong styling;
+   adds a green tint matching the result blocks and a max-height for long
+   reports. */
+.agent-result-md {
+  margin: 6px 0 0 0;
+  padding: 8px 10px;
+  background: #e6f1ea;
+  border: 1px solid #b8d4be;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.agent-result-md pre,
+.agent-result-md code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.78rem;
+}
+
+/* The ASCII board sits in a fenced code block inside the markdown. Keep its
+   spaces literal so columns line up (cannot wrap mid-row). */
+.agent-result-md pre {
+  background: #d6e7dc;
+  border-radius: 3px;
+  padding: 6px 8px;
+  margin: 6px 0;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.agent-result-md table {
+  border-collapse: collapse;
+  margin: 4px 0;
+  font-size: 0.78rem;
+}
+
+.agent-result-md th,
+.agent-result-md td {
+  border: 1px solid #b8d4be;
+  padding: 2px 6px;
+  text-align: left;
+}
+
+.agent-result-md h2 {
+  font-size: 0.9rem;
+  margin: 8px 0 4px 0;
+}
+
+.agent-result-md h3 {
+  font-size: 0.85rem;
+  margin: 6px 0 3px 0;
+}
+
+/* Budget-warning entry: amber tint, makes the threshold-crossing visible
+   in the agent feed without screaming for attention. */
+.agent-budget-warning {
+  background: #fff4d4;
+  border: 1px solid #e8c980;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+}
+
+.agent-budget-warning .entry-label {
+  color: #8a6a1f;
 }
 
 /* On narrow screens, board and agent panel stack vertically. */

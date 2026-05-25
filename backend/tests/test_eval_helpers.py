@@ -1,5 +1,6 @@
-"""Tests for the chess-player skill's evaluate_position script — focused on
-material totals, PST symmetry, the king-table selection rule, and rendering."""
+"""Tests for the chess-player skill's _eval helpers — material totals, PST
+symmetry, king-table selection, illegal-move classification, line application,
+and the small public renderers."""
 
 import importlib.util
 import sys
@@ -9,14 +10,14 @@ import chess
 import pytest
 
 
-SCRIPT_PATH = Path(__file__).resolve().parents[1] / "skills" / "chess-player" / "scripts" / "evaluate_position.py"
+SCRIPT_PATH = Path(__file__).resolve().parents[1] / "skills" / "chess-player" / "scripts" / "_eval.py"
 
 
 @pytest.fixture(scope="module")
 def ev():
-    spec = importlib.util.spec_from_file_location("evaluate_position", SCRIPT_PATH)
+    spec = importlib.util.spec_from_file_location("_eval", SCRIPT_PATH)
     module = importlib.util.module_from_spec(spec)
-    sys.modules["evaluate_position"] = module
+    sys.modules["_eval"] = module
     spec.loader.exec_module(module)
     return module
 
@@ -151,46 +152,131 @@ def test_king_table_asymmetric_application_in_evaluate(ev):
     assert expected_white_king_pst != expected_black_king_pst
 
 
-# ── Render and verdict ─────────────────────────────────────────────────────
+# ── Verdict bands (material-focused phrasing) ──────────────────────────────
 
 
-def test_render_contains_all_sections(ev):
-    out = ev.render_evaluation(chess.Board())
-    assert "Evaluation:" in out
-    assert "Material:" in out
-    assert "PST:" in out
-    assert "Phase:" in out
+def test_verdict_balanced_at_zero(ev):
+    assert ev.verdict(0) == "material balanced"
 
 
-def test_render_starting_position_is_equal(ev):
-    out = ev.render_evaluation(chess.Board())
-    assert "+0.00" in out
-    assert "equal" in out
+def test_verdict_roughly_balanced_under_30cp(ev):
+    assert "roughly balanced" in ev.verdict(25)
+    assert "roughly balanced" in ev.verdict(-29)
 
 
-def test_render_white_up_a_queen(ev):
-    """Decisive material advantage to white -> 'white winning'."""
-    board = chess.Board("4k3/8/8/8/8/8/8/3QK3 w - - 0 1")
-    out = ev.render_evaluation(board)
-    assert "white winning" in out
+def test_verdict_slight_lead_30_to_99(ev):
+    assert "slight material lead for white" in ev.verdict(50)
+    assert "slight material lead for black" in ev.verdict(-95)
 
 
-def test_render_black_winning_when_black_up_material(ev):
+def test_verdict_clear_lead_100_to_299(ev):
+    assert "clear material lead for white" in ev.verdict(150)
+    assert "clear material lead for black" in ev.verdict(-250)
+
+
+def test_verdict_decisive_lead_at_300_and_above(ev):
+    assert "decisive material lead for white" in ev.verdict(400)
+    assert "decisive material lead for black" in ev.verdict(-900)
+
+
+def test_verdict_never_says_winning(ev):
+    """The phrasing was deliberately moved away from 'winning' / 'losing' since
+    a material+PST eval is tactically blind. Make sure no band re-introduces it."""
+    for score in (-900, -250, -50, 0, 50, 250, 900):
+        v = ev.verdict(score)
+        assert "winning" not in v.lower(), f"score {score} -> {v!r}"
+        assert "losing" not in v.lower(), f"score {score} -> {v!r}"
+
+
+# ── Single-line eval renderers used by show_position and imagine_move ──────
+
+
+def test_render_eval_line_format(ev):
+    line = ev.render_eval_line(chess.Board())
+    assert line.startswith("Material balance: ")
+    assert "+0.00" in line
+    assert "(material balanced)" in line
+
+
+def test_render_eval_line_negative_score(ev):
+    """Black up a queen -> negative score, 'decisive material lead for black'."""
     board = chess.Board("3qk3/8/8/8/8/8/8/4K3 w - - 0 1")
-    out = ev.render_evaluation(board)
-    assert "black winning" in out
-    # Find the Evaluation line and confirm it carries a minus sign.
-    eval_line = next(line for line in out.split("\n") if line.startswith("Evaluation:"))
-    assert "-" in eval_line
+    line = ev.render_eval_line(board)
+    # The score line should carry a minus sign.
+    assert "-" in line
+    assert "decisive material lead for black" in line
 
 
-def test_verdict_bands(ev):
-    assert ev._verdict(0) == "equal"
-    assert "roughly equal" in ev._verdict(25)
-    assert "slightly better" in ev._verdict(50)
-    assert "clearly better" in ev._verdict(150)
-    assert "winning" in ev._verdict(400)
-    assert "black" in ev._verdict(-200)
+def test_render_eval_delta_line_shows_before_after_delta(ev):
+    """Capturing a pawn moves the eval by +1.00 from white's perspective."""
+    before = chess.Board("4k3/8/8/4p3/3P4/8/8/4K3 w - - 0 1")
+    after = before.copy()
+    after.push(chess.Move.from_uci("d4e5"))
+    line = ev.render_eval_delta_line(before, after)
+    # The 'before' score includes white-pawn + black-pawn (material balanced
+    # plus a small PST difference); we just check the delta string is there.
+    assert "→" in line
+    assert "Δ" in line
+    # After capture, white is up roughly 1 pawn.
+    assert "material lead for white" in line
+
+
+def test_eval_warning_carries_tactics_caveat(ev):
+    """The warning that ships with every eval line must mention tactics."""
+    assert "tactics" in ev.EVAL_WARNING.lower()
+
+
+# ── Annotated move table (used by list_legal_moves + imagine_move) ─────────
+
+
+def test_annotate_move_quiet(ev):
+    board = chess.Board()
+    move = chess.Move.from_uci("e2e4")
+    a = ev.annotate_move(board, move)
+    assert a == {"uci": "e2e4", "san": "e4", "description": "pawn to e4", "flag": ""}
+
+
+def test_annotate_move_capture(ev):
+    """Move that captures: description names the captured piece."""
+    board = chess.Board("4k3/8/8/4p3/3P4/8/8/4K3 w - - 0 1")
+    a = ev.annotate_move(board, chess.Move.from_uci("d4e5"))
+    assert "takes pawn on e5" in a["description"]
+    assert a["san"] == "dxe5"
+
+
+def test_annotate_move_check_flag(ev):
+    """Move that gives check carries the 'check' flag."""
+    # White queen on h5 can play Qxf7+ in this Scholar's-mate-style position.
+    board = chess.Board("rnbqkbnr/ppppp1pp/5p2/7Q/8/8/PPPPPPPP/RNB1KBNR w KQkq - 0 2")
+    a = ev.annotate_move(board, chess.Move.from_uci("h5f7"))
+    assert a["flag"] == "checkmate" or a["flag"] == "check"
+
+
+def test_annotate_move_castling(ev):
+    board = chess.Board("r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1")
+    a = ev.annotate_move(board, chess.Move.from_uci("e1g1"))
+    assert "kingside castle" in a["description"]
+    assert a["san"] == "O-O"
+
+
+def test_annotate_move_promotion(ev):
+    board = chess.Board("1k6/4P3/8/8/8/8/8/4K3 w - - 0 1")
+    a = ev.annotate_move(board, chess.Move.from_uci("e7e8q"))
+    assert "promotes to queen" in a["description"]
+
+
+def test_render_moves_table_has_table_header(ev):
+    board = chess.Board()
+    table = ev.render_moves_table(board, list(board.legal_moves))
+    assert "| UCI" in table
+    assert "| SAN" in table
+    assert "|--------|" in table  # separator row
+
+
+def test_render_moves_table_empty_input(ev):
+    """No legal moves (would happen at game end) renders a fallback string."""
+    board = chess.Board()
+    assert "(no legal moves)" in ev.render_moves_table(board, [])
 
 
 # ── --moves: parsing, applying lines, SAN rendering ─────────────────────────
@@ -224,21 +310,6 @@ def test_format_san_line_black_to_move(ev):
     board = chess.Board("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1")
     line = ev.format_san_line(board, ["e5", "Nf3"])
     assert line == "1...e5 2.Nf3"
-
-
-def test_render_evaluation_with_line_shows_headers(ev):
-    board = chess.Board()
-    final, san = ev.apply_line(board, ["e2e4", "e7e5"])
-    out = ev.render_evaluation(final, san_moves=san, ucis=["e2e4", "e7e5"], starting_board=board)
-    assert "Line: 1.e4 e5" in out
-    assert "After: e2e4, e7e5" in out
-    assert "Side to move: white" in out
-
-
-def test_render_evaluation_without_line_omits_headers(ev):
-    out = ev.render_evaluation(chess.Board())
-    assert "Line:" not in out
-    assert "After:" not in out
 
 
 # ── Illegal-move classifier ─────────────────────────────────────────────────

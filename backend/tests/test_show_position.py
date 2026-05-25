@@ -133,19 +133,22 @@ def test_defender_chain_excludes_self(sp):
 
 
 def test_render_position_smoke(sp):
-    """End-to-end: render a real middlegame and check key sections appear."""
+    """End-to-end: render a real middlegame and check key sections appear.
+    Output is markdown, so checks use the markdown structure."""
     board = chess.Board("r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3")
     output = sp.render_position(board)
-    assert "Side to move: white" in output
-    assert "FEN: " in output
-    assert "Your pieces under attack:" in output
-    assert "Opponent pieces you are attacking:" in output
+    assert "**Side to move:** white" in output
+    assert "**FEN:**" in output
+    assert "## Your pieces under attack" in output
+    assert "## Opponent pieces you are attacking" in output
     # Knight f3 attacks pawn e5; pawn e5 defended by knight c6.
     assert "pawn on e5" in output
     assert "knight on f3" in output
     assert "knight on c6" in output
     # Move 3, full piece count -> early opening.
-    assert "Phase: early opening" in output
+    assert "**Phase:** early opening" in output
+    # Material balance line is now embedded in show_position output.
+    assert "Material balance:" in output
 
 
 # ── phase detection ─────────────────────────────────────────────────────────

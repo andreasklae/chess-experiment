@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
-"""Show the current position: ASCII board, FEN, and per-piece attack/defense map.
+"""Show the current position: ASCII board, FEN, eval, and attack/defense map.
 
 Reads CHESS_API_BASE and CHESS_GAME_ID from environment (injected by AgentPlayer).
 No arguments needed — fetches the live position from the backend.
 
-Output is plain text, meant to be read by the model. Sections:
+Output is markdown so it renders cleanly in the agent UI and is easy for the
+model to scan. Sections:
 
-  1. ASCII board (uppercase = white, lowercase = black; a-h, 8-1).
-  2. FEN and side to move.
-  3. Your pieces under attack — for each of your pieces with at least one
+  1. Phase annotation (early/late opening, middlegame, endgame).
+  2. Material balance (static eval; tactically blind — see warning).
+  3. ASCII board (uppercase = white, lowercase = black; a-h, 8-1).
+  4. FEN and side to move.
+  5. Your pieces under attack — for each of your pieces with at least one
      opponent attacker, lists the attackers and your defenders.
-  4. Opponent pieces you're attacking — for each opponent piece with at
-     least one of your attackers, lists your attackers and their defenders.
+  6. Opponent pieces you're attacking — same, from the other side.
 
 Attackers and defenders include x-ray batteries: if a sliding piece sits
 behind an immediate attacker on the same line to the target, it is listed
@@ -30,18 +32,27 @@ import json
 import os
 import sys
 import urllib.request
+from pathlib import Path
 
 import chess
 
+# Sibling import of _eval helpers. The script is invoked from arbitrary cwd,
+# so add this script's directory to sys.path before importing.
+_HERE = Path(__file__).resolve().parent
+if str(_HERE) not in sys.path:
+    sys.path.insert(0, str(_HERE))
+from _eval import (  # noqa: E402 — sys.path adjusted above
+    EVAL_WARNING,
+    PIECE_NAMES,
+    color_name,
+    detect_phase,
+    phase_score,
+    render_eval_line,
+)
 
-PIECE_NAMES = {
-    chess.PAWN: "pawn",
-    chess.KNIGHT: "knight",
-    chess.BISHOP: "bishop",
-    chess.ROOK: "rook",
-    chess.QUEEN: "queen",
-    chess.KING: "king",
-}
+# Re-export phase_score so tests and external callers that previously imported
+# it from show_position keep working. `detect_phase` is already imported above.
+__all__ = ["detect_phase", "phase_score", "render_position", "compute_attack_chain", "format_chain"]
 
 
 def render_ascii(board: chess.Board) -> str:
@@ -58,28 +69,19 @@ def piece_label(board: chess.Board, square: int, *, pinned: bool) -> str:
 
 
 def compute_attack_chain(board: chess.Board, by_color: bool, target: int) -> list[tuple[int, bool]]:
-    """Return attackers of `target` by `by_color` in activation order,
-    expanding x-ray batteries. Each entry is (square, is_xray).
+    """Return ordered attackers of `target` by `by_color`. Each element is
+    (square_of_attacker, is_xray). is_xray=False for immediate attackers
+    (visible to board.attackers()); True for sliders sitting behind an
+    immediate attacker on the same ray, which activate after the front piece
+    captures.
 
-    Algorithm: get immediate attackers from the live board. For each
-    immediate attacker, walk *outward* along the line from target through
-    the attacker (only meaningful for sliders or for any piece behind which
-    a slider can attack along the same ray). If the next occupied square
-    on that ray is a sliding piece of `by_color` that could attack along
-    that ray's direction (rook on rank/file, bishop on diagonal, queen on
-    either), add it as an x-ray attacker and continue past it for further
-    chained sliders of the same color and ray-compatibility.
-
-    We do NOT remove pieces and re-query, because that would also reveal
-    attackers on *other* lines (e.g. a sliding piece that wasn't blocked
-    by the captured piece at all). X-ray means: "would attack this square
-    if the piece directly in front of it on the same line moved away" —
-    which is a per-line property.
-    """
+    Ordering: immediate attackers sorted cheapest-first (pawn < minor < rook
+    < queen < king), with each immediate attacker's x-ray battery listed
+    *directly after* that immediate attacker — matching the order pieces
+    would join the exchange."""
     immediate = list(board.attackers(by_color, target))
-    # Sort by piece value (cheapest first) to give a natural reading order
-    # when there are multiple immediate attackers. Not required for
-    # correctness; just makes the output predictable.
+    if not immediate:
+        return []
     immediate.sort(key=lambda s: _piece_value(board.piece_at(s).piece_type))
 
     chain: list[tuple[int, bool]] = []
@@ -89,76 +91,78 @@ def compute_attack_chain(board: chess.Board, by_color: bool, target: int) -> lis
     return chain
 
 
-_RAY_PIECE_TYPES = {
-    "rank": (chess.ROOK, chess.QUEEN),
-    "file": (chess.ROOK, chess.QUEEN),
-    "diag": (chess.BISHOP, chess.QUEEN),
-}
-
-
 def _ray_kind(a: int, b: int) -> str | None:
-    """Return 'rank', 'file', 'diag', or None for the line from a to b."""
-    if a == b:
-        return None
+    """Return 'orthogonal' if a-b lies on a rank or file, 'diagonal' if on a
+    diagonal of equal abs(file_delta) == abs(rank_delta), else None.
+    Treats same-square as None."""
     fa, ra = chess.square_file(a), chess.square_rank(a)
     fb, rb = chess.square_file(b), chess.square_rank(b)
-    df, dr = fb - fa, rb - ra
-    if dr == 0:
-        return "rank"
-    if df == 0:
-        return "file"
-    if abs(df) == abs(dr):
-        return "diag"
+    if fa == fb and ra == rb:
+        return None
+    if fa == fb or ra == rb:
+        return "orthogonal"
+    if abs(fa - fb) == abs(ra - rb):
+        return "diagonal"
     return None
 
 
 def _step(a: int, b: int) -> int:
-    """Unit step from a toward b along their shared ray (caller ensures one exists)."""
+    """Signed step from a to b along a straight ray. Assumes ray_kind(a, b)
+    is not None."""
     fa, ra = chess.square_file(a), chess.square_rank(a)
     fb, rb = chess.square_file(b), chess.square_rank(b)
-    df = (fb > fa) - (fb < fa)
-    dr = (rb > ra) - (rb < ra)
-    return chess.square(fa + df, ra + dr) - a  # signed delta in square indices
+    df = (fb - fa) and ((fb - fa) // abs(fb - fa))
+    dr = (rb - ra) and ((rb - ra) // abs(rb - ra))
+    return df + dr * 8
 
 
 def _xray_chain(board: chess.Board, by_color: bool, target: int, front_attacker: int) -> list[int]:
-    """Walk from `target` outward past `front_attacker` looking for sliders of `by_color`
-    that would attack `target` along the same ray if the pieces in front moved away."""
+    """Walk from target -> front_attacker -> beyond, collecting same-color
+    sliders that would activate after front_attacker captures on target.
+    Only sliders that move along this ray count (rooks/queens for orthogonal,
+    bishops/queens for diagonal)."""
     kind = _ray_kind(target, front_attacker)
     if kind is None:
-        return []  # knights, pawns whose attack isn't along an extendable line
-    allowed_types = _RAY_PIECE_TYPES[kind]
+        return []
+    step = _step(target, front_attacker)
+    if step == 0:
+        return []
 
-    # Walk file/rank/diagonal step-by-step from front_attacker away from target.
-    fa, ra = chess.square_file(target), chess.square_rank(target)
-    fb, rb = chess.square_file(front_attacker), chess.square_rank(front_attacker)
-    df = (fb > fa) - (fb < fa)
-    dr = (rb > ra) - (rb < ra)
+    if kind == "orthogonal":
+        valid_types = {chess.ROOK, chess.QUEEN}
+    else:
+        valid_types = {chess.BISHOP, chess.QUEEN}
 
-    revealed: list[int] = []
-    file, rank = fb + df, rb + dr
-    while 0 <= file <= 7 and 0 <= rank <= 7:
-        sq = chess.square(file, rank)
+    # Walk from front_attacker outward (away from target). Stop at first
+    # blocker of the wrong colour or wrong piece type.
+    chain: list[int] = []
+    sq = front_attacker + step
+    while 0 <= sq < 64:
+        # Bail out if we've left the ray (we cross a file/rank wrap).
+        if _ray_kind(target, sq) != kind:
+            break
         piece = board.piece_at(sq)
-        if piece is not None:
-            if piece.color == by_color and piece.piece_type in allowed_types:
-                revealed.append(sq)
-                # keep walking; another slider could be chained behind this one
-            else:
-                # blocked by a non-matching piece — chain ends
-                break
-        file += df
-        rank += dr
-    return revealed
+        if piece is None:
+            sq += step
+            continue
+        if piece.color != by_color:
+            break
+        if piece.piece_type not in valid_types:
+            break
+        chain.append(sq)
+        sq += step
+    return chain
 
 
 def _piece_value(piece_type: int) -> int:
-    return {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3,
-            chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 100}[piece_type]
+    """Crude material weight for sorting attacker chains: lightest piece
+    first (smallest exchange loss to the attacker)."""
+    return {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 99}[piece_type]
 
 
 def format_chain(board: chess.Board, by_color: bool, chain: list[tuple[int, bool]]) -> str:
-    """Render an ordered attacker/defender chain as human-readable text."""
+    """Format an attacker/defender chain into prose:
+    `knight on c6, rook on a1, then bishop on b2 via x-ray`."""
     parts: list[str] = []
     for sq, is_xray in chain:
         pinned = board.is_pinned(by_color, sq)
@@ -195,88 +199,48 @@ def attack_defense_section(
         desc = piece_label(board, sq, pinned=board.is_pinned(own_color, sq))
         atk_str = format_chain(board, opp_color, attacker_chain)
         def_str = format_chain(board, own_color, defender_chain) if defender_chain else "nothing"
-        lines.append(f"  - {desc}: {action} {atk_str}; defended by {def_str}")
+        lines.append(f"- {desc}: {action} {atk_str}; defended by {def_str}")
     if not found_any:
-        lines.append("  (none)")
+        lines.append("- (none)")
     return "\n".join(lines)
 
 
-_PHASE_PIECE_WEIGHTS = {
-    chess.QUEEN: 4,
-    chess.ROOK: 2,
-    chess.BISHOP: 1,
-    chess.KNIGHT: 1,
-}
-
-
-def phase_score(board: chess.Board) -> int:
-    """Sum of weighted non-pawn, non-king pieces across both sides.
-    Starting position = 24; max possible is also 24."""
-    total = 0
-    for piece_type, weight in _PHASE_PIECE_WEIGHTS.items():
-        total += weight * (
-            len(board.pieces(piece_type, chess.WHITE))
-            + len(board.pieces(piece_type, chess.BLACK))
-        )
-    return total
-
-
-def detect_phase(board: chess.Board) -> tuple[str, int, int]:
-    """Return (phase_label, score, fullmove_number).
-
-    Rules:
-    - Queen presence takes priority: no queens on either side -> endgame.
-    - Otherwise: score >= 14 with move > 6 -> middlegame (early 20-23, late 14-19).
-    - score <= 13 -> endgame (early 8-13, late <8).
-    - Move <= 15 and score >= 22 -> opening (early move <= 6, late 7-15).
-    - If opening-by-move conflicts with score-by-middle/endgame, trust the score.
-    """
-    score = phase_score(board)
-    move = board.fullmove_number
-    queens_present = bool(board.pieces(chess.QUEEN, chess.WHITE)) or bool(
-        board.pieces(chess.QUEEN, chess.BLACK)
-    )
-
-    # Queen rule wins outright.
-    if not queens_present:
-        return ("early endgame" if score >= 8 else "late endgame", score, move)
-
-    # Score-driven classification (overrides move-count when they disagree).
-    if score <= 13:
-        return ("early endgame" if score >= 8 else "late endgame", score, move)
-    if score <= 19:
-        return ("late middlegame", score, move)
-    # score in 20-24.
-    if move <= 15 and score >= 22:
-        return ("early opening" if move <= 6 else "late opening", score, move)
-    return ("early middlegame", score, move)
-
-
 def render_position(board: chess.Board) -> str:
+    """Markdown-formatted position report. Each section is a small heading
+    so the agent (and the UI) can scan; the ASCII board sits in a fenced
+    code block to preserve monospace alignment in markdown renderers."""
     own_color = board.turn
     opp_color = not own_color
-    own_name = "white" if own_color == chess.WHITE else "black"
     phase, score, move = detect_phase(board)
 
     out = [
-        f"Phase: {phase} (move {move}, phase score {score}/24)",
+        f"**Phase:** {phase} (move {move}, phase score {score}/24)",
         "",
+        f"**{render_eval_line(board)}**",
+        EVAL_WARNING,
+        "",
+        "```",
         render_ascii(board),
+        "```",
         "",
-        f"FEN: {board.fen()}",
-        f"Side to move: {own_name}",
+        f"**FEN:** `{board.fen()}`",
+        f"**Side to move:** {color_name(own_color)}",
+        "",
+        "## Your pieces under attack",
         "",
         attack_defense_section(
             board, own_color, opp_color,
-            header="Your pieces under attack:",
+            header="",
             action="attacked by",
-        ),
+        ).lstrip("\n"),
+        "",
+        "## Opponent pieces you are attacking",
         "",
         attack_defense_section(
             board, opp_color, own_color,
-            header="Opponent pieces you are attacking:",
+            header="",
             action="attacked by your",
-        ),
+        ).lstrip("\n"),
     ]
     return "\n".join(out)
 

@@ -1,64 +1,65 @@
-#!/usr/bin/env python3
-"""Evaluate the current position with material + piece-square tables.
+"""Shared helpers for the chess-player skill's perception scripts.
 
-Reads CHESS_API_BASE and CHESS_GAME_ID from environment (injected by AgentPlayer).
+This module is underscore-prefixed so the agent cannot invoke it via
+`run_script` (the SDK skips underscore-prefixed files when listing a
+skill's scripts). It is intended for `from _eval import ...` use by
+sibling scripts only.
 
-Optional argument:
-  --moves UCI[,UCI,...]   Comma-separated UCI moves to play out from the live
-                          position before evaluating. Useful for comparing
-                          candidate lines without actually committing a move.
-                          Example: --moves e2e4,e7e5,g1f3
+Contents:
 
-If any move in the list is illegal, the script exits with a categorised error
-naming which move (1-indexed) failed and why, so the agent can revise its
-candidate line. The board state is not mutated on the backend regardless.
-
-Scoring:
-  total = sum(piece scores for white) - sum(piece scores for black)
-  piece score = base material value (centipawns) + PST bonus for that square
-  King material (20000) is excluded from the total — only kings' PST contributes.
-
-PSTs are Tomasz Michniewski's Simplified Evaluation Function tables.
-Kings have two tables; choice is per-side using Michniewski's canonical rule:
-  endgame king table iff that side has no queen, or has queen + no other pieces.
-
-Phase annotation is delegated to show_position.detect_phase to keep the two
-scripts in lockstep on phase classification.
-
-Output (plain text):
-
-    Line: 1.e4 e5 2.Nf3        (only when --moves is supplied)
-    After: e2e4, e7e5, g1f3    (only when --moves is supplied)
-    Side to move: black
-    Evaluation: +0.30 (roughly equal)
-    Material:   white 4000, black 4000 (+0)
-    PST:        white +35, black +5 (+30)
-    Phase:      early opening
+- Piece-name + colour-name helpers (PIECE_NAMES, color_name).
+- Material values (MATERIAL) — centipawn weights for each piece type.
+- Piece-square tables (Michniewski's Simplified Evaluation Function)
+  plus the per-side king-table selection rule (use_endgame_king_table).
+- `evaluate(board)` — net material+PST score in centipawns, white-positive.
+- `verdict(score)` — plain-language band for an eval score. Phrasing
+  is deliberately material-focused ("material lead" not "winning"),
+  because this eval is tactically blind.
+- Phase detection (phase_score, detect_phase) using a weighted non-pawn
+  material count.
+- Illegal-move classifier (classify_illegal_move) used by imagine_move
+  and apply_line — produces a categorised reason why a UCI move is
+  illegal in a given position.
+- Line-application machinery (parse_moves_arg, apply_line, MoveListError,
+  format_san_line) — plays a comma-separated UCI list out on a copy of
+  the board, with categorised errors when any move is illegal.
+- `eval_lines_for_position` and `eval_lines_for_move` — the small set of
+  lines that show_position and imagine_move embed in their output so the
+  agent gets the static eval directly in the relevant tool's report
+  rather than having to call a separate script.
 """
 
-import argparse
-import importlib.util
-import json
-import os
-import sys
-import urllib.request
-from pathlib import Path
+from __future__ import annotations
 
 import chess
 
 
-# Import phase detection from the sibling show_position.py.
-_HERE = Path(__file__).resolve().parent
-_spec = importlib.util.spec_from_file_location("show_position", _HERE / "show_position.py")
-_show_position = importlib.util.module_from_spec(_spec)
-sys.modules.setdefault("show_position", _show_position)
-_spec.loader.exec_module(_show_position)
-detect_phase = _show_position.detect_phase
+# ── Piece + colour name helpers ────────────────────────────────────────────
+
+PIECE_NAMES: dict[int, str] = {
+    chess.PAWN: "pawn",
+    chess.KNIGHT: "knight",
+    chess.BISHOP: "bishop",
+    chess.ROOK: "rook",
+    chess.QUEEN: "queen",
+    chess.KING: "king",
+}
+
+
+def color_name(color: bool) -> str:
+    """'white' for chess.WHITE (True), 'black' for chess.BLACK (False)."""
+    return "white" if color == chess.WHITE else "black"
+
+
+def describe_piece(board: chess.Board, square: int) -> str:
+    """e.g. 'knight on f3'. Assumes there is a piece on `square`."""
+    piece = board.piece_at(square)
+    return f"{PIECE_NAMES[piece.piece_type]} on {chess.square_name(square)}"
 
 
 # ── Material values (centipawns) ───────────────────────────────────────────
 
-MATERIAL = {
+MATERIAL: dict[int, int] = {
     chess.PAWN: 100,
     chess.KNIGHT: 320,
     chess.BISHOP: 330,
@@ -164,7 +165,7 @@ def _flatten_for_white(table: list[int]) -> list[int]:
     return out
 
 
-_PST_WHITE = {
+_PST_WHITE: dict[int, list[int]] = {
     chess.PAWN: _flatten_for_white(_PAWN_TABLE),
     chess.KNIGHT: _flatten_for_white(_KNIGHT_TABLE),
     chess.BISHOP: _flatten_for_white(_BISHOP_TABLE),
@@ -205,7 +206,7 @@ def use_endgame_king_table(board: chess.Board, color: bool) -> bool:
 
 def evaluate(board: chess.Board) -> dict:
     """Return a dict with per-side material and PST totals plus the net score
-    (in centipawns, white positive). King material is excluded from totals."""
+    (in centipawns, white-positive). King material is excluded from totals."""
     sides = {chess.WHITE: {"material": 0, "pst": 0}, chess.BLACK: {"material": 0, "pst": 0}}
     king_eg = {color: use_endgame_king_table(board, color) for color in (chess.WHITE, chess.BLACK)}
 
@@ -230,38 +231,138 @@ def evaluate(board: chess.Board) -> dict:
     }
 
 
-def _verdict(score: int) -> str:
-    """Plain-language band for the score (in centipawns, white-positive)."""
+# ── Verdict bands (deliberately material-focused) ──────────────────────────
+#
+# The eval is material + PST only, so it cannot see that a piece you just
+# captured is about to be lost to a fork or that your king is one move from
+# mate. Saying "winning" would invite the agent to treat a coarse number as
+# a verdict. The bands below all say "lead" instead, and the SKILL.md
+# guidance pairs this with a one-line warning under every eval line so the
+# agent treats the number as a coarse material check, not a position
+# assessment.
+
+
+def verdict(score: int) -> str:
+    """Plain-language band for the score (centipawns, white-positive)."""
     if score == 0:
-        return "equal"
+        return "material balanced"
     abs_score = abs(score)
     side = "white" if score > 0 else "black"
     if abs_score >= 300:
-        return f"{side} winning"
+        return f"decisive material lead for {side}"
     if abs_score >= 100:
-        return f"{side} clearly better"
+        return f"clear material lead for {side}"
     if abs_score >= 30:
-        return f"{side} slightly better"
-    return "roughly equal"
+        return f"slight material lead for {side}"
+    return "roughly balanced"
 
 
-_PIECE_NAMES = {
-    chess.PAWN: "pawn", chess.KNIGHT: "knight", chess.BISHOP: "bishop",
-    chess.ROOK: "rook", chess.QUEEN: "queen", chess.KING: "king",
+# Backwards-compat alias for code that previously imported the private name.
+_verdict = verdict
+
+
+# One-line warning attached to every eval line shown to the agent.
+EVAL_WARNING = (
+    "(material + piece-square tables only; does not see tactics — a "
+    "material lead can be lost in one move if the position has unresolved threats.)"
+)
+
+
+def render_eval_line(board: chess.Board) -> str:
+    """Format the eval as a single line for embedding in show_position output:
+    `Material balance: +0.30 (slight material lead for white)`."""
+    ev = evaluate(board)
+    score = ev["score"]
+    pawns = score / 100.0
+    sign = "+" if score >= 0 else "-"
+    return f"Material balance: {sign}{abs(pawns):.2f} ({verdict(score)})"
+
+
+def render_eval_delta_line(before: chess.Board, after: chess.Board) -> str:
+    """Format the before/after eval with delta for imagine_move output:
+    `Material balance: +0.30 → +0.20 (Δ -0.10, slight material lead for white)`.
+
+    The delta is from the mover's perspective only in the sense of which
+    side gained or lost material — the signed value is always white-positive,
+    same as the eval itself."""
+    ev_before = evaluate(before)
+    ev_after = evaluate(after)
+    s_before = ev_before["score"]
+    s_after = ev_after["score"]
+    delta = s_after - s_before
+
+    def _fmt(score: int) -> str:
+        sign = "+" if score >= 0 else "-"
+        return f"{sign}{abs(score) / 100.0:.2f}"
+
+    delta_sign = "+" if delta >= 0 else "-"
+    return (
+        f"Material balance: {_fmt(s_before)} → {_fmt(s_after)} "
+        f"(Δ {delta_sign}{abs(delta) / 100.0:.2f}, {verdict(s_after)})"
+    )
+
+
+# ── Phase detection ────────────────────────────────────────────────────────
+
+_PHASE_PIECE_WEIGHTS = {
+    chess.QUEEN: 4,
+    chess.ROOK: 2,
+    chess.BISHOP: 1,
+    chess.KNIGHT: 1,
 }
 
 
-def _color_name(color: bool) -> str:
-    return "white" if color == chess.WHITE else "black"
+def phase_score(board: chess.Board) -> int:
+    """Sum of weighted non-pawn, non-king pieces across both sides.
+    Starting position = 24; max possible is also 24."""
+    total = 0
+    for piece_type, weight in _PHASE_PIECE_WEIGHTS.items():
+        total += weight * (
+            len(board.pieces(piece_type, chess.WHITE))
+            + len(board.pieces(piece_type, chess.BLACK))
+        )
+    return total
+
+
+def detect_phase(board: chess.Board) -> tuple[str, int, int]:
+    """Return (phase_label, score, fullmove_number).
+
+    Rules:
+    - Queen presence takes priority: no queens on either side -> endgame.
+    - Otherwise: score >= 14 with move > 6 -> middlegame (early 20-23, late 14-19).
+    - score <= 13 -> endgame (early 8-13, late <8).
+    - Move <= 15 and score >= 22 -> opening (early move <= 6, late 7-15).
+    - If opening-by-move conflicts with score-by-middle/endgame, trust the score.
+    """
+    score = phase_score(board)
+    move = board.fullmove_number
+    queens_present = bool(board.pieces(chess.QUEEN, chess.WHITE)) or bool(
+        board.pieces(chess.QUEEN, chess.BLACK)
+    )
+
+    if not queens_present:
+        return ("early endgame" if score >= 8 else "late endgame", score, move)
+
+    if score <= 13:
+        return ("early endgame" if score >= 8 else "late endgame", score, move)
+    if score <= 19:
+        return ("late middlegame", score, move)
+    # score in 20-24.
+    if move <= 15 and score >= 22:
+        return ("early opening" if move <= 6 else "late opening", score, move)
+    return ("early middlegame", score, move)
+
+
+# ── Illegal-move classification ────────────────────────────────────────────
 
 
 def classify_illegal_move(board: chess.Board, uci: str) -> str:
     """Return a human-readable reason why `uci` is illegal in `board`.
     Assumes the move is known to be illegal (or malformed); inspects board
     state to categorise the failure. Goes through cases in priority order:
-    malformed -> piece presence -> ownership -> geometry -> blocked path ->
-    own-piece capture -> promotion mismatch -> castling -> in-check ->
-    leaves-king-in-check (pin) -> generic."""
+    malformed -> piece presence -> ownership -> destination-own -> castling
+    -> promotion mismatch -> blocked path -> geometry -> in-check -> pin ->
+    generic."""
     # 1. Malformed: not a parseable UCI string at all.
     try:
         move = chess.Move.from_uci(uci)
@@ -279,11 +380,11 @@ def classify_illegal_move(board: chess.Board, uci: str) -> str:
     # 3. Wrong color.
     if piece.color != board.turn:
         return (
-            f"the piece on {from_name} is {_color_name(piece.color)}, "
-            f"but it's {_color_name(board.turn)}'s turn"
+            f"the piece on {from_name} is {color_name(piece.color)}, "
+            f"but it's {color_name(board.turn)}'s turn"
         )
 
-    piece_name = _PIECE_NAMES[piece.piece_type]
+    piece_name = PIECE_NAMES[piece.piece_type]
     dest = board.piece_at(to_sq)
 
     # 4. Destination occupied by own piece (caught before geometry — a more
@@ -291,7 +392,7 @@ def classify_illegal_move(board: chess.Board, uci: str) -> str:
     if dest is not None and dest.color == piece.color:
         return (
             f"destination {to_name} is occupied by your own "
-            f"{_PIECE_NAMES[dest.piece_type]}"
+            f"{PIECE_NAMES[dest.piece_type]}"
         )
 
     # 5. Castling-specific. A king moving two squares is a castle attempt.
@@ -322,7 +423,7 @@ def classify_illegal_move(board: chess.Board, uci: str) -> str:
             blocking_piece = board.piece_at(blocker)
             return (
                 f"path from {from_name} to {to_name} is blocked by "
-                f"{_color_name(blocking_piece.color)} {_PIECE_NAMES[blocking_piece.piece_type]} "
+                f"{color_name(blocking_piece.color)} {PIECE_NAMES[blocking_piece.piece_type]} "
                 f"on {chess.square_name(blocker)}"
             )
 
@@ -354,18 +455,14 @@ def _piece_can_reach(board: chess.Board, piece: chess.Piece, from_sq: int, to_sq
     """Does this piece type, on this square, attack/move-to `to_sq` ignoring
     pins and king safety? For pawns, also accepts forward pushes."""
     if piece.piece_type == chess.PAWN:
-        # Forward push (1 or 2 squares from start rank), or diagonal capture.
         direction = 1 if piece.color == chess.WHITE else -1
         ff, fr = chess.square_file(from_sq), chess.square_rank(from_sq)
         tf, tr = chess.square_file(to_sq), chess.square_rank(to_sq)
-        # Diagonal capture: attacks() handles it correctly (it reports the
-        # squares a pawn attacks).
         if to_sq in board.attacks(from_sq):
             # Diagonal moves are only legal as captures or en passant.
             if board.piece_at(to_sq) is not None or to_sq == board.ep_square:
                 return True
             return False
-        # Forward push: must be on the same file with the right delta.
         if ff != tf:
             return False
         if tr - fr == direction:
@@ -374,7 +471,6 @@ def _piece_can_reach(board: chess.Board, piece: chess.Piece, from_sq: int, to_sq
             intermediate = chess.square(ff, fr + direction)
             return board.piece_at(intermediate) is None and board.piece_at(to_sq) is None
         return False
-    # All other pieces: attacks() gives the squares the piece controls.
     return to_sq in board.attacks(from_sq)
 
 
@@ -386,17 +482,15 @@ def _first_blocker_for_piece(board: chess.Board, piece_type: int, from_sq: int, 
     tf, tr = chess.square_file(to_sq), chess.square_rank(to_sq)
     df, dr = tf - ff, tr - fr
     if max(abs(df), abs(dr)) < 2:
-        return None  # adjacent or same square — not a slide
+        return None
     is_orthogonal = (df == 0) ^ (dr == 0)
     is_diagonal = df != 0 and dr != 0 and abs(df) == abs(dr)
     if not (is_orthogonal or is_diagonal):
-        return None  # not a straight line — not a slider move at all
-    # Filter by piece type.
+        return None
     if piece_type == chess.ROOK and not is_orthogonal:
         return None
     if piece_type == chess.BISHOP and not is_diagonal:
         return None
-    # Queen handles both.
     step_f = (df > 0) - (df < 0)
     step_r = (dr > 0) - (dr < 0)
     f, r = ff + step_f, fr + step_r
@@ -422,20 +516,18 @@ def _castling_reason(board: chess.Board, move: chess.Move) -> str:
         return f"cannot castle kingside: kingside castling rights lost"
     if not kingside and not board.has_queenside_castling_rights(color):
         return f"cannot castle queenside: queenside castling rights lost"
-    # Squares between king and rook must be empty.
     rank = 0 if color == chess.WHITE else 7
     if kingside:
-        between = [chess.square(f, rank) for f in (5, 6)]  # f1/f8, g1/g8
+        between = [chess.square(f, rank) for f in (5, 6)]
     else:
-        between = [chess.square(f, rank) for f in (1, 2, 3)]  # b1, c1, d1
+        between = [chess.square(f, rank) for f in (1, 2, 3)]
     for sq in between:
         if board.piece_at(sq) is not None:
             blocker = board.piece_at(sq)
             return (
                 f"cannot castle {side_name}: {chess.square_name(sq)} is occupied by "
-                f"{_color_name(blocker.color)} {_PIECE_NAMES[blocker.piece_type]}"
+                f"{color_name(blocker.color)} {PIECE_NAMES[blocker.piece_type]}"
             )
-    # Otherwise: the king passes through or lands on an attacked square.
     pass_squares = [chess.square(f, rank) for f in (4, 5, 6)] if kingside else [chess.square(f, rank) for f in (2, 3, 4)]
     for sq in pass_squares:
         if board.is_attacked_by(not color, sq):
@@ -446,8 +538,11 @@ def _castling_reason(board: chess.Board, move: chess.Move) -> str:
     return f"cannot castle {side_name}"
 
 
+# ── Line application (play out a UCI sequence on a copy of the board) ──────
+
+
 class MoveListError(Exception):
-    """Raised when a move in --moves can't be applied. Carries the 1-indexed
+    """Raised when a move in a UCI list can't be applied. Carries the 1-indexed
     move number, the offending UCI string, and a human-readable reason."""
 
     def __init__(self, index: int, uci: str, reason: str):
@@ -481,6 +576,71 @@ def apply_line(board: chess.Board, ucis: list[str]) -> tuple[chess.Board, list[s
     return work, san_moves
 
 
+def annotate_move(board: chess.Board, move: chess.Move) -> dict:
+    """Return a small annotation dict for `move` on `board`:
+      - 'uci': the UCI string.
+      - 'san': SAN rendering (e.g. 'Nf3', 'Bxc4', 'O-O', 'e8=Q+').
+      - 'description': short prose ('knight to f3', 'bishop takes pawn on c4',
+        'kingside castle', 'pawn promotes to queen').
+      - 'flag': 'check' / 'checkmate' / 'stalemate' / '' (empty when none).
+
+    The move must be legal in `board`. Used by list_legal_moves and by
+    imagine_move's opponent-replies block to give the agent a scannable
+    human-readable view alongside the UCI strings.
+    """
+    san = board.san(move)
+    piece = board.piece_at(move.from_square)
+    piece_name = PIECE_NAMES[piece.piece_type]
+    to_name = chess.square_name(move.to_square)
+
+    # Description.
+    if board.is_castling(move):
+        side = "kingside" if chess.square_file(move.to_square) > chess.square_file(move.from_square) else "queenside"
+        desc = f"{side} castle"
+    elif board.is_en_passant(move):
+        ep_sq = chess.square(chess.square_file(move.to_square), chess.square_rank(move.from_square))
+        desc = f"pawn captures en passant on {to_name} (taking pawn on {chess.square_name(ep_sq)})"
+    else:
+        captured = board.piece_at(move.to_square)
+        if captured is not None:
+            captured_name = PIECE_NAMES[captured.piece_type]
+            desc = f"{piece_name} takes {captured_name} on {to_name}"
+        else:
+            desc = f"{piece_name} to {to_name}"
+        if move.promotion is not None:
+            desc += f", promotes to {PIECE_NAMES[move.promotion]}"
+
+    # Flag — apply the move and inspect the resulting board.
+    work = board.copy()
+    work.push(move)
+    if work.is_checkmate():
+        flag = "checkmate"
+    elif work.is_stalemate():
+        flag = "stalemate"
+    elif work.is_check():
+        flag = "check"
+    else:
+        flag = ""
+
+    return {"uci": move.uci(), "san": san, "description": desc, "flag": flag}
+
+
+def render_moves_table(board: chess.Board, moves: list[chess.Move]) -> str:
+    """Render a list of legal moves as a markdown table with columns
+    `UCI | SAN | Description | Flag`. Sorted by UCI for stable ordering."""
+    annotated = [annotate_move(board, m) for m in moves]
+    annotated.sort(key=lambda a: a["uci"])
+    if not annotated:
+        return "_(no legal moves)_"
+    rows = [
+        "| UCI    | SAN    | Description                                | Flag       |",
+        "|--------|--------|--------------------------------------------|------------|",
+    ]
+    for a in annotated:
+        rows.append(f"| {a['uci']:<6} | {a['san']:<6} | {a['description']:<42} | {a['flag']:<10} |")
+    return "\n".join(rows)
+
+
 def format_san_line(starting_board: chess.Board, san_moves: list[str]) -> str:
     """Render an SAN line with move numbers: '1.e4 e5 2.Nf3 Nc6 ...'.
     Respects the starting fullmove number and side-to-move."""
@@ -509,91 +669,3 @@ def format_san_line(starting_board: chess.Board, san_moves: list[str]) -> str:
             move_num += 1
             white_to_move = True
     return " ".join(parts)
-
-
-def render_evaluation(board: chess.Board, san_moves: list[str] | None = None, ucis: list[str] | None = None, starting_board: chess.Board | None = None) -> str:
-    """Render the evaluation. If `san_moves` / `ucis` are supplied (with the
-    `starting_board` they were applied from), prepend Line + After headers."""
-    ev = evaluate(board)
-    score = ev["score"]
-    phase, _, _ = detect_phase(board)
-    pawns = score / 100.0
-
-    sign = "+" if score >= 0 else "-"
-    headline = f"Evaluation: {sign}{abs(pawns):.2f} ({_verdict(score)})"
-
-    mat_diff = ev["white"]["material"] - ev["black"]["material"]
-    pst_diff = ev["white"]["pst"] - ev["black"]["pst"]
-
-    lines: list[str] = []
-    if ucis:
-        assert starting_board is not None and san_moves is not None
-        lines.append(f"Line: {format_san_line(starting_board, san_moves)}")
-        lines.append(f"After: {', '.join(ucis)}")
-    lines.extend([
-        f"Side to move: {_color_name(board.turn)}",
-        headline,
-        f"Material:   white {ev['white']['material']}, black {ev['black']['material']} ({mat_diff:+d})",
-        f"PST:        white {ev['white']['pst']:+d}, black {ev['black']['pst']:+d} ({pst_diff:+d})",
-        f"Phase:      {phase}",
-    ])
-    return "\n".join(lines)
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("--moves", type=str, default="")
-    parser.add_argument("-h", "--help", action="store_true")
-    args = parser.parse_args()
-
-    if args.help:
-        print(__doc__)
-        return
-
-    api_base = os.environ.get("CHESS_API_BASE", "http://localhost:8000").rstrip("/")
-    game_id = os.environ.get("CHESS_GAME_ID", "")
-    if not game_id:
-        print("error: CHESS_GAME_ID not set", file=sys.stderr)
-        sys.exit(1)
-
-    url = f"{api_base}/api/games/{game_id}"
-    try:
-        with urllib.request.urlopen(url, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
-    except Exception as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    fen = data.get("fen")
-    if not fen:
-        print("error: backend response missing 'fen'", file=sys.stderr)
-        sys.exit(1)
-
-    starting_board = chess.Board(fen)
-    ucis = parse_moves_arg(args.moves)
-
-    if not ucis:
-        print(render_evaluation(starting_board))
-        return
-
-    try:
-        final_board, san_moves = apply_line(starting_board, ucis)
-    except MoveListError as exc:
-        # Hard error per the script contract: agent's candidate line is bad
-        # and it needs to revise rather than receive a misleading partial eval.
-        print(
-            f"error: move {exc.index} of --moves ({exc.uci}) is illegal: {exc.reason}",
-            file=sys.stderr,
-        )
-        print(
-            f"hint: --moves takes a comma-separated list of UCI moves to play "
-            f"from the live position (e.g. --moves e2e4,e7e5,g1f3)",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    print(render_evaluation(final_board, san_moves=san_moves, ucis=ucis, starting_board=starting_board))
-
-
-if __name__ == "__main__":
-    main()

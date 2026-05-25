@@ -62,6 +62,14 @@ class AgentTurn:
     prompt: str
     events: list[dict[str, Any]] = field(default_factory=list)
     move_chosen: str | None = None
+    # Per-move evaluation telemetry, populated by record_move_evals() after
+    # the move commits. cp values are centipawns from white's perspective;
+    # None when Stockfish was unavailable or the position was game-over.
+    stockfish_eval_cp_before: int | None = None
+    stockfish_eval_cp_after: int | None = None
+    static_eval_cp_before: int | None = None
+    static_eval_cp_after: int | None = None
+    move_time_ms: int | None = None
 
 
 class LoggingService:
@@ -102,6 +110,43 @@ class LoggingService:
             return
         turn.move_chosen = move_chosen
         self._agent_turns.setdefault(game_id, []).append(turn)
+
+    def get_past_agent_events(self, game_id: str) -> list[dict]:
+        """Return all events from completed turns plus any events already emitted
+        in the current in-progress turn. Used to replay history when a new SSE
+        subscriber connects mid-game."""
+        past_events: list[dict] = []
+        for turn in self._agent_turns.get(game_id, []):
+            past_events.extend(turn.events)
+        current = self._current_turns.get(game_id)
+        if current is not None:
+            past_events.extend(current.events)
+        return past_events
+
+    def record_move_evals(
+        self,
+        game_id: str,
+        *,
+        stockfish_cp_before: int | None,
+        stockfish_cp_after: int | None,
+        static_cp_before: int | None,
+        static_cp_after: int | None,
+        move_time_ms: int | None,
+    ) -> None:
+        """Attach per-move evaluation telemetry to the most-recent closed
+        agent turn for this game. Called by game_service after the agent's
+        move has been applied to the board. No-op when there's no turn to
+        attach to — this lets the call site be unconditional even for
+        non-agent games."""
+        turns = self._agent_turns.get(game_id)
+        if not turns:
+            return
+        latest = turns[-1]
+        latest.stockfish_eval_cp_before = stockfish_cp_before
+        latest.stockfish_eval_cp_after = stockfish_cp_after
+        latest.static_eval_cp_before = static_cp_before
+        latest.static_eval_cp_after = static_cp_after
+        latest.move_time_ms = move_time_ms
 
     # ── CSV record ───────────────────────────────────────────────────────
 
@@ -195,6 +240,13 @@ class LoggingService:
                     "prompt": t.prompt,
                     "events": t.events,
                     "move_chosen": t.move_chosen,
+                    "evals": {
+                        "stockfish_cp_before": t.stockfish_eval_cp_before,
+                        "stockfish_cp_after": t.stockfish_eval_cp_after,
+                        "static_cp_before": t.static_eval_cp_before,
+                        "static_cp_after": t.static_eval_cp_after,
+                        "move_time_ms": t.move_time_ms,
+                    },
                 }
                 for t in turns
             ],

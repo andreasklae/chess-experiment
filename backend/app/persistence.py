@@ -21,8 +21,16 @@ def save_game(
     status: str,
     result: str | None,
     created_at: str,
+    agent_elo_before: str | None = None,
+    agent_elo_after: str | None = None,
 ) -> None:
-    data = {
+    """Write the per-game JSON. Optional ``agent_elo_before`` and
+    ``agent_elo_after`` capture the agent's ELO snapshot for this game (only
+    meaningful when one of the players is an agent). They live as a separate
+    top-level ``agent_elo`` dict because PlayerConfig schema deliberately
+    rejects an ``elo`` field on agent players — putting them inside ``white``
+    or ``black`` would re-introduce that ambiguity."""
+    data: dict = {
         "game_id": game_id,
         "white": white,
         "black": black,
@@ -32,6 +40,11 @@ def save_game(
         "result": result,
         "created_at": created_at,
     }
+    if agent_elo_before or agent_elo_after:
+        data["agent_elo"] = {
+            "before": agent_elo_before or None,
+            "after": agent_elo_after or None,
+        }
     path = _game_path(games_dir, game_id)
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
