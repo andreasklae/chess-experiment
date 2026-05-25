@@ -31,7 +31,7 @@ load_dotenv(SKILLFUL_AGENT_ENV, override=False)
 # Max attempts per chess turn. Each attempt is a fresh run_stream with cleared
 # conversation. Retries handle the case where the model finishes a run without
 # calling make_move.py (observed with Gemma 4 after illegal-move recovery).
-_MAX_ATTEMPTS = 3
+_MAX_ATTEMPTS = 30
 
 
 def _build_agent(game_id: str):
@@ -75,27 +75,31 @@ def _build_agent(game_id: str):
     model = OpenAIChatModel(model_name, provider=provider)
     cfg = AgentConfig(
         system_prompt_extra=(
-            "You are a chess engine playing white.\n\n"
-            "On each turn:\n"
-            "  1. Call `use_skill` with skill_name='chess-player'.\n"
-            "  2. Call `run_script` to invoke list_legal_moves.py.\n"
-            "  3. Write 2–4 short sentences of reasoning. No more.\n"
-            "  4. Call `run_script` to invoke make_move.py with your chosen move.\n\n"
+            "You are playing chess as white in a live game.\n\n"
+            "The chess-player skill documents the scripts available to you and how "
+            "to use them well. Call use_skill at the start of every turn to load it, "
+            "then follow its guidance.\n\n"
             "make_move.py COMMITS the move immediately — the board advances and your "
-            "turn ends the moment it returns ok=true. Do not continue after that. "
-            "If it returns ok=false, choose a different move from the legal_moves list "
-            "in the error response and call make_move.py again.\n\n"
+            "turn ends the moment it returns ok=true. Do not continue calling tools "
+            "after that. If it returns ok=false, choose a different move from the "
+            "legal_moves list in the error response and call make_move.py again.\n\n"
+            "Take the time you need to think, but avoid loops. If you find yourself "
+            "calling the same tool repeatedly on the same position, or oscillating "
+            "between candidates without converging, commit the move you currently "
+            "believe is best rather than continuing to deliberate.\n\n"
             "If you do not call make_move.py within the turn, that counts as resignation (a loss)."
         ),
-        # Per-request output cap (provider truncates at this limit). 1024 fits
-        # ~750 words of reasoning + a tool call — comfortably more than the
-        # 2–4 sentences the prompt asks for. Prevents runaway single responses.
+        # Per-request output cap (provider truncates at this limit). Each
+        # response is reasoning text + at most one tool call, so 1024 is
+        # plenty for the model to react to a single tool's output before
+        # calling the next one. Prevents runaway single responses.
         max_tokens=1024,
-        # Per-run request cap. Typical successful turn uses 3–4 requests
-        # (use_skill + list_legal_moves + reason+make_move). 10 leaves headroom
-        # for one or two illegal-move retries inside a single run_stream before
-        # the harness-level retry kicks in.
-        max_turns=10,
+        # Per-run request cap. Typical turn under the tool flow uses 4–9
+        # requests (use_skill + show_position + 1–3 imagine_move calls +
+        # optional evaluate_position + make_move, with reasoning text between).
+        # 16 leaves headroom for one or two illegal-move retries inside a
+        # single run_stream before the harness-level retry kicks in.
+        max_turns=16,
     )
     return Agent(model=model, skills_dir=SKILLS_DIR, config=cfg)
 
