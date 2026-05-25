@@ -77,7 +77,7 @@ def _build_agent(game_id: str):
         system_prompt_extra=(
             "You are a chess engine playing white.\n\n"
             "On each turn:\n"
-            "  1. Call `use_skill` with skill_name='chess-player' (first move only).\n"
+            "  1. Call `use_skill` with skill_name='chess-player'.\n"
             "  2. Call `run_script` to invoke list_legal_moves.py.\n"
             "  3. Write 2–4 short sentences of reasoning. No more.\n"
             "  4. Call `run_script` to invoke make_move.py with your chosen move.\n\n"
