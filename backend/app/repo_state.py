@@ -4,8 +4,9 @@ Two-phase logging policy (see
 [knowledge-base/decisions/2026-05-24-ranked-vs-experimental.md]):
 
 - **ranked** runs update `agent_elo.json` and write to `ranked.csv`. A run is
-  ranked iff the live chess repo is on `main` with a clean working tree.
-  Branches and dirty trees are always experimental.
+  ranked iff the live chess repo is on `main`. Untracked files (e.g. per-game
+  JSON logs) do not disqualify a run; only being on a non-main branch does.
+  Feature branches are always experimental.
 - **experimental** runs write to `experimental.csv` only. ELO state is not
   touched. This covers ad-hoc lobby games and any batch initiated from a
   feature branch (e.g. while iterating on a PR before merge).
@@ -88,22 +89,19 @@ def is_ranked_context() -> tuple[bool, str]:
     """Return (allowed, reason).
 
     A ranked write is allowed iff:
-      - the repo exists,
-      - HEAD is on the `main` branch, and
-      - the working tree is clean (no uncommitted changes).
+      - the repo exists, and
+      - HEAD is on the `main` branch.
 
-    Any other state means experimental. The reason string is human-readable
-    and intended for UI / log surfacing so the operator understands why a
-    given batch landed in experimental rather than ranked.
+    Untracked files (e.g. per-game JSON logs written during play) do not
+    disqualify a run — only being on a non-main branch does. The reason
+    string is human-readable and intended for UI / log surfacing.
     """
     state = live_git_state()
     if not state.is_repo:
         return False, "not a git repo"
     if state.branch != "main":
         return False, f"on branch '{state.branch}', not main"
-    if state.dirty:
-        return False, "working tree has uncommitted changes"
-    return True, "main, clean"
+    return True, "main"
 
 
 def current_phase() -> Phase:
