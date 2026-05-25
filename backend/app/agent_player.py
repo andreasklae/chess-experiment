@@ -11,7 +11,16 @@ import chess
 from dotenv import load_dotenv
 
 from app.config import BACKEND_DIR, SKILLFUL_AGENT_ENV
-from app.players import Player, PlayerError
+from app.players import AgentResignedError, Player, PlayerError
+
+try:
+    from skill_agent import AgentContextOverflowError
+except ImportError:
+    # Older skillful-agent versions don't expose the typed overflow exception.
+    # Use a never-matched sentinel so provider 400s bubble up as plain Exceptions.
+    class AgentContextOverflowError(Exception):  # type: ignore[no-redef]
+        requested_input_tokens: int | None = None
+        model_context_limit: int | None = None
 
 SKILLS_DIR = BACKEND_DIR / "skills"
 API_BASE = os.getenv("CHESS_API_BASE", "http://localhost:8000")
@@ -70,14 +79,23 @@ def _build_agent(game_id: str):
             "On each turn:\n"
             "  1. Call `use_skill` with skill_name='chess-player' (first move only).\n"
             "  2. Call `run_script` to invoke list_legal_moves.py.\n"
-            "  3. Write 2–4 sentences of reasoning.\n"
+            "  3. Write 2–4 short sentences of reasoning. No more.\n"
             "  4. Call `run_script` to invoke make_move.py with your chosen move.\n\n"
             "make_move.py COMMITS the move immediately — the board advances and your "
-            "turn ends the moment it returns ok=true. Do not continue after that.\n"
-            "If make_move.py returns ok=false, call list_legal_moves.py again and "
-            "choose a different move from the returned list. Repeat until ok=true."
+            "turn ends the moment it returns ok=true. Do not continue after that. "
+            "If it returns ok=false, choose a different move from the legal_moves list "
+            "in the error response and call make_move.py again.\n\n"
+            "If you do not call make_move.py within the turn, that counts as resignation (a loss)."
         ),
-        max_turns=20,
+        # Per-request output cap (provider truncates at this limit). 1024 fits
+        # ~750 words of reasoning + a tool call — comfortably more than the
+        # 2–4 sentences the prompt asks for. Prevents runaway single responses.
+        max_tokens=1024,
+        # Per-run request cap. Typical successful turn uses 3–4 requests
+        # (use_skill + list_legal_moves + reason+make_move). 10 leaves headroom
+        # for one or two illegal-move retries inside a single run_stream before
+        # the harness-level retry kicks in.
+        max_turns=10,
     )
     return Agent(model=model, skills_dir=SKILLS_DIR, config=cfg)
 
@@ -127,12 +145,7 @@ class AgentPlayer(Player):
 
     async def get_move(self, board: chess.Board, last_san: str | None = None) -> chess.Move:
         from skill_agent import TextDeltaEvent, ToolCallEvent, ToolResultEvent
-        try:
-            from skill_agent import AgentContextOverflowError
-        except ImportError:
-            class AgentContextOverflowError(Exception):  # type: ignore[no-redef]
-                requested_input_tokens: int | None = None
-                model_context_limit: int | None = None
+        from pydantic_ai.exceptions import UsageLimitExceeded
 
         if last_san:
             prompt = f"Opponent played {last_san}.\n\nCurrent position (FEN):\n{board.fen()}"
@@ -188,12 +201,26 @@ class AgentPlayer(Player):
                                 return chess.Move.from_uci(committed)
 
             except AgentContextOverflowError as exc:
+                # Infrastructure limit — not the agent's fault. Abort with no
+                # ELO update. See decisions/2026-05-24-per-turn-fresh-context.md.
                 raise PlayerError(
                     f"context_overflow: requested {exc.requested_input_tokens} input "
                     f"tokens, model limit {exc.model_context_limit}."
                 ) from exc
+            except UsageLimitExceeded:
+                # Model exhausted its per-run request budget (max_turns) without
+                # committing a move. Treat as "no move this attempt" — the outer
+                # loop retries with fresh context, and if all retries fail the
+                # agent resigns. This is an agent capability failure, not an
+                # infrastructure abort.
+                _flush_thinking()
+                continue
 
             _flush_thinking()
             # Run ended without a committed move — loop and retry.
 
-        raise PlayerError(f"Agent did not commit a move after {_MAX_ATTEMPTS} attempts.")
+        # Capability failure after every retry exhausted → resignation.
+        # See knowledge-base/decisions/2026-05-25-agent-resigns-when-stuck.md.
+        raise AgentResignedError(
+            f"agent_resigned_no_move: no legal move committed after {_MAX_ATTEMPTS} attempts."
+        )

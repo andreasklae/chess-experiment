@@ -25,7 +25,7 @@ from app.persistence import (
     load_game_file,
     save_game,
 )
-from app.players import Player, PlayerError, PlayerFactory
+from app.players import AgentResignedError, Player, PlayerError, PlayerFactory
 from app.schemas import CreateGameRequest, GameState, GameSummary, PlayerConfig
 
 
@@ -62,6 +62,11 @@ class Game:
     # means "game did not finish naturally"; recorded in games.csv and
     # signals the batch runner not to update ELO for this game.
     aborted_reason: str = ""
+    # When set, overrides the python-chess board result — used for resignation
+    # paths where the game ended for a reason the board doesn't know about
+    # (e.g. agent_resigned_no_move sets result_override="0-1"). is_over() and
+    # result() honour it. See decisions/2026-05-25-agent-resigns-when-stuck.md.
+    result_override: str | None = None
     # Forced-draw cap. When the half-move count reaches this limit the game
     # is declared a draw (1/2-1/2) regardless of position. Prevents infinite
     # endgames where neither bot can deliver mate. Default 150 = 75 full moves.
@@ -80,11 +85,15 @@ class Game:
         return not has_chesscom
 
     def is_over(self) -> bool:
+        if self.result_override is not None:
+            return True
         if len(self.uci_moves) >= self.max_half_moves:
             return True
         return self.board.is_game_over(claim_draw=self._claim_draw)
 
     def result(self) -> str | None:
+        if self.result_override is not None:
+            return self.result_override
         if not self.is_over():
             return None
         if len(self.uci_moves) >= self.max_half_moves and not self.board.is_game_over(claim_draw=self._claim_draw):
@@ -502,24 +511,33 @@ class GameService:
 
             try:
                 move = await player.get_move(board, last_san=last_san)
+            except AgentResignedError as exc:
+                # Capability failure → resignation. White (the agent) loses by
+                # forfeit. The batch runner sees a normal chess loss via the
+                # result_override; aborted_reason preserves the forensic detail.
+                # See decisions/2026-05-25-agent-resigns-when-stuck.md.
+                logger.warning("resign · %s agent could not commit a move: %s",
+                               game.game_id[:8], exc)
+                override = "0-1" if game.white_config.type == "agent" else "1-0"
+                await self._finish_game_with_error(
+                    game,
+                    publish_message=f"Agent resigned: {exc}",
+                    aborted_reason="agent_resigned_no_move",
+                    result_override=override,
+                )
+                return
             except Exception as exc:
+                # Infrastructure / environmental error — no chess result, no
+                # ELO change. result_override stays None so game.result()
+                # returns None and BatchRunner skips the ELO update.
                 logger.exception("move · %s player %s raised: %s",
                                  game.game_id[:8], type(player).__name__, exc)
-                await self._publish_error(game, str(exc))
-                self._logging.close_agent_turn(game.game_id, None)
-                # Mark the game as aborted, record it (CSV + agent JSON),
-                # fire the on-game-finished callback so the batch advances,
-                # and tear down players. Aborted games carry result=None,
-                # so BatchRunner skips the ELO update for them (see
-                # parse_game_result returning None for non-1-0/0-1/draw).
-                game.aborted_reason = str(exc) or type(exc).__name__
-                if self._on_game_finished is not None:
-                    try:
-                        self._on_game_finished(game)
-                    except Exception:
-                        logger.exception("on_game_finished callback failed on abort")
-                self._record_game_end(game)
-                await game.close_players()
+                reason = str(exc) or type(exc).__name__
+                await self._finish_game_with_error(
+                    game,
+                    publish_message=str(exc),
+                    aborted_reason=reason,
+                )
                 return
 
             async with game.lock:
@@ -633,6 +651,35 @@ class GameService:
                 stale.append(queue)
         for queue in stale:
             game.subscribers.discard(queue)
+
+    async def _finish_game_with_error(
+        self,
+        game: Game,
+        *,
+        publish_message: str,
+        aborted_reason: str,
+        result_override: str | None = None,
+    ) -> None:
+        """Terminate a game that ended badly mid-turn.
+
+        Two callers: the AgentResignedError path (result_override set, ELO
+        updates as a loss) and the generic exception path (result_override
+        None, game logged as aborted with ELO unchanged). Either way we close
+        the agent-turn log, fire the on-game-finished callback so the batch
+        advances, write the CSV row, and tear down players.
+        """
+        await self._publish_error(game, publish_message)
+        self._logging.close_agent_turn(game.game_id, None)
+        game.aborted_reason = aborted_reason
+        if result_override is not None:
+            game.result_override = result_override
+        if self._on_game_finished is not None:
+            try:
+                self._on_game_finished(game)
+            except Exception:
+                logger.exception("on_game_finished callback failed during error finish")
+        self._record_game_end(game)
+        await game.close_players()
 
     async def _publish_error(self, game: Game, message: str) -> None:
         payload = f"event: error\ndata: {json.dumps({'message': message})}\n\n"

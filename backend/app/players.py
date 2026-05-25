@@ -31,6 +31,14 @@ class PlayerError(RuntimeError):
     """Raised when a player cannot produce a move."""
 
 
+class AgentResignedError(PlayerError):
+    """The agent could not commit a legal move after all retries — resignation.
+
+    Treated by the game service as a chess loss (0-1, black wins), not an
+    infrastructure abort. See knowledge-base/decisions/2026-05-25-agent-resigns-when-stuck.md.
+    """
+
+
 class Player(ABC):
     is_human = False
 
