@@ -41,7 +41,6 @@ CSV_COLUMNS = [
     "datetime",
     "phase",             # "ranked" or "experimental"
     "branch",            # git branch at record time
-    "commit_sha",        # full HEAD SHA at record time
     "white_type",
     "black_type",
     "opponent",
@@ -219,7 +218,6 @@ class LoggingService:
             "datetime": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "phase": phase,
             "branch": git.branch,
-            "commit_sha": git.commit_sha,
             "white_type": white_type,
             "black_type": black_type,
             "opponent": opponent,

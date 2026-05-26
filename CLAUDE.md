@@ -142,7 +142,8 @@ methods; the code is downstream of those decisions.
   files changed. The git history is part of the thesis's reproducibility
   story — `git log` should read like a methods journal.
 - The chess experiment is a fresh git repo as of 2026-05-20. Every agent
-  game's CSV row carries `branch` + `commit_sha` for forensic precision.
+  game's CSV row carries `branch` + `pr_number` so each game is traceable
+  to the agent version that produced it.
   But the unit of "agent configuration version" is the **PR**, not the
   commit: iterate on a branch, merge to `main`, run the official
   calibration batch on `main` post-merge. `git revert` is the recovery
