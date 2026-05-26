@@ -49,11 +49,6 @@ CHESSCOM_ELOS = (
     1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500, 2600, 2800, 3000, 3200,
 )
 
-# Cap on how far we may jump on a single batch transition. Without a cap a
-# 6-loss streak would try to jump 32 steps; with the Maia grid that's
-# meaningless and with chess.com it overshoots wildly.
-MAX_STEP = 4
-
 OpponentPool = Literal["maia", "chesscom"]
 Result = Literal["win", "loss", "draw"]
 
@@ -132,15 +127,21 @@ def update_streak(streak: int, result: Result) -> int:
 def step_from_streak(streak: int) -> int:
     """How many pool-grid notches to move based on the current streak.
 
-    Doubling: |streak|=1 → 1 notch, 2 → 2, 3 → 4, 4 → 8 (capped at MAX_STEP).
-    Sign of the result matches the sign of the streak (positive = up).
-    A zero streak (only after a streak-resetting draw) returns 0 — the
-    caller treats that as "stay at the same opponent."
+    Always one notch in the direction of the streak. Replaces the
+    previous doubling policy (1, 2, 4, capped at 4) which was too
+    aggressive at the bottom of the chess.com pool, where notches are
+    150 ELO apart — a streak of 2 wins jumped from chesscom-700 past
+    chesscom-850 straight to chesscom-1000, a 300-point gap from an
+    agent rated ~700. The doubling was useful for the original 1200→300
+    descent during initial calibration but is wrong for steady-state
+    matchmaking around the agent's actual rating.
+
+    Zero streak (only after a streak-resetting draw) returns 0 — caller
+    treats that as "stay at the same opponent."
     """
     if streak == 0:
         return 0
-    magnitude = min(2 ** (abs(streak) - 1), MAX_STEP)
-    return magnitude if streak > 0 else -magnitude
+    return 1 if streak > 0 else -1
 
 
 # ── Opponent selection ──────────────────────────────────────────────────────
