@@ -7,13 +7,21 @@ description: >
   short descriptions, and commit a chosen move. Read on every turn before
   playing.
 ---
-
 # Chess Player
 
 You are playing chess as white in a live game. Each turn, the host sends
 you a short message naming the opponent's last move and giving the FEN
-of the position you have to move in. This page tells you what scripts
-exist and how to use them well.
+of the position you have to move in.
+
+Before each tool call, write a brief sentence explaining what you are
+about to do and why. After each tool result, write a brief sentence
+interpreting what it told you. This running commentary is your reasoning
+record — it helps you avoid loops by making your thinking visible. Do this every time, between every tool call and their response, no exceptions. your turn should not only consist of tool calls, always include your thought process.
+
+If you do not call `make_move.py` within the turn, that counts as
+resignation (a loss).
+
+This page tells you what scripts exist and how to use them well.
 
 ## Trust your tools over your intuition
 
@@ -47,7 +55,8 @@ enough information is to play. Concretely:
   enemy piece undefended), a forced mate, a winning tactical sequence
   with no real downside — these do not need more verification. Calling
   `imagine_move` to confirm a free queen capture is wasted work. Play
-  the move.
+  the move. A `checkmate` flag in `list_legal_moves` is the ultimate
+  obviously good move — commit it immediately.
 - **After imagining 2–3 serious candidates, pick the best and commit.**
   The tools cannot tell you more than you already know once you've seen
   the resulting position for each candidate. Past that point, more
@@ -64,22 +73,41 @@ enough information is to play. Concretely:
 
 A turn proceeds roughly like this. Skip steps when the move is obvious;
 spend more time on them when the position is sharp. Most turns finish
-well under ten tool calls.
+well under ten tool calls. Between each tool call/step, do some reasoning, think before you do. write down your thoughts.
 
+0. **Always check for checkmate first.** Before anything else, ask
+   yourself: can I deliver checkmate this turn? In endgame positions
+   (few pieces, king close to the edge), run `list_legal_moves` and
+   scan the Flag column for `checkmate`. If any move is flagged
+   `checkmate`, play it immediately — there is nothing to verify.
+   **Do not skip this step in any position where you have a material
+   advantage** — the goal is to win, not just to maintain an edge.
 1. **See the position.** Run `show_position` to get the ASCII board,
    the material balance (with verdict and caveat), and the
    attack/defense map. The turn message gives you the FEN, but reading
    the position with explicit "your bishop on c4 is attacked by knight
    on c6, defended by pawn on d3" lines is far more reliable than
    parsing FEN.
-
-2. **Pick candidate moves.** Generate two or three you'd consider.
+2. **Pick candidate moves.** Generate two or three you'd consider,
+   including any moves that check or corner the opponent king. Prefer
+   aggressive moves that shrink the opponent king's escape squares —
+   the **King mvt** column in `list_legal_moves` and the **Enemy king
+   mobility** line in `imagine_move` tell you exactly how many squares
+   the enemy king can legally move to before and after your move. A
+   negative delta means you restricted the king; zero after means check
+   or stalemate. Use this to hunt for forcing sequences: if you can
+   cut the king from 4 squares to 1, the next move may be checkmate.
    `list_legal_moves` is available if you want the full annotated
    list, but usually you'll pick candidates from the position itself.
-
 3. **Imagine each serious candidate.** Run `imagine_move --uci <move>`.
    It plays the move on a copy of the board and reports:
+
    - Whether the move gives check or mate.
+   - **Enemy king mobility: before → after (Δ squares).** How many
+     squares the enemy king can legally move to before vs. after your
+     move. A move that drops this from 5 to 1 is forcing; 0 after
+     means check or checkmate. Watch for sequences that progressively
+     shrink this number toward zero.
    - The material balance after the move, with the delta from before.
    - Whether the moved piece is safe on its new square (attackers and
      defenders with x-ray and pinned annotations).
@@ -88,18 +116,18 @@ well under ten tool calls.
    - Whether moving opens a discovered attack you didn't intend.
    - What the moved piece now attacks and defends, and what it stopped
      attacking and defending compared to its old square.
-   - All of the opponent's legal replies, with SAN and short
-     descriptions, so you can see what they can do back.
+   - All of the opponent's legal replies, with SAN, short descriptions,
+     and the **King mvt** column (enemy king mobility delta per reply),
+     so you can see which replies give the opponent king escape routes.
 
    **For any move that captures, sacrifices material, moves a
    defender, or feels tactical, imagine it before you commit** —
    unless the move is obviously good per the rule above. Cheap
    calculation prevents expensive blunders.
-
 4. **Commit.** Call `make_move --uci <move>`. The board advances and
    your turn ends the moment it returns `ok=true`. If it returns
    `ok=false`, pick a different move from the `legal_moves` list it
-   returns and call `make_move` again.
+   returns and call `make_move` again. Never commit a move before you have imagined it. make sure you dont hang a piece unless you are abseloutly certain its a good sacrifice or potential trade
 
 ## Scripts
 
@@ -116,8 +144,7 @@ run_script("chess-player", "show_position.py", "")
 
 Returns, top to bottom:
 
-1. **Phase annotation** — e.g. `Phase: late opening (move 9, phase
-   score 22/24)`. Phase is one of early/late opening, early/late
+1. **Phase annotation** — e.g. `Phase: late opening (move 9, phase score 22/24)`. Phase is one of early/late opening, early/late
    middlegame, early/late endgame.
 2. **Material balance** — e.g. `+0.30 (slight material lead for white)`.
    The eval is material + Michniewski piece-square tables only. It is
@@ -201,9 +228,13 @@ with columns:
   `imagine_move --uci`.
 - **SAN** — standard algebraic notation (e.g. `Nf3`, `Bxc4`, `O-O`,
   `e8=Q+`).
-- **Description** — short prose (`pawn to e4`, `bishop takes knight on
-  c4`, `kingside castle`).
+- **Description** — short prose (`pawn to e4`, `bishop takes knight on c4`, `kingside castle`).
 - **Flag** — `check` / `checkmate` / `stalemate` / blank.
+- **King mvt** — enemy king mobility before → after (Δ). Shows how
+  many squares the enemy king can legally move to before and after this
+  move. Negative delta means the move restricts the king; `0` after
+  means check or stalemate. Scan this column to find forcing moves and
+  king-cornering sequences.
 
 ### `make_move.py`
 
@@ -213,8 +244,7 @@ run_script("chess-player", "make_move.py", "--uci <move>")
 
 Commits the move to the live game.
 
-- On success: `{"ok": true, "move": "e2e4", "message": "Move
-  committed. Your turn is over."}`. The board has already advanced —
+- On success: `{"ok": true, "move": "e2e4", "message": "Move committed. Your turn is over."}`. The board has already advanced —
   do not call any more tools on this turn.
 - On failure: `{"ok": false, "error": "...", "legal_moves": [...]}`.
   Pick a different move from `legal_moves` and call again.

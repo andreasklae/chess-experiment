@@ -233,7 +233,12 @@ def test_annotate_move_quiet(ev):
     board = chess.Board()
     move = chess.Move.from_uci("e2e4")
     a = ev.annotate_move(board, move)
-    assert a == {"uci": "e2e4", "san": "e4", "description": "pawn to e4", "flag": ""}
+    assert a["uci"] == "e2e4"
+    assert a["san"] == "e4"
+    assert a["description"] == "pawn to e4"
+    assert a["flag"] == ""
+    assert "king_before" in a
+    assert "king_after" in a
 
 
 def test_annotate_move_capture(ev):

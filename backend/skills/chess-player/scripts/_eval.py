@@ -576,6 +576,22 @@ def apply_line(board: chess.Board, ucis: list[str]) -> tuple[chess.Board, list[s
     return work, san_moves
 
 
+def enemy_king_mobility(board: chess.Board) -> int:
+    """Count how many squares the enemy king (opponent of board.turn) can legally
+    move to. Generates moves from a copy with the turn flipped so we see the
+    enemy's legal king moves from this position. Returns 0 if no king found."""
+    enemy_color = not board.turn
+    if not board.pieces(chess.KING, enemy_color):
+        return 0
+    flipped = board.copy()
+    flipped.turn = enemy_color
+    return sum(
+        1 for m in flipped.legal_moves
+        if flipped.piece_at(m.from_square) is not None
+        and flipped.piece_at(m.from_square).piece_type == chess.KING
+    )
+
+
 def annotate_move(board: chess.Board, move: chess.Move) -> dict:
     """Return a small annotation dict for `move` on `board`:
       - 'uci': the UCI string.
@@ -583,6 +599,8 @@ def annotate_move(board: chess.Board, move: chess.Move) -> dict:
       - 'description': short prose ('knight to f3', 'bishop takes pawn on c4',
         'kingside castle', 'pawn promotes to queen').
       - 'flag': 'check' / 'checkmate' / 'stalemate' / '' (empty when none).
+      - 'king_before': enemy king legal squares before the move.
+      - 'king_after': enemy king legal squares after the move.
 
     The move must be legal in `board`. Used by list_legal_moves and by
     imagine_move's opponent-replies block to give the agent a scannable
@@ -610,7 +628,8 @@ def annotate_move(board: chess.Board, move: chess.Move) -> dict:
         if move.promotion is not None:
             desc += f", promotes to {PIECE_NAMES[move.promotion]}"
 
-    # Flag — apply the move and inspect the resulting board.
+    # Flag + king mobility — apply the move and inspect the resulting board.
+    king_before = enemy_king_mobility(board)
     work = board.copy()
     work.push(move)
     if work.is_checkmate():
@@ -621,23 +640,47 @@ def annotate_move(board: chess.Board, move: chess.Move) -> dict:
         flag = "check"
     else:
         flag = ""
+    # After the move it's the enemy's turn, so work.legal_moves is already
+    # their move set. Count only king moves.
+    king_after = sum(
+        1 for m in work.legal_moves
+        if work.piece_at(m.from_square) is not None
+        and work.piece_at(m.from_square).piece_type == chess.KING
+    )
 
-    return {"uci": move.uci(), "san": san, "description": desc, "flag": flag}
+    return {
+        "uci": move.uci(),
+        "san": san,
+        "description": desc,
+        "flag": flag,
+        "king_before": king_before,
+        "king_after": king_after,
+    }
 
 
 def render_moves_table(board: chess.Board, moves: list[chess.Move]) -> str:
     """Render a list of legal moves as a markdown table with columns
-    `UCI | SAN | Description | Flag`. Sorted by UCI for stable ordering."""
+    `UCI | SAN | Description | Flag | King mvt`. Sorted by UCI for stable ordering.
+
+    The 'King mvt' column shows enemy king legal squares before → after (Δ delta),
+    e.g. '6→3 (−3)'. A negative delta means the move restricts the enemy king;
+    moves that reduce king mobility to 0 typically give check or checkmate."""
     annotated = [annotate_move(board, m) for m in moves]
     annotated.sort(key=lambda a: a["uci"])
     if not annotated:
         return "_(no legal moves)_"
     rows = [
-        "| UCI    | SAN    | Description                                | Flag       |",
-        "|--------|--------|--------------------------------------------|------------|",
+        "| UCI    | SAN    | Description                                | Flag       | King mvt   |",
+        "|--------|--------|--------------------------------------------|------------|------------|",
     ]
     for a in annotated:
-        rows.append(f"| {a['uci']:<6} | {a['san']:<6} | {a['description']:<42} | {a['flag']:<10} |")
+        kb, ka = a["king_before"], a["king_after"]
+        delta = ka - kb
+        sign = "−" if delta < 0 else ("+" if delta > 0 else "")
+        king_str = f"{kb}→{ka} ({sign}{abs(delta)})"
+        rows.append(
+            f"| {a['uci']:<6} | {a['san']:<6} | {a['description']:<42} | {a['flag']:<10} | {king_str:<10} |"
+        )
     return "\n".join(rows)
 
 

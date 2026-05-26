@@ -69,19 +69,10 @@ _DISABLED_TOOLS = [
 ]
 
 _SYSTEM_PROMPT_EXTRA = (
-    "You are playing chess as white in a live game.\n\n"
-    "The chess-player skill documents the scripts available to you and how "
-    "to use them well. Call use_skill at the start of every turn to load it, "
-    "then follow its guidance.\n\n"
-    "make_move.py COMMITS the move immediately — the board advances and your "
-    "turn ends the moment it returns ok=true. Do not continue calling tools "
-    "after that. If it returns ok=false, choose a different move from the "
-    "legal_moves list in the error response and call make_move.py again.\n\n"
-    "Take the time you need to think, but avoid loops. If you find yourself "
-    "calling the same tool repeatedly on the same position, or oscillating "
-    "between candidates without converging, commit the move you currently "
-    "believe is best rather than continuing to deliberate.\n\n"
-    "If you do not call make_move.py within the turn, that counts as resignation (a loss)."
+    "You are playing chess as white. "
+    "Your FIRST action every turn must be to call use_skill('chess-player') — "
+    "it contains the scripts and all instructions for how to play. "
+    "Do not call run_script before you have called use_skill."
 )
 
 

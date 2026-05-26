@@ -40,6 +40,7 @@ from _eval import (  # noqa: E402
     classify_illegal_move,
     color_name,
     describe_piece,
+    enemy_king_mobility,
     render_eval_delta_line,
     render_moves_table,
 )
@@ -214,20 +215,25 @@ def _moved_piece_hanging_warning(
     Skipped when:
     - The piece is a king (illegal king-into-check is rejected by python-chess
       before we ever get here).
-    - The opponent is in check — they must address the check first and may
-      not be able to capture. This covers the common pattern where a checking
-      move looks geometrically hanging but is actually safe.
+    - The opponent is in check AND none of their legal replies captures the
+      moved piece. (If the king itself can take it, the piece is still hanging.)
     - There are no opponent attackers, or defenders >= attackers.
     """
     moved_piece = board_after.piece_at(move.to_square)
     if moved_piece is None or moved_piece.piece_type == chess.KING:
         return None
-    if board_after.is_check():
-        return None
     attackers = [sq for sq, is_xray in attacker_chain if not is_xray]
     defenders = [sq for sq, is_xray in defender_chain if not is_xray]
     if not attackers or len(defenders) >= len(attackers):
         return None
+    # When in check, only warn if at least one legal reply actually captures
+    # the hanging piece (e.g. king takes the checking rook).
+    if board_after.is_check():
+        can_capture = any(
+            m.to_square == move.to_square for m in board_after.legal_moves
+        )
+        if not can_capture:
+            return None
     atk_str = ", ".join(describe_piece(board_after, s) for s in attackers)
     def_str = ", ".join(describe_piece(board_after, s) for s in defenders) if defenders else "nothing"
     return (
@@ -273,10 +279,24 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
         board_after, move, attacker_chain, defender_chain
     )
 
+    king_before = enemy_king_mobility(board_before)
+    king_after = sum(
+        1 for m in board_after.legal_moves
+        if board_after.piece_at(m.from_square) is not None
+        and board_after.piece_at(m.from_square).piece_type == chess.KING
+    )
+    king_delta = king_after - king_before
+    king_sign = "−" if king_delta < 0 else ("+" if king_delta > 0 else "")
+    king_mobility_line = (
+        f"**Enemy king mobility:** {king_before} → {king_after} "
+        f"({king_sign}{abs(king_delta)} squares)"
+    )
+
     out: list[str] = []
     out.append(f"## Move: {_move_summary(board_before, move)}")
     out.append("")
     out.append(f"**Check:** {check_text}")
+    out.append(king_mobility_line)
     out.append("")
     if hanging_warning:
         out.append(hanging_warning)

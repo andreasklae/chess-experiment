@@ -1,0 +1,31 @@
+{
+  "game_id": "a77de63f4f704c4fbacefebaf1435667",
+  "model": "google/gemma-4-31B-it",
+  "turns": [
+    {
+      "move_number": 1,
+      "prompt": "Game start.\n\nCurrent position (FEN):\nrnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "events": [
+        {
+          "type": "prompt",
+          "content": "Game start.\n\nCurrent position (FEN):\nrnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+        },
+        {
+          "type": "tool_call",
+          "tool": "use_skill",
+          "args": {
+            "skill_name": "chess-player"
+          }
+        }
+      ],
+      "move_chosen": null,
+      "evals": {
+        "stockfish_cp_before": null,
+        "stockfish_cp_after": null,
+        "static_cp_before": null,
+        "static_cp_after": null,
+        "move_time_ms": null
+      }
+    }
+  ]
+}

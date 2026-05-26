@@ -160,12 +160,34 @@ function applyEvent(
   if (type === 'text_delta') {
     const raw = event.content as string;
     if (!raw) return next;
+    // Accumulate into a streaming reasoning entry. The backend strips Gemma
+    // channel markers before emitting `thinking` events, but `text_delta`
+    // events carry raw tokens (including marker-only sequences). We strip at
+    // render time via stripGemmaChannelMarkers; don't push empty-marker-only
+    // deltas as new entries — just let them accumulate silently.
     const targetKind: 'reasoning' | 'post-move' = refs.moveCommitted.current ? 'post-move' : 'reasoning';
     const last = next[next.length - 1];
     if ((last?.kind === targetKind) && !last.complete) {
       next[next.length - 1] = { ...last, content: last.content + raw };
     } else {
       next.push({ kind: targetKind, content: raw, complete: false });
+    }
+    return next;
+  }
+
+  if (type === 'thinking') {
+    // Backend-accumulated and marker-stripped reasoning block. Emitted once per
+    // logical reasoning segment (after stripping Gemma's channel markers); if
+    // content is empty after stripping, the backend suppresses the event.
+    const content = event.content as string;
+    if (!content) return next;
+    const targetKind: 'reasoning' | 'post-move' = refs.moveCommitted.current ? 'post-move' : 'reasoning';
+    const last = next[next.length - 1];
+    if ((last?.kind === targetKind) && !last.complete) {
+      // Merge into existing incomplete reasoning entry.
+      next[next.length - 1] = { ...last, content: last.content + content, complete: true };
+    } else {
+      next.push({ kind: targetKind, content, complete: true });
     }
     return next;
   }
@@ -213,11 +235,14 @@ function applyEvent(
 function StreamingMarkdown({ content, complete, label, className }: {
   content: string; complete: boolean; label: string; className: string;
 }) {
+  const stripped = stripGemmaChannelMarkers(content);
+  // Don't render marker-only entries that strip to nothing.
+  if (!stripped.trim() && complete) return null;
   return (
     <div className={`agent-entry ${className}${complete ? ' complete' : ' streaming'}`}>
       <span className="entry-label">{label}</span>
       <div className="entry-text markdown-body">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{stripGemmaChannelMarkers(content)}</ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{stripped}</ReactMarkdown>
         {!complete && <span className="cursor" aria-hidden="true" />}
       </div>
     </div>
