@@ -660,17 +660,24 @@ class GameService:
                 return
 
             async with game.lock:
-                if game.is_over() or game.player_to_move().is_human:
-                    self._logging.close_agent_turn(game.game_id, None)
-                    return
-                # Agent scripts may commit the move directly via /agent-move,
-                # advancing the board before we reach here. If the move count
-                # already reflects the committed move, skip _push_move to avoid
-                # applying it a second time.
+                # The agent may have already committed the move via the
+                # /agent-move HTTP endpoint while ``get_move`` was awaiting.
+                # If that move ended the game (mate, stalemate, draw), the
+                # board now reflects it but the game-over branch at the top
+                # of the loop hasn't run yet. Close this agent turn with the
+                # committed move (so the per-move evals attach to the right
+                # turn) and loop back; the next iteration's ``is_over`` check
+                # will fire ``_record_game_end`` and the batch handler.
                 already_applied = len(game.uci_moves) >= move_number
                 if already_applied:
                     logger.info("move · %s already applied by agent script, skipping push",
                                 game.game_id[:8])
+                elif game.is_over() or game.player_to_move().is_human:
+                    # Game finished while the agent was thinking (e.g. opponent
+                    # resigned through a side channel) or control switched to a
+                    # human player. Close the turn without recording the move.
+                    self._logging.close_agent_turn(game.game_id, None)
+                    return
                 else:
                     logger.info("move · %s %s (%s) move=%s",
                                 game.game_id[:8],
