@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 import os
+import sys
+import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -21,12 +23,56 @@ from app.logging_service import LoggingService
 from app.persistence import (
     delete_game_file,
     ensure_dir,
+    existing_subfolder,
     list_game_files,
     load_game_file,
     save_game,
 )
 from app.players import AgentResignedError, Player, PlayerError, PlayerFactory
 from app.schemas import CreateGameRequest, GameState, GameSummary, PlayerConfig
+
+
+# Per-move Stockfish probe: shallow + time-capped so it doesn't slow games
+# meaningfully. The UX-facing advantage needle uses the configured depth
+# unchanged; this is a separate, log-only call.
+_PER_MOVE_STOCKFISH_TIME_MS = 200
+
+# Path to the chess-player skill's _eval.py — we import its `evaluate` for
+# the static per-move eval. We do this lazily because the skill directory
+# is technically optional (a backend without the skill should still serve
+# games); when missing, static_cp_before/after will be None.
+_EVAL_HELPERS_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "skills"
+    / "chess-player"
+    / "scripts"
+    / "_eval.py"
+)
+_static_eval_fn: Callable[[chess.Board], dict] | None = None
+
+
+def _static_eval_cp(board: chess.Board) -> int | None:
+    """Return the chess-player skill's material+PST eval as centipawns,
+    white-positive. Returns None if the helper isn't available."""
+    global _static_eval_fn
+    if _static_eval_fn is None:
+        if not _EVAL_HELPERS_PATH.exists():
+            return None
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("_eval", _EVAL_HELPERS_PATH)
+        if spec is None or spec.loader is None:
+            return None
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["_eval"] = module
+        spec.loader.exec_module(module)
+        _static_eval_fn = module.evaluate
+    try:
+        result = _static_eval_fn(board)
+        return int(result["score"])
+    except Exception:
+        logger.exception("static eval failed")
+        return None
 
 
 def color_name(color: chess.Color) -> str:
@@ -71,6 +117,11 @@ class Game:
     # is declared a draw (1/2-1/2) regardless of position. Prevents infinite
     # endgames where neither bot can deliver mate. Default 150 = 75 full moves.
     max_half_moves: int = 150
+    # Subfolder under ``games_dir`` where this game's JSON lives. Resolved
+    # once at game creation by ``folder_resolver.resolve_target_folder`` so
+    # every write during the game lands in the same place even if git state
+    # changes mid-play. Empty for legacy code paths and tests.
+    subfolder: str = ""
 
     def player_to_move(self) -> Player:
         return self.white_player if self.board.turn == chess.WHITE else self.black_player
@@ -222,6 +273,8 @@ class GameService:
             self._player_factory.validate_config(request.black)
             created_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             game_id = uuid.uuid4().hex
+            from app.folder_resolver import resolve_target_folder
+            subfolder = resolve_target_folder().folder
             game = Game(
                 game_id=game_id,
                 board=chess.Board(),
@@ -238,6 +291,7 @@ class GameService:
                     event_sink=lambda evt, gid=game_id: self._on_agent_event(gid, evt),
                 ),
                 created_at=created_at,
+                subfolder=subfolder,
             )
         except PlayerError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -301,6 +355,7 @@ class GameService:
             created_at=data["created_at"],
             uci_moves=list(data["uci_moves"]),
             san_moves=list(data["san_moves"]),
+            subfolder=existing_subfolder(self._games_dir, data["game_id"]),
         )
         self._game = game
         asyncio.create_task(self._update_eval(game))
@@ -394,6 +449,11 @@ class GameService:
         if game is not None and game.game_id == game_id:
             game.subscribers.discard(queue)
 
+    def get_past_agent_events(self, game_id: str) -> list[dict]:
+        """Return all events from completed turns for this game. Used to replay
+        history when a new SSE subscriber connects mid-game."""
+        return self._logging.get_past_agent_events(game_id)
+
     async def subscribe_agent_events(self, game_id: str) -> asyncio.Queue[str]:
         game = self._get_game(game_id)
         queue: asyncio.Queue[str] = asyncio.Queue(maxsize=200)
@@ -435,6 +495,50 @@ class GameService:
 
         self._schedule_bot_turns(game)
         return game.state()
+
+    async def _record_per_move_evals(
+        self,
+        game_id: str,
+        *,
+        board_after: chess.Board,
+        static_cp_before: int | None,
+        stockfish_before_task: asyncio.Task | None,
+        move_time_ms: int,
+    ) -> None:
+        """Capture Stockfish + static eval before/after for one agent move.
+
+        The "before" Stockfish task was kicked off in parallel with the agent's
+        thinking so its wall-clock cost is hidden behind the model. The "after"
+        evaluation is sequential — short (~200ms) and runs only after the move
+        has applied. Exceptions are logged and treated as None values rather
+        than aborting the turn."""
+        static_cp_after = _static_eval_cp(board_after)
+        stockfish_cp_before: int | None = None
+        stockfish_cp_after: int | None = None
+
+        if stockfish_before_task is not None:
+            try:
+                stockfish_cp_before = (await stockfish_before_task).get("cp")
+            except Exception:
+                logger.exception("stockfish before-eval failed")
+
+        if self._eval is not None:
+            try:
+                after_eval = await self._eval.evaluate(
+                    board_after, time_limit_ms=_PER_MOVE_STOCKFISH_TIME_MS
+                )
+                stockfish_cp_after = after_eval.get("cp")
+            except Exception:
+                logger.exception("stockfish after-eval failed")
+
+        self._logging.record_move_evals(
+            game_id,
+            stockfish_cp_before=stockfish_cp_before,
+            stockfish_cp_after=stockfish_cp_after,
+            static_cp_before=static_cp_before,
+            static_cp_after=static_cp_after,
+            move_time_ms=move_time_ms,
+        )
 
     async def _update_eval(self, game: Game) -> None:
         """Compute a fresh stockfish evaluation and publish the new state."""
@@ -509,6 +613,21 @@ class GameService:
                 )
                 self._logging.start_agent_turn(game.game_id, move_number, prompt)
 
+            # Per-move eval telemetry: capture the static "before" eval now
+            # (cheap, can't fail). Stockfish "before" is captured below in
+            # parallel with the agent's thinking so we don't add wall-clock
+            # latency to the turn. For non-agent players these stay None.
+            board_before = board
+            static_cp_before: int | None = None
+            stockfish_eval_before_task: asyncio.Task | None = None
+            move_start = time.monotonic()
+            if not player.is_human:
+                static_cp_before = _static_eval_cp(board_before)
+                if self._eval is not None:
+                    stockfish_eval_before_task = asyncio.create_task(
+                        self._eval.evaluate(board_before, time_limit_ms=_PER_MOVE_STOCKFISH_TIME_MS)
+                    )
+
             try:
                 move = await player.get_move(board, last_san=last_san)
             except AgentResignedError as exc:
@@ -559,17 +678,37 @@ class GameService:
                                 type(player).__name__,
                                 move.uci())
                     self._push_move(game, move)
+                move_time_ms = int((time.monotonic() - move_start) * 1000)
+                board_after = game.board.copy(stack=False)
                 # Kick off an evaluation in the background; don't block the loop.
                 asyncio.create_task(self._update_eval(game))
                 await self._publish(game)
 
             self._logging.close_agent_turn(game.game_id, move.uci())
 
+            # Per-move eval logging — runs after close_agent_turn so the turn
+            # entry exists for record_move_evals to attach to. No-op for human
+            # players (no turn to attach to).
+            if not player.is_human:
+                await self._record_per_move_evals(
+                    game.game_id,
+                    board_after=board_after,
+                    static_cp_before=static_cp_before,
+                    stockfish_before_task=stockfish_eval_before_task,
+                    move_time_ms=move_time_ms,
+                )
+
     def _push_uci_move(self, game: Game, move_uci: str) -> None:
         try:
             move = chess.Move.from_uci(move_uci)
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail="Move must be valid UCI notation.") from exc
+        except ValueError:
+            try:
+                move = game.board.parse_san(move_uci)
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid move '{move_uci}': not valid UCI (e.g. e2e4) or SAN (e.g. Nf3).",
+                ) from exc
         # chess.com's driver auto-queens (autoPromote=true). If the opponent is
         # chess.com and the agent picked an underpromotion, force it to queen
         # so host and browser stay in sync.
@@ -600,6 +739,13 @@ class GameService:
             status="finished" if result else "active",
             result=result,
             created_at=game.created_at,
+            # Agent ELO snapshot for this game. These are populated by the
+            # batch runner ([before] at game start; [after] when the game
+            # finishes and ELO settles). Older games where the agent was
+            # never given an ELO will omit the field entirely.
+            agent_elo_before=getattr(game, "agent_elo_before", "") or None,
+            agent_elo_after=getattr(game, "agent_elo_after", "") or None,
+            subfolder=game.subfolder,
         )
 
     def _record_game_end(self, game: Game) -> None:

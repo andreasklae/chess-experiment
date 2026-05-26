@@ -1,9 +1,38 @@
-"""AgentPlayer: skillful-agent backed chess player for the white side."""
+"""AgentPlayer: skillful-agent backed chess player for the white side.
+
+A turn proceeds as a sequence of ``run_stream`` calls (attempts). On the very
+first turn of a game the conversation is empty. On subsequent turns, the
+conversation carries the agent's own reasoning from the previous turn as the
+sole prior context ("turn memory").
+
+Turn memory is agent-authored: ``make_move.py`` requires a ``--reasoning``
+argument. The agent writes whatever it wants there — intent, rejected
+candidates, threats to watch, ongoing plans. On success the script echoes the
+reasoning back in the response JSON; the harness stores it in ``_pending_summary``
+without any further LLM processing.
+
+Injection is done via a pydantic-ai ``HistoryProcessor`` registered on the game
+agent at construction time. The processor reads from ``_pending_summary``: if a
+note is waiting, it replaces the incoming message history with a minimal
+two-message exchange (prior-turn prompt → agent's reasoning) and clears the
+slot. This fires before every ``run_stream_events`` call — including retries
+within a turn — so failed attempts see the correct prior-turn context with no
+manual reset needed.
+
+``clear_conversation()`` is only called between games, not between turns.
+
+See ``decisions/2026-05-24-per-turn-fresh-context.md`` for the original
+per-turn fresh-context baseline, ``2026-05-25-agent-resigns-when-stuck.md``
+for the resignation policy, ``2026-05-26-stabilization.md`` for the
+budget-warning mechanism, and ``2026-05-26-agent-turn-memory.md`` for the
+agent-authored turn memory decision.
+"""
 
 from __future__ import annotations
 
 import json
 import os
+import re
 from collections.abc import Callable
 from typing import Any
 
@@ -13,42 +42,94 @@ from dotenv import load_dotenv
 from app.config import BACKEND_DIR, SKILLFUL_AGENT_ENV
 from app.players import AgentResignedError, Player, PlayerError
 
-try:
-    from skill_agent import AgentContextOverflowError
-except ImportError:
-    # Older skillful-agent versions don't expose the typed overflow exception.
-    # Use a never-matched sentinel so provider 400s bubble up as plain Exceptions.
-    class AgentContextOverflowError(Exception):  # type: ignore[no-redef]
-        requested_input_tokens: int | None = None
-        model_context_limit: int | None = None
-
 SKILLS_DIR = BACKEND_DIR / "skills"
 API_BASE = os.getenv("CHESS_API_BASE", "http://localhost:8000")
 
-# Load credentials from skillful-agent's .env (only if not already in environment)
+# Load credentials from skillful-agent's .env (only if not already in environment).
 load_dotenv(SKILLFUL_AGENT_ENV, override=False)
 
+
+# ── Tuning knobs ─────────────────────────────────────────────────────────
+
 # Max attempts per chess turn. Each attempt is a fresh run_stream with cleared
-# conversation. Retries handle the case where the model finishes a run without
-# calling make_move.py (observed with Gemma 4 after illegal-move recovery).
-_MAX_ATTEMPTS = 3
+# conversation. With manage_todos disabled and the budget warning between
+# attempts in place, retries are rare; 10 leaves comfortable margin before the
+# resignation path triggers.
+_MAX_ATTEMPTS = 10
+
+# Fraction of an attempt's tool budget (max_turns) at which we emit a UI
+# budget warning AND prepend a "commit now" reminder to the NEXT attempt's
+# prompt. Mid-stream injection into a live pydantic-ai run isn't possible, so
+# the warning's mechanical effect on the model lands between attempts.
+_BUDGET_WARN_FRACTION = 0.7
+
+# Built-in SDK tools the chess agent doesn't need. Narrowing the surface is
+# the single biggest factor in keeping turns from looping — manage_todos
+# alone accounted for roughly half of a 169-tool-call runaway turn during
+# stabilization testing. Only ``use_skill`` and ``run_script`` remain.
+_DISABLED_TOOLS = [
+    "manage_todos",          # no plan/todo workflow needed for chess
+    "register_skill",
+    "scaffold_skill",
+    "write_skill_file",
+    "read_reference",        # chess-player has no references/ dir
+    "call_client_function",
+    "compress_message",      # compaction is harness-driven, not agent-driven
+    "retrieve_message",
+    "compress_all",
+    "read_thread",           # no inter-agent threads
+    "reply_to_thread",
+    "archive_thread",
+    "spawn_agent",
+]
+
+_SYSTEM_PROMPT_EXTRA = (
+    "You are playing chess as white. "
+    "Your FIRST action every turn must be to call use_skill('chess-player') — "
+    "it contains the scripts and all instructions for how to play. "
+    "Do not call run_script before you have called use_skill."
+)
 
 
-def _build_agent(game_id: str):
-    """Create a skillful-agent Agent. Chess tools live in the skill's scripts/.
+# ── Gemma 4 thought-channel marker stripping ─────────────────────────────
+#
+# Gemma 4 wraps its chain-of-thought in ``<|channel>thought ... <channel|>``
+# markers. The tokens arrive split across multiple streaming deltas (e.g.
+# ``<|channel>``, ``thought``, ``\n``, ``<channel|>``) so per-delta stripping
+# never matches. We accumulate raw deltas in a buffer and strip on the full
+# string at flush time, before emitting the consolidated ``thinking`` event.
 
-    CHESS_GAME_ID and CHESS_API_BASE are injected into the environment so scripts
-    can read them without the agent having to pass them as CLI arguments.
+_GEMMA_OPEN_RE = re.compile(r"<\|channel\|?>thought\s*", re.IGNORECASE)
+_GEMMA_CLOSE_RE = re.compile(r"<channel\|?>\s*")
 
-    Backend selection (matches skillful-agent's server/app.py priority):
-      1. SKILL_AGENT_EX3_BASE_URL set → local vLLM on eX3 via OpenAIProvider(base_url=...)
-      2. SKILL_AGENT_AZURE_ENDPOINT set → Azure OpenAI
-      3. Otherwise → OpenAI public API (requires OPENAI_API_KEY)
+
+def _strip_gemma_channel_markers(text: str) -> str:
+    """Remove Gemma's ``<|channel>thought ... <channel|>`` framing tokens.
+
+    Idempotent — safe to call on already-clean text."""
+    return _GEMMA_CLOSE_RE.sub("", _GEMMA_OPEN_RE.sub("", text))
+
+
+# ── Agent build ──────────────────────────────────────────────────────────
+
+def _build_agent(game_id: str, history_processor=None):
+    """Create a skillful-agent Agent for one chess game.
+
+    ``CHESS_GAME_ID`` and ``CHESS_API_BASE`` are injected into the environment
+    so skill scripts can read live state without taking CLI arguments.
+
+    ``history_processor`` is an optional pydantic-ai HistoryProcessor callable
+    registered on the agent to inject the prior-turn summary before every
+    model request.
+
+    Backend selection (matches skillful-agent's server priority):
+      1. ``SKILL_AGENT_EX3_BASE_URL`` set → local vLLM on eX3 via OpenAIProvider.
+      2. ``SKILL_AGENT_AZURE_ENDPOINT`` set → Azure OpenAI.
+      3. Otherwise → OpenAI public API (requires ``OPENAI_API_KEY``).
     """
     from pydantic_ai.models.openai import OpenAIChatModel
     from skill_agent import Agent, AgentConfig
 
-    # Inject game context for scripts — they read these instead of accepting CLI args
     os.environ["CHESS_GAME_ID"] = game_id
     os.environ["CHESS_API_BASE"] = API_BASE
 
@@ -72,68 +153,127 @@ def _build_agent(game_id: str):
         provider = OpenAIProvider(api_key=os.environ["OPENAI_API_KEY"])
         model_name = os.getenv("SKILL_AGENT_OPENAI_MODEL", "gpt-4o-mini")
 
-    model = OpenAIChatModel(model_name, provider=provider)
     cfg = AgentConfig(
-        system_prompt_extra=(
-            "You are a chess engine playing white.\n\n"
-            "On each turn:\n"
-            "  1. Call `use_skill` with skill_name='chess-player'.\n"
-            "  2. Call `run_script` to invoke list_legal_moves.py.\n"
-            "  3. Write 2–4 short sentences of reasoning. No more.\n"
-            "  4. Call `run_script` to invoke make_move.py with your chosen move.\n\n"
-            "make_move.py COMMITS the move immediately — the board advances and your "
-            "turn ends the moment it returns ok=true. Do not continue after that. "
-            "If it returns ok=false, choose a different move from the legal_moves list "
-            "in the error response and call make_move.py again.\n\n"
-            "If you do not call make_move.py within the turn, that counts as resignation (a loss)."
-        ),
-        # Per-request output cap (provider truncates at this limit). 1024 fits
-        # ~750 words of reasoning + a tool call — comfortably more than the
-        # 2–4 sentences the prompt asks for. Prevents runaway single responses.
-        max_tokens=1024,
-        # Per-run request cap. Typical successful turn uses 3–4 requests
-        # (use_skill + list_legal_moves + reason+make_move). 10 leaves headroom
-        # for one or two illegal-move retries inside a single run_stream before
-        # the harness-level retry kicks in.
-        max_turns=10,
+        disabled_tools=_DISABLED_TOOLS,
+        disable_native_skills=True,           # skip web-search-free etc.
+        system_prompt_extra=_SYSTEM_PROMPT_EXTRA,
+        # Per-response output cap. Reasoning text + one tool call. 2048 gives
+        # the model enough room to write a thinking paragraph before calling a
+        # tool; 1024 was too tight and caused the model to skip reasoning
+        # entirely to fit the tool call under the cap.
+        max_tokens=2048,
+        # Per-run request cap. A thorough turn uses 4–9 requests (use_skill +
+        # show_position + 1–3 imagine_move + make_move, with reasoning text
+        # between). 16 leaves headroom for one or two illegal-move retries
+        # inside a single run_stream before the harness-level retry kicks in.
+        max_turns=16,
+        history_processors=[history_processor] if history_processor is not None else [],
     )
+    model = OpenAIChatModel(model_name, provider=provider)
     return Agent(model=model, skills_dir=SKILLS_DIR, config=cfg)
 
 
-def _committed_move_from_tool_log(tool_log: list[Any]) -> str | None:
-    """Return the UCI move from the last successful make_move.py call, or None.
+def _committed_move_from_result(
+    tool_name: str, args: dict, result: Any
+) -> tuple[str, str] | None:
+    """Return ``(uci, reasoning)`` from a successful ``make_move.py`` result, or None.
 
-    make_move.py POSTs to /agent-move and on success prints
-    {"ok": true, "move": "..."}. run_script wraps it as
-    {"ok": bool, "stdout": str, ...} in output_preview.
+    ``make_move.py`` prints ``{"ok": true, "move": "...", "reasoning": "...", ...}``
+    on success; the SDK wraps it as ``{"ok": ..., "stdout": "...", ...}``.
     """
-    for record in reversed(tool_log):
-        if record.tool != "run_script":
-            continue
-        if record.input.get("filename") != "make_move.py":
-            continue
-        try:
-            outer = json.loads(record.output_preview or "")
-            inner = json.loads(outer.get("stdout") or "")
-        except (json.JSONDecodeError, TypeError):
-            continue
-        if inner.get("ok") and inner.get("move"):
-            return inner["move"]
+    if tool_name != "run_script" or args.get("filename") != "make_move.py":
+        return None
+    if not isinstance(result, str):
+        return None
+    try:
+        outer = json.loads(result)
+        inner = json.loads(outer.get("stdout") or "")
+    except (json.JSONDecodeError, TypeError, AttributeError):
+        return None
+    if inner.get("ok") and inner.get("move"):
+        return inner["move"], inner.get("reasoning", "")
     return None
+
+
+def _looks_like_provider_400(exc: Exception) -> bool:
+    """True for vLLM/OpenAI 400s caused by Gemma producing malformed tool-call
+    JSON. The harness recovers by retrying the turn with cleared conversation."""
+    msg = str(exc)
+    bad_request = "400" in msg or "BadRequest" in msg or "status_code: 400" in msg
+    json_parse = ("Expecting" in msg and "delimiter" in msg) or "JSONDecodeError" in msg
+    return bad_request or json_parse
+
+
+_BUDGET_REMINDER_TEMPLATE = (
+    "**Budget warning:** in your previous attempt this turn you ran more than "
+    "{threshold} tools without committing a move. Do not run an extended "
+    "investigation this time. Pick the best move you can see — quickly — and "
+    "call make_move.py.\n\n"
+)
+
+_NO_MOVE_REMINDER_TEMPLATE = (
+    "**You did not submit a move in your previous attempt.** "
+    "You MUST call make_move.py with `--uci <move>` before your turn ends. "
+    "Describing a move in text is not enough — use the tool.\n\n"
+    "{prior_reasoning}"
+)
+
+# ── Turn memory ───────────────────────────────────────────────────────────
+#
+# Turn memory is agent-authored. make_move.py requires a --reasoning argument;
+# the agent writes its own note there (intent, rejected candidates, threats,
+# ongoing plans). On success the script echoes reasoning back in the response
+# JSON; the harness stores it in ``_pending_summary`` without any further LLM
+# processing.
+#
+# A HistoryProcessor registered on the game agent reads ``_pending_summary``
+# before every model request: if a note is waiting, it replaces the incoming
+# message history with a minimal two-message exchange (prior-turn prompt →
+# agent's reasoning) and clears the slot. This fires automatically on every
+# run_stream_events call, including retries, so no manual history reset is
+# needed between attempts.
+
+
+def _make_turn_memory_processor(pending: list):
+    """Return a HistoryProcessor that injects the pending turn memory.
+
+    ``pending`` is a one-element list used as a mutable container:
+      - Empty    → no prior turn; pass history through unchanged.
+      - [(p, r)] → ``p`` is the original prompt, ``r`` is the agent's
+                   reasoning from --reasoning; replace the entire incoming
+                   message history with the minimal two-message exchange and
+                   clear the slot.
+
+    Fires before every ``run_stream_events`` call (including retries within a
+    turn), so the correct prior-turn context is always in place.
+    """
+    from pydantic_ai.messages import ModelRequest, ModelResponse, UserPromptPart, TextPart
+
+    def processor(messages):
+        if not pending:
+            return messages
+        current_request = messages[-1]
+        original_prompt, reasoning = pending[0]
+        pending.clear()
+        return [
+            ModelRequest(parts=[UserPromptPart(content=original_prompt)]),
+            ModelResponse(parts=[TextPart(content=reasoning)]),
+            current_request,
+        ]
+
+    return processor
 
 
 class AgentPlayer(Player):
     """White-only player backed by the skillful-agent SDK.
 
-    make_move.py commits the move to the board via POST /api/games/{id}/agent-move.
-    The harness breaks the stream as soon as make_move.py returns ok=true — the
-    move is already applied at that point and the turn is over.
+    Each ``get_move`` runs the model under per-turn fresh context. The turn
+    ends when ``make_move.py`` commits a move (success), when every retry has
+    been exhausted (resignation), or when an infrastructure error fires
+    (context overflow → abort without ELO change).
 
-    If a run finishes without a committed move (Gemma 4 sometimes reasons
-    correctly but dispatches the wrong tool), the same prompt is retried with a
-    cleared conversation. Per-turn fresh context is already the baseline (see
-    decisions/2026-05-24-per-turn-fresh-context.md), so the retry is just another
-    attempt — no special framing needed.
+    The UI consumes the event stream via ``event_sink``; see ``AgentPanel.tsx``
+    for the rendering contract.
     """
 
     is_human = False
@@ -141,86 +281,150 @@ class AgentPlayer(Player):
     def __init__(self, game_id: str, event_sink: Callable[[dict[str, Any]], None]) -> None:
         self._game_id = game_id
         self._event_sink = event_sink
-        self._agent = _build_agent(game_id)
+        # Shared mutable slot used to pass the prior-turn summary to the
+        # HistoryProcessor. Empty at game start and after the processor
+        # consumes it. Set by _compact_turn after each committed move.
+        self._pending_summary: list = []
+        processor = _make_turn_memory_processor(self._pending_summary)
+        self._agent = _build_agent(game_id, history_processor=processor)
 
     async def get_move(self, board: chess.Board, last_san: str | None = None) -> chess.Move:
-        from skill_agent import TextDeltaEvent, ToolCallEvent, ToolResultEvent
+        from skill_agent import AgentContextOverflowError, TextDeltaEvent, ToolCallEvent, ToolResultEvent
         from pydantic_ai.exceptions import UsageLimitExceeded
 
-        if last_san:
-            prompt = f"Opponent played {last_san}.\n\nCurrent position (FEN):\n{board.fen()}"
-        else:
-            prompt = f"Game start.\n\nCurrent position (FEN):\n{board.fen()}"
-        self._event_sink({"type": "prompt", "content": prompt})
+        base_prompt = (
+            f"Opponent played {last_san}.\n\nCurrent position (FEN):\n{board.fen()}"
+            if last_san else
+            f"Game start.\n\nCurrent position (FEN):\n{board.fen()}"
+        )
 
-        _thinking_buf = ""
+        max_turns_cfg = getattr(self._agent._config, "max_turns", None) or 16
+        warn_threshold = max(1, int(max_turns_cfg * _BUDGET_WARN_FRACTION))
 
-        def _flush_thinking() -> None:
-            nonlocal _thinking_buf
-            if _thinking_buf:
-                self._event_sink({"type": "thinking", "content": _thinking_buf})
-                _thinking_buf = ""
+        # Mutable per-turn state. Closures rather than self.* — these reset
+        # naturally at the start of each get_move call.
+        thinking_buf = ""
+        warn_next_attempt = False
+        no_move_attempt = False  # previous attempt ended cleanly but without make_move
+        prior_attempt_thinking: str = ""  # thinking text from the last attempt
+
+        def emit(event: dict[str, Any]) -> None:
+            self._event_sink(event)
+
+        def flush_thinking() -> None:
+            """Emit the buffered chain-of-thought as one `thinking` event.
+
+            The frontend has its own stripper as a defensive belt on the live
+            text_delta stream; this strip is what guarantees the recorded
+            *_agent.json contains clean reasoning prose."""
+            nonlocal thinking_buf, prior_attempt_thinking
+            if not thinking_buf:
+                return
+            cleaned = _strip_gemma_channel_markers(thinking_buf).strip()
+            if cleaned:
+                emit({"type": "thinking", "content": cleaned})
+                prior_attempt_thinking = cleaned
+            thinking_buf = ""
+
+        emit({"type": "prompt", "content": base_prompt})
 
         for attempt in range(1, _MAX_ATTEMPTS + 1):
-            # Per-turn fresh context — see ADR 2026-05-24-per-turn-fresh-context.
-            self._agent.clear_conversation()
+            # Build this attempt's prompt — base_prompt, optionally prefixed
+            # with a reminder based on why the previous attempt failed.
             if attempt > 1:
-                self._event_sink({"type": "retry", "attempt": attempt})
+                emit({"type": "retry", "attempt": attempt})
+                if warn_next_attempt:
+                    prefix = _BUDGET_REMINDER_TEMPLATE.format(threshold=warn_threshold)
+                elif no_move_attempt:
+                    prior = (
+                        f"Your reasoning from the previous attempt:\n{prior_attempt_thinking}\n\n"
+                        if prior_attempt_thinking else ""
+                    )
+                    prefix = _NO_MOVE_REMINDER_TEMPLATE.format(prior_reasoning=prior)
+                else:
+                    prefix = ""  # provider_error_recovered — just retry
+                prompt = prefix + base_prompt
+                emit({"type": "prompt", "content": prompt})
+                warn_next_attempt = False
+                no_move_attempt = False
+                prior_attempt_thinking = ""
+            else:
+                prompt = base_prompt
+
+            tool_call_count = 0
+            budget_warning_emitted = False
 
             try:
                 async for event in self._agent.run_stream(prompt):
                     if isinstance(event, TextDeltaEvent):
-                        _thinking_buf += event.content
-                        self._event_sink({"type": "text_delta", "content": event.content})
+                        thinking_buf += event.content
+                        emit({"type": "text_delta", "content": event.content})
 
                     elif isinstance(event, ToolCallEvent):
-                        _flush_thinking()
-                        self._event_sink({
+                        flush_thinking()
+                        tool_call_count += 1
+                        emit({
                             "type": "tool_call",
                             "tool": event.name,
                             "args": getattr(event, "args", {}),
                         })
+                        if not budget_warning_emitted and tool_call_count >= warn_threshold:
+                            budget_warning_emitted = True
+                            warn_next_attempt = True
+                            emit({
+                                "type": "budget_warning",
+                                "tool_calls": tool_call_count,
+                                "threshold": warn_threshold,
+                                "max_turns": max_turns_cfg,
+                            })
 
                     elif isinstance(event, ToolResultEvent):
-                        _flush_thinking()
-                        tool_log = list(self._agent._deps.tool_log)
-                        result_preview = next(
-                            (r.output_preview for r in reversed(tool_log) if r.tool == event.name),
-                            "",
-                        )
-                        self._event_sink({
-                            "type": "tool_result",
-                            "tool": event.name,
-                            "result": result_preview,
-                        })
-                        # As soon as make_move.py committed, the backend has
-                        # already advanced the board. Stop streaming.
+                        flush_thinking()
+                        emit({"type": "tool_result", "tool": event.name, "result": event.result})
+                        # Check directly against the result we just received,
+                        # rather than scanning the SDK's tool_log. This works
+                        # because the most recent tool_call's args are the
+                        # ones that produced this result (the model is
+                        # serially driven; no parallel tool calls).
                         if event.name == "run_script":
-                            committed = _committed_move_from_tool_log(tool_log)
-                            if committed is not None:
-                                return chess.Move.from_uci(committed)
+                            tool_log = self._agent._deps.tool_log
+                            last_args = tool_log[-1].input if tool_log else {}
+                            result = _committed_move_from_result(event.name, last_args, event.result)
+                            if result is not None:
+                                committed_uci, reasoning = result
+                                flush_thinking()
+                                # Store the agent's own reasoning as the turn memory.
+                                # The HistoryProcessor will inject it as prior-turn
+                                # context before the next run_stream_events call.
+                                self._pending_summary[:] = [(base_prompt, reasoning)]
+                                emit({"type": "context_summary", "content": reasoning})
+                                return chess.Move.from_uci(committed_uci)
 
             except AgentContextOverflowError as exc:
-                # Infrastructure limit — not the agent's fault. Abort with no
-                # ELO update. See decisions/2026-05-24-per-turn-fresh-context.md.
+                # Infrastructure limit — abort game with no ELO update.
                 raise PlayerError(
                     f"context_overflow: requested {exc.requested_input_tokens} input "
                     f"tokens, model limit {exc.model_context_limit}."
                 ) from exc
+
             except UsageLimitExceeded:
-                # Model exhausted its per-run request budget (max_turns) without
-                # committing a move. Treat as "no move this attempt" — the outer
-                # loop retries with fresh context, and if all retries fail the
-                # agent resigns. This is an agent capability failure, not an
-                # infrastructure abort.
-                _flush_thinking()
+                # Hit max_turns without committing — by definition past the
+                # warning threshold, so flag the next attempt.
+                flush_thinking()
+                warn_next_attempt = True
                 continue
 
-            _flush_thinking()
-            # Run ended without a committed move — loop and retry.
+            except Exception as exc:
+                if _looks_like_provider_400(exc):
+                    flush_thinking()
+                    emit({"type": "provider_error_recovered", "message": str(exc)[:300]})
+                    continue
+                raise
 
-        # Capability failure after every retry exhausted → resignation.
-        # See knowledge-base/decisions/2026-05-25-agent-resigns-when-stuck.md.
+            flush_thinking()
+            # Run ended cleanly but without a committed move.
+            no_move_attempt = True
+
         raise AgentResignedError(
             f"agent_resigned_no_move: no legal move committed after {_MAX_ATTEMPTS} attempts."
         )

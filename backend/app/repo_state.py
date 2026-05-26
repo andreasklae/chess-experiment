@@ -14,7 +14,11 @@ Two-phase logging policy (see
 Provenance fields recorded with each game row:
 
 - `branch`: live git branch at game-record time
-- `commit_sha`: live git HEAD commit at game-record time (forensic precision)
+- `pr_number`: GitHub PR number resolved via ``gh pr view`` at game-record
+  time (see ``folder_resolver``); empty when no PR is detectable. This is
+  the durable per-version identifier. ``commit_sha`` was previously also
+  recorded but was removed once ``pr_number`` provided the same role with
+  better human readability.
 - `model`, `temperature`: model identity from env + effective sampling temp
 - `phase`: "ranked" or "experimental" (derived from `is_ranked_context`)
 """

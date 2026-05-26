@@ -21,8 +21,33 @@ reference directory:
 
 The agent is `pydantic-ai` + the `skillful-agent` SDK running against a
 local Gemma 4 31B-it model on eX3 via vLLM. It plays white and invokes
-two skill scripts (`list_legal_moves.py`, `make_move.py`) — see
-[`backend/skills/chess-player/`](backend/skills/chess-player/).
+four skill scripts:
+
+- `show_position.py` — ASCII board + material balance + attack/defense map
+- `imagine_move.py --uci <move>` — one-ply look-ahead with tactical report
+- `list_legal_moves.py` — annotated markdown table of legal moves
+- `make_move.py --uci <move>` — commits the move
+
+See [`backend/skills/chess-player/`](backend/skills/chess-player/). The
+material+PST static eval previously exposed as a separate
+`evaluate_position.py` script is now folded into `show_position` and
+`imagine_move` output (one line each); the eval helpers themselves live
+in `backend/skills/chess-player/scripts/_eval.py` and are not exposed
+to the agent.
+
+SDK-bundled native tools (`manage_todos`, thread/spawn tools, file
+read/write, etc.) and native skills (`web-search-free`) are explicitly
+disabled in `AgentConfig` for this experiment — the chess agent only
+needs `use_skill` and `run_script`, and a narrower tool surface
+prevents the looping behaviour observed when those were available.
+See `decisions/2026-05-26-stabilization.md`.
+
+The agent UI panel subscribes to `/api/games/{id}/agent-events` (SSE).
+On connect, the endpoint **replays all historical events** for the
+current game (completed turns + in-progress turn so far) before
+switching to live streaming. Reasoning text from earlier turns is
+therefore visible to anyone who opens the board page mid-game; the
+queue-only design that preceded this would silently drop those events.
 
 ## Workspace layout
 
@@ -94,6 +119,17 @@ methods; the code is downstream of those decisions.
   rationale on not mixing pools mid-batch.
 - **Stockfish evaluation is UX-only.** The agent has no access to it;
   it's just the advantage needle next to the board.
+- **Per-PR game folders.** Game JSONs and agent logs live in
+  `backend/games/<folder>/` named for the PR's `headRefName` (or branch
+  name when no PR exists). Pre-PR baseline games are in
+  `backend/games/baseline/` with bare UUIDs. Non-baseline folders
+  prefix filenames with a 3-digit chronological sequence
+  (`042_<game_id>_agent.json`). The `pr_number` column in `ranked.csv` /
+  `experimental.csv` references the GitHub PR number. The destination is
+  resolved by `app/folder_resolver.py` via `gh pr view` (with a 60s
+  cache) and falls back to the branch name when `gh` is unavailable. The
+  one-shot migration that introduced the layout is
+  `scripts/reorganize_games.py`.
 
 ## Workflow norms
 
@@ -106,7 +142,8 @@ methods; the code is downstream of those decisions.
   files changed. The git history is part of the thesis's reproducibility
   story — `git log` should read like a methods journal.
 - The chess experiment is a fresh git repo as of 2026-05-20. Every agent
-  game's CSV row carries `branch` + `commit_sha` for forensic precision.
+  game's CSV row carries `branch` + `pr_number` so each game is traceable
+  to the agent version that produced it.
   But the unit of "agent configuration version" is the **PR**, not the
   commit: iterate on a branch, merge to `main`, run the official
   calibration batch on `main` post-merge. `git revert` is the recovery

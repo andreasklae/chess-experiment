@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 import shutil
@@ -328,10 +329,19 @@ async def reset_agent_elo(service: BatchServiceDep) -> AgentEloResponse:
 
 @app.get("/api/games/{game_id}/agent-events")
 async def agent_events(game_id: str, service: GameServiceDep) -> StreamingResponse:
+    # Subscribe first, then read history — this ordering ensures no live events
+    # are dropped: events that arrive between history-read and queue-subscribe
+    # would be lost, but subscribing first then replaying past events is safe
+    # (the live queue may contain some events that are also in history for the
+    # current in-progress turn, but the frontend deduplicates by re-rendering
+    # state, so a few duplicates are harmless).
     queue = await service.subscribe_agent_events(game_id)
+    past_events = service.get_past_agent_events(game_id)
 
     async def stream() -> AsyncIterator[str]:
         try:
+            for event in past_events:
+                yield f"event: agent\ndata: {json.dumps(event)}\n\n"
             while True:
                 try:
                     yield await asyncio.wait_for(queue.get(), timeout=20)
