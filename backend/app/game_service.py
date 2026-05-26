@@ -23,6 +23,7 @@ from app.logging_service import LoggingService
 from app.persistence import (
     delete_game_file,
     ensure_dir,
+    existing_subfolder,
     list_game_files,
     load_game_file,
     save_game,
@@ -116,6 +117,11 @@ class Game:
     # is declared a draw (1/2-1/2) regardless of position. Prevents infinite
     # endgames where neither bot can deliver mate. Default 150 = 75 full moves.
     max_half_moves: int = 150
+    # Subfolder under ``games_dir`` where this game's JSON lives. Resolved
+    # once at game creation by ``folder_resolver.resolve_target_folder`` so
+    # every write during the game lands in the same place even if git state
+    # changes mid-play. Empty for legacy code paths and tests.
+    subfolder: str = ""
 
     def player_to_move(self) -> Player:
         return self.white_player if self.board.turn == chess.WHITE else self.black_player
@@ -267,6 +273,8 @@ class GameService:
             self._player_factory.validate_config(request.black)
             created_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             game_id = uuid.uuid4().hex
+            from app.folder_resolver import resolve_target_folder
+            subfolder = resolve_target_folder().folder
             game = Game(
                 game_id=game_id,
                 board=chess.Board(),
@@ -283,6 +291,7 @@ class GameService:
                     event_sink=lambda evt, gid=game_id: self._on_agent_event(gid, evt),
                 ),
                 created_at=created_at,
+                subfolder=subfolder,
             )
         except PlayerError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -346,6 +355,7 @@ class GameService:
             created_at=data["created_at"],
             uci_moves=list(data["uci_moves"]),
             san_moves=list(data["san_moves"]),
+            subfolder=existing_subfolder(self._games_dir, data["game_id"]),
         )
         self._game = game
         asyncio.create_task(self._update_eval(game))
@@ -691,8 +701,14 @@ class GameService:
     def _push_uci_move(self, game: Game, move_uci: str) -> None:
         try:
             move = chess.Move.from_uci(move_uci)
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail="Move must be valid UCI notation.") from exc
+        except ValueError:
+            try:
+                move = game.board.parse_san(move_uci)
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid move '{move_uci}': not valid UCI (e.g. e2e4) or SAN (e.g. Nf3).",
+                ) from exc
         # chess.com's driver auto-queens (autoPromote=true). If the opponent is
         # chess.com and the agent picked an underpromotion, force it to queen
         # so host and browser stay in sync.
@@ -729,6 +745,7 @@ class GameService:
             # never given an ELO will omit the field entirely.
             agent_elo_before=getattr(game, "agent_elo_before", "") or None,
             agent_elo_after=getattr(game, "agent_elo_after", "") or None,
+            subfolder=game.subfolder,
         )
 
     def _record_game_end(self, game: Game) -> None:

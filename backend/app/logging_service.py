@@ -21,6 +21,7 @@ from __future__ import annotations
 import csv
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -51,9 +52,18 @@ CSV_COLUMNS = [
     "elo_after",         # only meaningful for ranked rows
     "model",
     "temperature",
-    "agent_log_path",    # relative path to <game_id>_agent.json
+    "agent_log_path",    # relative path to <subfolder>/<NNN_>?<game_id>_agent.json
     "analysis_path",     # relative path to external analysis (lichess/chess.com etc.); empty by default
+    "pr_number",         # GitHub PR number resolved via `gh pr view` at record time; empty when no PR
 ]
+
+
+# Files inside a PR/branch folder are prefixed with a zero-padded 3-digit
+# sequence number reflecting chronological order: ``001_<game_id>_agent.json``,
+# ``002_<game_id>_agent.json``, etc. The ``baseline`` folder is the one
+# exception: its files predate the convention and keep bare UUIDs.
+_BASELINE_FOLDER = "baseline"
+_SEQ_PREFIX_RE = re.compile(r"^(\d{3})_")
 
 
 @dataclass
@@ -97,8 +107,22 @@ class LoggingService:
         turn = AgentTurn(move_number=move_number, prompt=prompt)
         self._current_turns[game_id] = turn
 
+    # Event types logged verbatim. text_delta is excluded: individual tokens are
+    # already consolidated into thinking events by flush_thinking() in agent_player.
+    # Storing every token inflates the file by ~20x and makes it unreadable.
+    _LOGGED_EVENT_TYPES = frozenset({
+        "prompt", "retry", "thinking", "tool_call", "tool_result",
+        "budget_warning", "provider_error_recovered", "context_summary",
+    })
+
     def append_agent_event(self, game_id: str, event: dict[str, Any]) -> None:
-        """Append a streaming event to the current open turn."""
+        """Append a streaming event to the current open turn.
+
+        text_delta events are emitted to the SSE stream for live rendering but
+        are not persisted — they are consolidated into thinking events instead.
+        """
+        if event.get("type") not in self._LOGGED_EVENT_TYPES:
+            return
         turn = self._current_turns.get(game_id)
         if turn is not None:
             turn.events.append(event)
@@ -172,12 +196,17 @@ class LoggingService:
 
         The phase decision is delegated to ``repo_state.is_ranked_context``;
         see that function for the policy (main + clean tree = ranked).
+        The subfolder and PR number come from ``folder_resolver`` (which
+        consults ``gh pr view`` and falls back to the branch name).
         """
+        from app.folder_resolver import resolve_target_folder
         from app.repo_state import current_phase, live_git_state
+
+        target = resolve_target_folder()
 
         agent_log_path = ""
         if game_id in self._agent_turns or game_id in self._current_turns:
-            agent_log_path = self._write_agent_log(game_id, model)
+            agent_log_path = self._write_agent_log(game_id, model, target.folder)
 
         phase = current_phase()
         git = live_git_state()
@@ -203,6 +232,7 @@ class LoggingService:
             "temperature": temperature,
             "agent_log_path": agent_log_path,
             "analysis_path": analysis_path,
+            "pr_number": target.pr_number,
         }
         with open(target_path, "a", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
@@ -228,8 +258,15 @@ class LoggingService:
                 writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
                 writer.writeheader()
 
-    def _write_agent_log(self, game_id: str, model: str) -> str:
-        """Serialize accumulated turns to <game_id>_agent.json. Returns relative path."""
+    def _write_agent_log(self, game_id: str, model: str, subfolder: str) -> str:
+        """Serialize accumulated turns to ``<subfolder>/<NNN_>?<game_id>_agent.json``.
+
+        Returns the path relative to ``games_dir`` so it can be stored in the
+        CSV's ``agent_log_path`` column. Files in the ``baseline`` folder
+        keep bare UUIDs to match the convention used during the pre-PR
+        calibration batch; all other folders get a 3-digit chronological
+        sequence prefix.
+        """
         turns = self._agent_turns.get(game_id, [])
         payload = {
             "game_id": game_id,
@@ -251,8 +288,30 @@ class LoggingService:
                 for t in turns
             ],
         }
-        filename = f"{game_id}_agent.json"
-        path = self._games_dir / filename
+        folder_dir = self._games_dir / subfolder if subfolder else self._games_dir
+        folder_dir.mkdir(parents=True, exist_ok=True)
+        if subfolder and subfolder != _BASELINE_FOLDER:
+            seq = _next_sequence_number(folder_dir)
+            filename = f"{seq:03d}_{game_id}_agent.json"
+        else:
+            filename = f"{game_id}_agent.json"
+        path = folder_dir / filename
         with open(path, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2)
-        return filename
+        return f"{subfolder}/{filename}" if subfolder else filename
+
+
+def _next_sequence_number(folder: Path) -> int:
+    """Return the next 3-digit sequence number for a per-PR folder.
+
+    Scans ``*_agent.json`` filenames in ``folder``, parses any ``NNN_``
+    prefix, and returns ``max + 1`` (or ``1`` when the folder is empty).
+    """
+    if not folder.exists():
+        return 1
+    seen = []
+    for p in folder.glob("*_agent.json"):
+        m = _SEQ_PREFIX_RE.match(p.name)
+        if m:
+            seen.append(int(m.group(1)))
+    return (max(seen) + 1) if seen else 1

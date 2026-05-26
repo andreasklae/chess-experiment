@@ -369,11 +369,16 @@ def main() -> None:
     parser.add_argument("-h", "--help", action="store_true")
     args = parser.parse_args()
 
-    if args.help or not args.uci:
+    if args.help:
         print(__doc__)
-        if not args.uci:
-            sys.exit(1)
         return
+
+    if not args.uci:
+        print(json.dumps({
+            "ok": False,
+            "error": "Missing --uci. You must specify a move to imagine. Example: run_script(\"chess-player\", \"imagine_move.py\", \"--uci e2e4\")",
+        }))
+        sys.exit(1)
 
     api_base = os.environ.get("CHESS_API_BASE", "http://localhost:8000").rstrip("/")
     game_id = os.environ.get("CHESS_GAME_ID", "")
@@ -396,13 +401,23 @@ def main() -> None:
 
     board = chess.Board(fen)
 
+    move = None
     try:
         move = chess.Move.from_uci(args.uci)
+        if move not in board.legal_moves:
+            move = None
     except Exception:
-        print(f"error: --uci ({args.uci}) is illegal: {classify_illegal_move(board, args.uci)}", file=sys.stderr)
-        sys.exit(1)
-    if move not in board.legal_moves:
-        print(f"error: --uci ({args.uci}) is illegal: {classify_illegal_move(board, args.uci)}", file=sys.stderr)
+        pass
+    if move is None:
+        try:
+            move = board.parse_san(args.uci)
+        except Exception:
+            pass
+    if move is None:
+        print(json.dumps({
+            "ok": False,
+            "error": f"Illegal or unrecognised move '{args.uci}': {classify_illegal_move(board, args.uci)}",
+        }))
         sys.exit(1)
 
     print(render_imagine(board, move))

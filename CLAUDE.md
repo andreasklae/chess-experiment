@@ -119,6 +119,17 @@ methods; the code is downstream of those decisions.
   rationale on not mixing pools mid-batch.
 - **Stockfish evaluation is UX-only.** The agent has no access to it;
   it's just the advantage needle next to the board.
+- **Per-PR game folders.** Game JSONs and agent logs live in
+  `backend/games/<folder>/` named for the PR's `headRefName` (or branch
+  name when no PR exists). Pre-PR baseline games are in
+  `backend/games/baseline/` with bare UUIDs. Non-baseline folders
+  prefix filenames with a 3-digit chronological sequence
+  (`042_<game_id>_agent.json`). The `pr_number` column in `ranked.csv` /
+  `experimental.csv` references the GitHub PR number. The destination is
+  resolved by `app/folder_resolver.py` via `gh pr view` (with a 60s
+  cache) and falls back to the branch name when `gh` is unavailable. The
+  one-shot migration that introduced the layout is
+  `scripts/reorganize_games.py`.
 
 ## Workflow norms
 

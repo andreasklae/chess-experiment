@@ -15,8 +15,9 @@ interface PostMoveEntry { kind: 'post-move'; content: string; complete: boolean 
 interface ActionEntry { kind: 'action'; tool: string; args: Record<string, unknown> }
 interface ResultEntry { kind: 'result'; tool: string; toolCallArgs: Record<string, unknown>; result: unknown }
 interface BudgetWarningEntry { kind: 'budget-warning'; toolCalls: number; threshold: number; maxTurns: number }
+interface ContextSummaryEntry { kind: 'context-summary'; content: string }
 
-type ChatEntry = TurnEntry | ReasoningEntry | PostMoveEntry | ActionEntry | ResultEntry | BudgetWarningEntry;
+type ChatEntry = TurnEntry | ReasoningEntry | PostMoveEntry | ActionEntry | ResultEntry | BudgetWarningEntry | ContextSummaryEntry;
 
 // Gemma 4 wraps its chain of thought in `<|channel>thought ... <channel|>`
 // markers. They arrive split across multiple streaming tokens, so we strip on
@@ -109,7 +110,12 @@ function friendlyToolResult(
   if (file === 'make_move.py' && stdout) {
     try {
       const inner = JSON.parse(stdout);
-      if (inner?.ok && inner?.move) return TEXT(`played ${inner.move}`);
+      if (inner?.ok && inner?.move) {
+        const reasoning = (inner.reasoning as string | undefined)?.trim() ?? '';
+        return reasoning
+          ? MD(`played ${inner.move}`, reasoning)
+          : TEXT(`played ${inner.move}`);
+      }
       if (inner?.ok === false) return TEXT('error', inner.error ?? stdout);
     } catch { /* fall through to generic */ }
   }
@@ -221,6 +227,12 @@ function applyEvent(
       threshold: (event.threshold as number) ?? 0,
       maxTurns: (event.max_turns as number) ?? 0,
     });
+    return next;
+  }
+
+  if (type === 'context_summary') {
+    const content = (event.content as string | undefined) ?? '';
+    if (content.trim()) next.push({ kind: 'context-summary', content });
     return next;
   }
 
@@ -346,6 +358,16 @@ export function AgentPanel({ gameId }: { gameId: string }) {
                     {entry.toolCalls} of {entry.maxTurns} tool calls used —
                     the next retry (if any) will be reminded to commit.
                   </span>
+                </div>
+              );
+
+            case 'context-summary':
+              return (
+                <div key={i} className="agent-entry agent-context-summary">
+                  <span className="entry-label">memory</span>
+                  <div className="entry-text markdown-body">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{entry.content}</ReactMarkdown>
+                  </div>
                 </div>
               );
           }

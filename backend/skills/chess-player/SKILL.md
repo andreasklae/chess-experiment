@@ -9,17 +9,36 @@ description: >
 ---
 # Chess Player
 
-You are playing chess as white in a live game. Each turn, the host sends
-you a short message naming the opponent's last move and giving the FEN
-of the position you have to move in.
+You are the white player in a live chess game. **Your only job this turn is to call `make_move.py`.** Everything else — reading the position, imagining candidates, reasoning about tactics — is preparation for that call. A turn that ends without calling `make_move.py` is a forfeit.
 
-Before each tool call, write a brief sentence explaining what you are
-about to do and why. After each tool result, write a brief sentence
-interpreting what it told you. This running commentary is your reasoning
-record — it helps you avoid loops by making your thinking visible. Do this every time, between every tool call and their response, no exceptions. your turn should not only consist of tool calls, always include your thought process.
+**This is not a chess analysis task. You are not writing a report. You are making a move.**
 
-If you do not call `make_move.py` within the turn, that counts as
-resignation (a loss).
+The skill name is `chess-player`. Always use that exact name when calling `use_skill` or `run_script`.
+
+Before each tool call, write one sentence on what you are about to do and why. After each result, write one sentence on what it told you. Keep it brief — this is your reasoning trace, not an essay.
+
+## The mandatory closing action
+
+**Every turn must end with:**
+```
+run_script("chess-player", "make_move.py", "--uci <move> --reasoning <your note>")
+```
+This is non-negotiable. Writing "I will play Nf3" in text does nothing. Only the tool call commits the move. Do not stop before you have made this call.
+
+**`--reasoning` is required.** The move will not commit without it. Write whatever you want — a sentence, a few lines, anything. This text is injected verbatim as the first message on your *next* turn, so it is the only context you will have about what you just did.
+
+Useful things to include:
+- What you played and why (one phrase)
+- What you considered but decided against (move + one-word reason)
+- One concrete threat the opponent now has that you need to watch
+- Any multi-move plan you are executing, or "none"
+
+Example:
+```
+run_script("chess-player", "make_move.py", "--uci g1f3 --reasoning Developed knight to f3 controlling center. Rejected e2e4 (too passive). Watch: opponent may push c5. Sequence: none.")
+```
+
+No quoting needed. Write it as plain text after `--reasoning`.
 
 This page tells you what scripts exist and how to use them well.
 
@@ -124,10 +143,12 @@ well under ten tool calls. Between each tool call/step, do some reasoning, think
    defender, or feels tactical, imagine it before you commit** —
    unless the move is obviously good per the rule above. Cheap
    calculation prevents expensive blunders.
-4. **Commit.** Call `make_move --uci <move>`. The board advances and
-   your turn ends the moment it returns `ok=true`. If it returns
-   `ok=false`, pick a different move from the `legal_moves` list it
-   returns and call `make_move` again. Never commit a move before you have imagined it. make sure you dont hang a piece unless you are abseloutly certain its a good sacrifice or potential trade
+4. **Commit.** Call `make_move.py --uci <move> --reasoning <your note>`. The board
+   advances the moment it returns `ok=true`. If it returns `ok=false`, pick
+   a different move from the `legal_moves` list and call again. Never commit
+   a move before you have imagined it — do not hang a piece unless you are
+   certain it is a good sacrifice or trade. The `--reasoning` text is your
+   memory for next turn; write something useful.
 
 ## Scripts
 
@@ -239,15 +260,17 @@ with columns:
 ### `make_move.py`
 
 ```
-run_script("chess-player", "make_move.py", "--uci <move>")
+run_script("chess-player", "make_move.py", "--uci <move> --reasoning <your note>")
 ```
 
-Commits the move to the live game.
+Commits the move to the live game. **Both `--uci` and `--reasoning` are required.**
 
-- On success: `{"ok": true, "move": "e2e4", "message": "Move committed. Your turn is over."}`. The board has already advanced —
-  do not call any more tools on this turn.
-- On failure: `{"ok": false, "error": "...", "legal_moves": [...]}`.
+- On success: `{"ok": true, "move": "e2e4", "reasoning": "...", "message": "Move committed. Your turn is over."}`.
+  The board has already advanced — do not call any more tools on this turn.
+- On failure (illegal move): `{"ok": false, "error": "...", "legal_moves": [...]}`.
   Pick a different move from `legal_moves` and call again.
+- On missing `--reasoning`: `{"ok": false, "error": "Missing --reasoning ..."}`.
+  Add your reasoning and retry.
 
 ## UCI format
 

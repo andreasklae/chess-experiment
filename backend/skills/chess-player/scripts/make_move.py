@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """Submit a move for the current game. This actually commits the move on the board.
 
-Usage: make_move.py --uci <move>
+Usage: make_move.py --uci <move> --reasoning <your note to yourself>
 
 Reads CHESS_API_BASE and CHESS_GAME_ID from environment (injected by AgentPlayer).
 POSTs the move to the backend, which validates and applies it immediately.
 
-Calling this tool ends your turn. The board advances and it becomes the opponent's turn.
+--reasoning is required. Write whatever you want — it is injected verbatim as
+the first message on your NEXT turn so you remember what you did and why.
+The move will NOT commit if --reasoning is omitted.
 
 Prints on success:
-  {"ok": true, "move": "e2e4", "message": "Move committed. Your turn is over."}
+  {"ok": true, "move": "e2e4", "reasoning": "...", "message": "Move committed. Your turn is over."}
 
 Prints on error (illegal or invalid):
   {"ok": false, "error": "...", "legal_moves": [...]}
@@ -25,7 +27,26 @@ import urllib.request
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--uci", required=True, help="Move in UCI notation, e.g. e2e4")
+    parser.add_argument(
+        "--reasoning",
+        nargs=argparse.REMAINDER,
+        default=[],
+        help="Your note to yourself about this move (required, free text, no quoting needed)",
+    )
     args = parser.parse_args()
+
+    reasoning = " ".join(args.reasoning).strip()
+    if not reasoning:
+        print(json.dumps({
+            "ok": False,
+            "error": (
+                "Missing --reasoning. You must explain your move — this text is your memory "
+                "for the next turn. "
+                "Example: --uci e2e4 --reasoning I played e4 to control the center. "
+                "Rejected d2d4 (slower). Watch: opponent may push c5. Sequence: none."
+            ),
+        }))
+        sys.exit(1)
 
     api_base = os.environ.get("CHESS_API_BASE", "http://localhost:8000").rstrip("/")
     game_id = os.environ.get("CHESS_GAME_ID", "")
@@ -43,10 +64,11 @@ def main() -> None:
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
+            resp.read()
             print(json.dumps({
                 "ok": True,
                 "move": args.uci,
+                "reasoning": reasoning,
                 "message": "Move committed. Your turn is over.",
             }))
     except urllib.error.HTTPError as exc:
