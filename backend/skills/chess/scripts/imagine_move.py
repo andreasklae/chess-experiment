@@ -9,8 +9,9 @@ Reads CHESS_API_BASE and CHESS_GAME_ID from environment (injected by
 AgentPlayer). The live board state is **not** mutated; everything is computed
 on a copy.
 
-Argument:
-  --uci <move>    UCI move to imagine (e.g. e2e4, g1f3, e1g1, e7e8q).
+Argument (positional, exactly one):
+  move    The move to imagine, in UCI (e2e4, g1f3, e7e8q) or SAN (e4, Nf3,
+          O-O, e8=Q). Trailing + or # is ignored.
 
 If the move is illegal, the script exits nonzero with a categorised error
 (no piece, blocked, pinned, etc.).
@@ -41,6 +42,7 @@ from _eval import (  # noqa: E402
     color_name,
     describe_piece,
     enemy_king_mobility,
+    parse_move,
     render_eval_delta_line,
     render_moves_table,
 )
@@ -364,8 +366,9 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
 
 
 def main() -> None:
+    # One positional: the move (UCI or SAN). No flags.
     parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("--uci", type=str, default="")
+    parser.add_argument("move", nargs="?", default="")
     parser.add_argument("-h", "--help", action="store_true")
     args = parser.parse_args()
 
@@ -373,10 +376,15 @@ def main() -> None:
         print(__doc__)
         return
 
-    if not args.uci:
+    if not args.move:
         print(json.dumps({
             "ok": False,
-            "error": "Missing --uci. You must specify a move to imagine. Example: run_script(\"chess\", \"imagine_move.py\", [\"--uci\", \"e2e4\"])",
+            "error": (
+                "Missing move argument. Call with the move as a single positional "
+                "arg in UCI or SAN form. Example: "
+                "run_script(\"chess\", \"imagine_move.py\", [\"e2e4\"]) "
+                "or run_script(\"chess\", \"imagine_move.py\", [\"Nf3\"])."
+            ),
         }))
         sys.exit(1)
 
@@ -401,22 +409,20 @@ def main() -> None:
 
     board = chess.Board(fen)
 
-    move = None
     try:
-        move = chess.Move.from_uci(args.uci)
-        if move not in board.legal_moves:
-            move = None
-    except Exception:
-        pass
-    if move is None:
-        try:
-            move = board.parse_san(args.uci)
-        except Exception:
-            pass
-    if move is None:
+        move = parse_move(board, args.move)
+    except ValueError:
+        cleaned = args.move.strip().rstrip("+#")
         print(json.dumps({
             "ok": False,
-            "error": f"Illegal or unrecognised move '{args.uci}': {classify_illegal_move(board, args.uci)}",
+            "error": f"Illegal or unrecognised move '{args.move}': {classify_illegal_move(board, cleaned)}",
+        }))
+        sys.exit(1)
+    if move not in board.legal_moves:
+        cleaned = args.move.strip().rstrip("+#")
+        print(json.dumps({
+            "ok": False,
+            "error": f"Illegal move '{args.move}': {classify_illegal_move(board, cleaned)}",
         }))
         sys.exit(1)
 

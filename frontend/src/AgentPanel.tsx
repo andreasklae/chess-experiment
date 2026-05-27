@@ -30,16 +30,23 @@ function stripGemmaChannelMarkers(text: string): string {
 
 // ── Tool call / result presentation ───────────────────────────────────────
 
-/** Extract `--uci <value>` from a tool-call args list or legacy shell-format
- *  string. The SDK now passes `args` as a list of strings (one per sys.argv
- *  entry); historical agent logs and any pre-refactor callers may still pass
- *  it as a shell-format single string, so we accept both. */
-function extractUci(rawArgs: unknown): string | null {
+/** Pull the chess move out of an args payload for friendly display.
+ *
+ *  Current contract: args is a list[str], first element is the move (UCI
+ *  or SAN). Older calls used flags (--uci <move>) inside a list, and even
+ *  older calls used a shell-format string with --uci embedded. Accept all
+ *  three so the panel survives historical logs.
+ */
+function extractMove(rawArgs: unknown): string | null {
   if (Array.isArray(rawArgs)) {
-    const idx = rawArgs.indexOf('--uci');
-    if (idx >= 0 && idx + 1 < rawArgs.length) {
-      const val = rawArgs[idx + 1];
+    const flagIdx = rawArgs.indexOf('--uci');
+    if (flagIdx >= 0 && flagIdx + 1 < rawArgs.length) {
+      const val = rawArgs[flagIdx + 1];
       if (typeof val === 'string' && val.length > 0) return val;
+    }
+    const first = rawArgs[0];
+    if (typeof first === 'string' && first.length > 0 && !first.startsWith('-')) {
+      return first;
     }
     return null;
   }
@@ -60,12 +67,12 @@ function friendlyToolCall(tool: string, args: Record<string, unknown>): string {
   if (tool !== 'run_script') return tool;
 
   const file = args.filename as string | undefined;
-  const uci = extractUci(args.args);
+  const move = extractMove(args.args);
 
   if (file === 'list_legal_moves.py') return 'list_legal_moves()';
   if (file === 'show_position.py') return 'show_position()';
-  if (file === 'imagine_move.py') return uci ? `imagine_move(${uci})` : 'imagine_move()';
-  if (file === 'make_move.py') return uci ? `make_move(${uci})` : `make_move(${argsDisplay(args.args)})`;
+  if (file === 'imagine_move.py') return move ? `imagine_move(${move})` : 'imagine_move()';
+  if (file === 'make_move.py') return move ? `make_move(${move})` : `make_move(${argsDisplay(args.args)})`;
   return file ?? tool;
 }
 

@@ -353,6 +353,45 @@ def detect_phase(board: chess.Board) -> tuple[str, int, int]:
     return ("early middlegame", score, move)
 
 
+# ── Move parsing ─────────────────────────────────────────────────────────
+
+
+def parse_move(board: chess.Board, raw: str) -> chess.Move:
+    """Parse a move string in UCI or SAN form on the given board.
+
+    Accepts:
+      - UCI: ``e2e4``, ``g1f3``, ``e1g1``, ``e7e8q``
+      - SAN: ``e4``, ``Nf3``, ``O-O``, ``e8=Q``, ``Nxc6``, ``Nxc6+``
+      - Either form with a trailing ``+`` (check) or ``#`` (mate) — stripped
+        because the check/mate annotation is descriptive, not part of the
+        move identity.
+      - SAN-style square pairs from the model that look like UCI but with a
+        trailing ``+`` (e.g. ``d5f6+``).
+
+    Raises ``ValueError`` if the cleaned string is neither a legal UCI move
+    nor parseable as SAN in the given position.
+    """
+    cleaned = raw.strip().rstrip("+#")
+    if not cleaned:
+        raise ValueError(f"empty move string (got {raw!r})")
+    try:
+        move = chess.Move.from_uci(cleaned)
+        if move in board.legal_moves:
+            return move
+        # UCI parse succeeded but illegal — fall through to SAN attempt
+        # (rare but possible, e.g. when the model fabricated a UCI that
+        # happens to be syntactically valid but not legal here).
+    except ValueError:
+        pass
+    try:
+        return board.parse_san(cleaned)
+    except (ValueError, chess.IllegalMoveError, chess.InvalidMoveError, chess.AmbiguousMoveError) as exc:
+        raise ValueError(
+            f"could not parse {raw!r} as UCI (e.g. e2e4) or SAN (e.g. Nf3) "
+            f"in the current position: {exc}"
+        ) from exc
+
+
 # ── Illegal-move classification ────────────────────────────────────────────
 
 

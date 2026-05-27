@@ -14,8 +14,8 @@ Output is a markdown table:
     | f1c4   | Bxc4   | bishop takes knight on c4         |            |
     | d1h5   | Qh5+   | queen to h5                       | check      |
 
-The UCI strings in the first column are the exact strings the agent passes
-to `make_move.py --uci ...` or `imagine_move.py --uci ...`.
+The UCI strings in the first column (or the SAN strings in the second) are
+ready to pass as the move argument to `make_move.py` or `imagine_move.py`.
 """
 
 import json

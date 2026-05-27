@@ -21,13 +21,13 @@ Before each tool call, write one sentence on what you are about to do and why. A
 
 **Every turn must end with:**
 ```
-run_script("chess", "make_move.py", ["--uci", "<move>", "--reasoning", "<your note>"])
+run_script("chess", "make_move.py", ["<move>", "<your reasoning>"])
 ```
 This is non-negotiable. Writing "I will play Nf3" in text does nothing. Only the tool call commits the move. Do not stop before you have made this call.
 
-`args` is a list of strings. Each element becomes one entry in the script's `sys.argv` — no shell quoting, no escaping, no embedded flags. The reasoning text is one element, even if it contains apostrophes, quotes, or punctuation.
+`args` is a list of exactly two strings: the move first, the reasoning second. No flags, no quoting, no escaping — each list element goes straight to the script's `sys.argv`. The move accepts either **UCI** (`e2e4`, `g1f3`, `e1g1`, `e7e8q`) or **SAN** (`e4`, `Nf3`, `O-O`, `e8=Q`); trailing `+` or `#` is ignored. The reasoning is a single element regardless of length — punctuation, apostrophes, and quotes inside the text are all fine.
 
-**`--reasoning` is required.** The move will not commit without it. Write whatever you want — a sentence, a few lines, anything. This text is injected verbatim as the first message on your *next* turn, so it is the only context you will have about what you just did.
+**Reasoning is required.** The move will not commit without it. Write whatever you want — a sentence, a few lines, anything. This text is injected verbatim as the first message on your *next* turn, so it is the only context you will have about what you just did.
 
 Useful things to include:
 - What you played and why (one phrase)
@@ -35,12 +35,12 @@ Useful things to include:
 - One concrete threat the opponent now has that you need to watch
 - Any multi-move plan you are executing, or "none"
 
-Example:
+Examples:
 ```
-run_script("chess", "make_move.py", ["--uci", "g1f3", "--reasoning", "Developed knight to f3 controlling center. Rejected e2e4 (too passive). Watch: opponent may push c5. Sequence: none."])
-```
+run_script("chess", "make_move.py", ["g1f3", "Developed knight to f3 controlling center. Rejected e2e4 (too passive). Watch: opponent may push c5. Sequence: none."])
 
-The reasoning is a single list element. Write it as plain prose — punctuation, apostrophes, and quotes inside the text are all fine, because the list never goes through a shell parser.
+run_script("chess", "make_move.py", ["Nf3", "Same move in SAN — both forms work."])
+```
 
 This page tells you what scripts exist and how to use them well.
 
@@ -120,7 +120,7 @@ well under ten tool calls. Between each tool call/step, do some reasoning, think
    cut the king from 4 squares to 1, the next move may be checkmate.
    `list_legal_moves` is available if you want the full annotated
    list, but usually you'll pick candidates from the position itself.
-3. **Imagine each serious candidate.** Run `imagine_move --uci <move>`.
+3. **Imagine each serious candidate.** Run `imagine_move` with the move as a single positional arg, e.g. `args=["e2e4"]` or `args=["Nf3"]` (UCI or SAN, your choice).
    It plays the move on a copy of the board and reports:
 
    - Whether the move gives check or mate.
@@ -145,11 +145,11 @@ well under ten tool calls. Between each tool call/step, do some reasoning, think
    defender, or feels tactical, imagine it before you commit** —
    unless the move is obviously good per the rule above. Cheap
    calculation prevents expensive blunders.
-4. **Commit.** Call `make_move.py --uci <move> --reasoning <your note>`. The board
+4. **Commit.** Call `make_move.py` with `args=["<move>", "<your reasoning>"]`. The board
    advances the moment it returns `ok=true`. If it returns `ok=false`, pick
    a different move from the `legal_moves` list and call again. Never commit
    a move before you have imagined it — do not hang a piece unless you are
-   certain it is a good sacrifice or trade. The `--reasoning` text is your
+   certain it is a good sacrifice or trade. The reasoning text is your
    memory for next turn; write something useful.
 
 ## Scripts
@@ -202,8 +202,13 @@ piece values and the order of recaptures.
 ### `imagine_move.py`
 
 ```
-run_script("chess", "imagine_move.py", ["--uci", "e2e4"])
+run_script("chess", "imagine_move.py", ["e2e4"])
+run_script("chess", "imagine_move.py", ["Nf3"])
 ```
+
+Pass the move as a single positional arg in `args` — UCI (`e2e4`,
+`g1f3`, `e1g1`, `e7e8q`) or SAN (`e4`, `Nf3`, `O-O`, `e8=Q`) both work.
+Trailing `+` or `#` is ignored.
 
 Plays the move on a copy of the board (the live board is **not**
 changed — only `make_move` commits) and returns the resulting
@@ -234,9 +239,9 @@ position plus a tactical report:
 - **Opponent legal replies** — full annotated table with UCI, SAN,
   short description, and check/mate flag for every legal reply.
 
-Illegal `--uci` exits nonzero with a categorised error (no piece on
-that square, path blocked, piece pinned, in check, illegal castle,
-missing/extra promotion piece, etc.), so revise and retry.
+An illegal or unparseable move exits nonzero with a categorised error
+(no piece on that square, path blocked, piece pinned, in check, illegal
+castle, missing/extra promotion piece, etc.), so revise and retry.
 
 ### `list_legal_moves.py`
 
@@ -247,8 +252,8 @@ run_script("chess", "list_legal_moves.py", [])
 Returns a markdown table of all legal moves in the current position
 with columns:
 
-- **UCI** — the exact string to pass to `make_move --uci` or
-  `imagine_move --uci`.
+- **UCI** — the exact string to pass to `make_move` or `imagine_move`
+  (either UCI or SAN from the next column is accepted).
 - **SAN** — standard algebraic notation (e.g. `Nf3`, `Bxc4`, `O-O`,
   `e8=Q+`).
 - **Description** — short prose (`pawn to e4`, `bishop takes knight on c4`, `kingside castle`).
@@ -262,20 +267,26 @@ with columns:
 ### `make_move.py`
 
 ```
-run_script("chess", "make_move.py", ["--uci", "<move>", "--reasoning", "<your note>"])
+run_script("chess", "make_move.py", ["<move>", "<your reasoning>"])
 ```
 
-Commits the move to the live game. **Both `--uci` and `--reasoning` are required.**
+Commits the move to the live game. **Both positional args are required.**
+The move accepts UCI or SAN; trailing `+` or `#` is stripped.
 
 - On success: `{"ok": true, "move": "e2e4", "reasoning": "...", "message": "Move committed. Your turn is over."}`.
   The board has already advanced — do not call any more tools on this turn.
 - On failure (illegal move): `{"ok": false, "error": "...", "legal_moves": [...]}`.
   Pick a different move from `legal_moves` and call again.
-- On missing `--reasoning`: `{"ok": false, "error": "Missing --reasoning ..."}`.
+- On missing reasoning: `{"ok": false, "error": "Missing reasoning ..."}`.
   Add your reasoning and retry.
 
-## UCI format
+## Move format
 
-`e2e4` (pawn push), `g1f3` (knight), `e1g1` (kingside castle),
-`e7e8q` (promotion to queen; also `r`/`b`/`n` for under-promotion).
-Only moves that appear in `list_legal_moves` output are valid.
+Accepts either:
+- **UCI**: `e2e4` (pawn push), `g1f3` (knight), `e1g1` (kingside castle),
+  `e7e8q` (promotion to queen; also `r`/`b`/`n` for under-promotion).
+- **SAN**: `e4`, `Nf3`, `O-O`, `Bxc6`, `e8=Q`, `Nxc6+` — standard
+  algebraic notation. Captures, checks, promotions all supported.
+
+Only moves that are legal in the current position will succeed. The
+`list_legal_moves` table shows both forms for every legal move.
