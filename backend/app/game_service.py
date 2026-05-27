@@ -37,14 +37,14 @@ from app.schemas import CreateGameRequest, GameState, GameSummary, PlayerConfig
 # unchanged; this is a separate, log-only call.
 _PER_MOVE_STOCKFISH_TIME_MS = 200
 
-# Path to the chess-player skill's _eval.py — we import its `evaluate` for
+# Path to the chess skill's _eval.py — we import its `evaluate` for
 # the static per-move eval. We do this lazily because the skill directory
 # is technically optional (a backend without the skill should still serve
 # games); when missing, static_cp_before/after will be None.
 _EVAL_HELPERS_PATH = (
     Path(__file__).resolve().parents[1]
     / "skills"
-    / "chess-player"
+    / "chess"
     / "scripts"
     / "_eval.py"
 )
@@ -52,7 +52,7 @@ _static_eval_fn: Callable[[chess.Board], dict] | None = None
 
 
 def _static_eval_cp(board: chess.Board) -> int | None:
-    """Return the chess-player skill's material+PST eval as centipawns,
+    """Return the chess skill's material+PST eval as centipawns,
     white-positive. Returns None if the helper isn't available."""
     global _static_eval_fn
     if _static_eval_fn is None:

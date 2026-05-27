@@ -1,4 +1,4 @@
-"""Tests for the chess-player skill's _eval helpers — material totals, PST
+"""Tests for the chess skill's _eval helpers — material totals, PST
 symmetry, king-table selection, illegal-move classification, line application,
 and the small public renderers."""
 
@@ -10,7 +10,7 @@ import chess
 import pytest
 
 
-SCRIPT_PATH = Path(__file__).resolve().parents[1] / "skills" / "chess-player" / "scripts" / "_eval.py"
+SCRIPT_PATH = Path(__file__).resolve().parents[1] / "skills" / "chess" / "scripts" / "_eval.py"
 
 
 @pytest.fixture(scope="module")

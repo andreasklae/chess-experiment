@@ -72,7 +72,7 @@ _DISABLED_TOOLS = [
     "register_skill",
     "scaffold_skill",
     "write_skill_file",
-    "read_reference",        # chess-player has no references/ dir
+    "read_reference",        # chess skill has no references/ dir
     "call_client_function",
     "compress_message",      # compaction is harness-driven, not agent-driven
     "retrieve_message",
@@ -85,7 +85,7 @@ _DISABLED_TOOLS = [
 
 _SYSTEM_PROMPT_EXTRA = (
     "You are playing chess as white. "
-    "Your FIRST action every turn must be to call use_skill('chess-player') — "
+    "Your FIRST action every turn must be to call use_skill('chess') — "
     "it contains the scripts and all instructions for how to play. "
     "Do not call run_script before you have called use_skill."
 )

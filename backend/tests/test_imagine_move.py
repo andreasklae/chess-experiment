@@ -1,4 +1,4 @@
-"""Tests for the chess-player skill's imagine_move script."""
+"""Tests for the chess skill's imagine_move script."""
 
 import importlib.util
 import sys
@@ -8,7 +8,7 @@ import chess
 import pytest
 
 
-SCRIPT_PATH = Path(__file__).resolve().parents[1] / "skills" / "chess-player" / "scripts" / "imagine_move.py"
+SCRIPT_PATH = Path(__file__).resolve().parents[1] / "skills" / "chess" / "scripts" / "imagine_move.py"
 
 
 @pytest.fixture(scope="module")

@@ -28,11 +28,11 @@ four skill scripts:
 - `list_legal_moves.py` — annotated markdown table of legal moves
 - `make_move.py --uci <move>` — commits the move
 
-See [`backend/skills/chess-player/`](backend/skills/chess-player/). The
+See [`backend/skills/chess/`](backend/skills/chess/). The
 material+PST static eval previously exposed as a separate
 `evaluate_position.py` script is now folded into `show_position` and
 `imagine_move` output (one line each); the eval helpers themselves live
-in `backend/skills/chess-player/scripts/_eval.py` and are not exposed
+in `backend/skills/chess/scripts/_eval.py` and are not exposed
 to the agent.
 
 SDK-bundled native tools (`manage_todos`, thread/spawn tools, file

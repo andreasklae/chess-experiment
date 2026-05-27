@@ -1,4 +1,4 @@
-"""Tests for the chess-player skill's show_position script — focused on
+"""Tests for the chess skill's show_position script — focused on
 the x-ray battery detection and pinned annotation."""
 
 import importlib.util
@@ -9,7 +9,7 @@ import chess
 import pytest
 
 
-SCRIPT_PATH = Path(__file__).resolve().parents[1] / "skills" / "chess-player" / "scripts" / "show_position.py"
+SCRIPT_PATH = Path(__file__).resolve().parents[1] / "skills" / "chess" / "scripts" / "show_position.py"
 
 
 @pytest.fixture(scope="module")

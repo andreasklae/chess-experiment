@@ -376,7 +376,7 @@ def main() -> None:
     if not args.uci:
         print(json.dumps({
             "ok": False,
-            "error": "Missing --uci. You must specify a move to imagine. Example: run_script(\"chess-player\", \"imagine_move.py\", [\"--uci\", \"e2e4\"])",
+            "error": "Missing --uci. You must specify a move to imagine. Example: run_script(\"chess\", \"imagine_move.py\", [\"--uci\", \"e2e4\"])",
         }))
         sys.exit(1)
 

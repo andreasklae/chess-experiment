@@ -1,5 +1,5 @@
 ---
-name: chess-player
+name: chess
 description: >
   Chess-playing skill for the white side of a live game. Provides scripts to
   inspect the current position (with material balance baked in), imagine a
@@ -13,7 +13,7 @@ You are the white player in a live chess game. **Your only job this turn is to c
 
 **This is not a chess analysis task. You are not writing a report. You are making a move.**
 
-The skill name is `chess-player`. Always use that exact name when calling `use_skill` or `run_script`.
+The skill name is `chess`. Always use that exact name when calling `use_skill` or `run_script`.
 
 Before each tool call, write one sentence on what you are about to do and why. After each result, write one sentence on what it told you. Keep it brief — this is your reasoning trace, not an essay.
 
@@ -21,7 +21,7 @@ Before each tool call, write one sentence on what you are about to do and why. A
 
 **Every turn must end with:**
 ```
-run_script("chess-player", "make_move.py", ["--uci", "<move>", "--reasoning", "<your note>"])
+run_script("chess", "make_move.py", ["--uci", "<move>", "--reasoning", "<your note>"])
 ```
 This is non-negotiable. Writing "I will play Nf3" in text does nothing. Only the tool call commits the move. Do not stop before you have made this call.
 
@@ -37,7 +37,7 @@ Useful things to include:
 
 Example:
 ```
-run_script("chess-player", "make_move.py", ["--uci", "g1f3", "--reasoning", "Developed knight to f3 controlling center. Rejected e2e4 (too passive). Watch: opponent may push c5. Sequence: none."])
+run_script("chess", "make_move.py", ["--uci", "g1f3", "--reasoning", "Developed knight to f3 controlling center. Rejected e2e4 (too passive). Watch: opponent may push c5. Sequence: none."])
 ```
 
 The reasoning is a single list element. Write it as plain prose — punctuation, apostrophes, and quotes inside the text are all fine, because the list never goes through a shell parser.
@@ -162,7 +162,7 @@ markdown.
 ### `show_position.py`
 
 ```
-run_script("chess-player", "show_position.py", [])
+run_script("chess", "show_position.py", [])
 ```
 
 Returns, top to bottom:
@@ -202,7 +202,7 @@ piece values and the order of recaptures.
 ### `imagine_move.py`
 
 ```
-run_script("chess-player", "imagine_move.py", ["--uci", "e2e4"])
+run_script("chess", "imagine_move.py", ["--uci", "e2e4"])
 ```
 
 Plays the move on a copy of the board (the live board is **not**
@@ -241,7 +241,7 @@ missing/extra promotion piece, etc.), so revise and retry.
 ### `list_legal_moves.py`
 
 ```
-run_script("chess-player", "list_legal_moves.py", [])
+run_script("chess", "list_legal_moves.py", [])
 ```
 
 Returns a markdown table of all legal moves in the current position
@@ -262,7 +262,7 @@ with columns:
 ### `make_move.py`
 
 ```
-run_script("chess-player", "make_move.py", ["--uci", "<move>", "--reasoning", "<your note>"])
+run_script("chess", "make_move.py", ["--uci", "<move>", "--reasoning", "<your note>"])
 ```
 
 Commits the move to the live game. **Both `--uci` and `--reasoning` are required.**

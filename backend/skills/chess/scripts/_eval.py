@@ -1,4 +1,4 @@
-"""Shared helpers for the chess-player skill's perception scripts.
+"""Shared helpers for the chess skill's perception scripts.
 
 This module is underscore-prefixed so the agent cannot invoke it via
 `run_script` (the SDK skips underscore-prefixed files when listing a
