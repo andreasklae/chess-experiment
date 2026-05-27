@@ -191,10 +191,20 @@ class LoggingService:
         aborted_reason: str = "",
         analysis_path: str = "",
     ) -> None:
-        """Append one row to ranked.csv or experimental.csv based on git state.
+        """Append one row to ranked.csv or experimental.csv.
 
-        The phase decision is delegated to ``repo_state.is_ranked_context``;
-        see that function for the policy (main + clean tree = ranked).
+        Phase decision:
+          - ``ranked``: live git state is clean ``main`` AND the game belongs
+            to a batch (``batch_id`` is non-empty). Only intentional
+            calibration batches produce ranked rows.
+          - ``experimental``: everything else — lobby/ad-hoc agent games (no
+            batch_id), branch work, dirty trees. ELO is not updated.
+
+        Lobby agent games are still logged (useful for debugging) but they
+        always write to experimental.csv, so a stray click on "agent vs Maia
+        1500" in the UI cannot contaminate the calibration record. See
+        decisions/2026-05-24-ranked-vs-experimental.md.
+
         The subfolder and PR number come from ``folder_resolver`` (which
         consults ``gh pr view`` and falls back to the branch name).
         """
@@ -208,6 +218,10 @@ class LoggingService:
             agent_log_path = self._write_agent_log(game_id, model, target.folder)
 
         phase = current_phase()
+        # A non-batch game is never ranked, even on clean main. Calibration
+        # data only comes from intentional batches.
+        if not batch_id:
+            phase = "experimental"
         git = live_git_state()
         target_path = self._ranked_path if phase == "ranked" else self._experimental_path
 
