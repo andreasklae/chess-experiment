@@ -6,11 +6,12 @@ written, no ``_agent.json`` was produced (turn events were in-memory only
 and are unrecoverable), and the batch state may still list it as
 ``current_game_id`` without any games appended.
 
-This happens when the agent commits the mating move via the ``/agent-move``
-HTTP endpoint and the bot loop's early-return branch in
-``_run_until_human_or_finished`` fires before the game-over handlers can
-run. Fixed in code; this script recovers any games that already slipped
-through.
+Historically this happened when the agent commit path used a separate
+``/agent-move`` push endpoint and the bot loop's early-return branch in
+``_run_until_human_or_finished`` could fire before the game-over handlers
+ran. The single-writer refactor (commit-intent validator endpoint + bot-
+loop push) eliminated that class of orphan. This script remains to
+recover any games that slipped through under the old design.
 
 Recovery actions per orphan:
 1. Move ``<game_id>.json`` (and any ``_agent.json`` if it exists) into the

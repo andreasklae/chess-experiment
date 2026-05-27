@@ -213,8 +213,8 @@ _BUDGET_REMINDER_TEMPLATE = (
 
 _NO_MOVE_REMINDER_TEMPLATE = (
     "**You did not submit a move in your previous attempt.** "
-    "You MUST call make_move.py with `--uci <move>` before your turn ends. "
-    "Describing a move in text is not enough — use the tool.\n\n"
+    "You MUST call `make_move.py` with `args=[<move>, <reasoning>]` before your "
+    "turn ends. Describing a move in text is not enough — use the tool.\n\n"
     "{prior_reasoning}"
 )
 
@@ -393,21 +393,21 @@ class AgentPlayer(Player):
                             if result is not None:
                                 committed_uci, reasoning = result
                                 flush_thinking()
-                                # Store the agent's own reasoning as the turn memory.
-                                # The HistoryProcessor will inject it as prior-turn
-                                # context before the next run_stream_events call.
+                                # Compaction fires only on a successful commit.
+                                # Store the agent's own reasoning as the
+                                # turn memory; the HistoryProcessor will
+                                # inject it as prior-turn context before the
+                                # next get_move call.
                                 self._pending_summary[:] = [(base_prompt, reasoning)]
                                 emit({"type": "context_summary", "content": reasoning})
-                                # The script accepts either UCI (e2e4) or SAN
-                                # (e4, Nf3). Strip trailing +/# annotation, then
-                                # try UCI first, fall back to SAN against the
-                                # pre-move board snapshot. Same logic as
-                                # GameService._push_uci_move.
-                                cleaned = committed_uci.strip().rstrip("+#")
-                                try:
-                                    return chess.Move.from_uci(cleaned)
-                                except ValueError:
-                                    return board.parse_san(cleaned)
+                                # ``committed_uci`` here is the canonical UCI
+                                # returned by ``/agent-commit`` — already
+                                # validated against the live board, so a bare
+                                # from_uci is safe. The bot loop will push
+                                # this move; the board has NOT yet advanced
+                                # at this point (the endpoint is validation-
+                                # only).
+                                return chess.Move.from_uci(committed_uci)
 
             except AgentContextOverflowError as exc:
                 # Infrastructure limit — abort game with no ELO update.

@@ -60,13 +60,21 @@ class MoveRequest(BaseModel):
     move: Annotated[str, Field(min_length=4, max_length=5, pattern=r"^[a-h][1-8][a-h][1-8][qrbn]?$")]
 
 
-class AgentMoveRequest(BaseModel):
-    """Agent-side move submission. Accepts UCI (e2e4, e1g1, e7e8q) or SAN
-    (e4, Nf3, O-O, e8=Q, Nxc6+). The underlying push path
-    (``GameService._push_uci_move``) tries UCI first, falls back to SAN.
-    Trailing + / # is also tolerated; ``make_move.py`` strips it before
-    POSTing, but we accept it here too in case a caller forgets."""
+class AgentCommitRequest(BaseModel):
+    """Agent-side commit-intent submission.
+
+    The endpoint that consumes this (``POST /api/games/{id}/agent-commit``)
+    validates the move against the live board but **does not push it** —
+    pushing is the bot loop's exclusive job. The recorded commit is read
+    back by ``AgentPlayer.get_move`` once the LLM stream ends, and the
+    returned ``chess.Move`` is what the bot loop pushes.
+
+    Accepts UCI (``e2e4``, ``e1g1``, ``e7e8q``) or SAN (``e4``, ``Nf3``,
+    ``O-O``, ``e8=Q``, ``Nxc6+``). The validator at the service layer
+    tries UCI first and falls back to SAN. Trailing ``+`` / ``#`` is
+    tolerated."""
     move: Annotated[str, Field(min_length=2, max_length=12)]
+    reasoning: Annotated[str, Field(min_length=1, max_length=4000)]
 
 
 class PlayerTypeInfo(BaseModel):

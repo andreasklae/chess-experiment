@@ -413,12 +413,33 @@ class GameService:
     async def submit_human_move(self, game_id: str, move_uci: str) -> GameState:
         return await self._submit_human_move(self._get_game(game_id), move_uci)
 
-    async def submit_agent_move(self, game_id: str, move_uci: str) -> GameState:
-        """Apply a move submitted by the agent script (no is_human check).
+    async def submit_agent_commit(
+        self, game_id: str, move_str: str, _reasoning: str
+    ) -> dict:
+        """Validate the agent's commit-intent. Pure validator — never pushes.
 
-        Called via POST /api/games/{id}/agent-move from make_move.py.
-        The agent's turn is running inside AgentPlayer.get_move(), which holds
-        no lock — so we can acquire it here safely.
+        Called via POST /api/games/{id}/agent-commit from make_move.py.
+
+        The bot loop is the only writer to game.board. This endpoint only
+        confirms that ``move_str`` is legal in the current position and
+        returns its canonical UCI form so the agent script can echo a
+        normalised value back in its result JSON. The script's stdout is
+        what AgentPlayer.get_move parses to learn the committed move; the
+        bot loop then pushes it.
+
+        ``_reasoning`` is required by the request schema (forces the model
+        to actually write a reasoning note — without it the message-history
+        compaction at the AgentPlayer layer would have nothing to inject)
+        but is not persisted server-side. It travels back through the
+        script's stdout JSON and into ``_pending_summary``.
+
+        Accepts UCI or SAN; the canonical UCI is returned in the response so
+        downstream code (the agent's tool-result parser) can rely on a
+        normalised string. Trailing ``+`` / ``#`` is stripped before parsing.
+
+        Returns ``{"ok": True, "move": "<canonical-uci>"}`` on success, or
+        raises HTTP 400 with ``detail`` when the move is illegal,
+        unparseable, or out of turn.
         """
         game = self._get_game(game_id)
         async with game.lock:
@@ -429,10 +450,43 @@ class GameService:
                     status_code=400,
                     detail="It is not the agent's turn.",
                 )
-            self._push_uci_move(game, move_uci)
-            asyncio.create_task(self._update_eval(game))
-            await self._publish(game)
-        return game.state()
+            cleaned = move_str.strip().rstrip("+#")
+            # UCI-then-SAN parse against the live board.
+            move: chess.Move | None = None
+            try:
+                cand = chess.Move.from_uci(cleaned)
+                if cand in game.board.legal_moves:
+                    move = cand
+            except ValueError:
+                pass
+            if move is None:
+                try:
+                    move = game.board.parse_san(cleaned)
+                except (ValueError, chess.IllegalMoveError, chess.InvalidMoveError, chess.AmbiguousMoveError) as exc:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"Invalid move '{move_str}': not valid UCI (e.g. e2e4) "
+                            f"or SAN (e.g. Nf3): {exc}"
+                        ),
+                    ) from exc
+            if move not in game.board.legal_moves:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Illegal move '{move_str}' in current position.",
+                )
+            # If chess.com is the opponent, force-queen any agent underpromotion
+            # so host and browser stay in sync (chess.com auto-queens). Same
+            # rule as the human-move path.
+            if move.promotion and move.promotion != chess.QUEEN:
+                opponent = game.black_config if game.board.turn == chess.WHITE else game.white_config
+                if opponent.type == "chesscom":
+                    move = chess.Move(move.from_square, move.to_square, promotion=chess.QUEEN)
+            # Validation-only. The bot loop reads the committed move from
+            # the script's stdout (which the script prints from this
+            # endpoint's response) and pushes it. game.board stays as-is
+            # here; the bot loop is the only writer.
+            return {"ok": True, "move": move.uci()}
 
     async def subscribe_current(self) -> asyncio.Queue[str]:
         return await self._subscribe(self._get_current_game())
@@ -660,31 +714,24 @@ class GameService:
                 return
 
             async with game.lock:
-                # The agent may have already committed the move via the
-                # /agent-move HTTP endpoint while ``get_move`` was awaiting.
-                # If that move ended the game (mate, stalemate, draw), the
-                # board now reflects it but the game-over branch at the top
-                # of the loop hasn't run yet. Close this agent turn with the
-                # committed move (so the per-move evals attach to the right
-                # turn) and loop back; the next iteration's ``is_over`` check
-                # will fire ``_record_game_end`` and the batch handler.
-                already_applied = len(game.uci_moves) >= move_number
-                if already_applied:
-                    logger.info("move · %s already applied by agent script, skipping push",
-                                game.game_id[:8])
-                elif game.is_over() or game.player_to_move().is_human:
-                    # Game finished while the agent was thinking (e.g. opponent
-                    # resigned through a side channel) or control switched to a
-                    # human player. Close the turn without recording the move.
+                # The bot loop is the only writer to game.board. Every player
+                # — agent, chesscom, maia, human, anything — returns a
+                # chess.Move and we push it here. AgentPlayer records its
+                # commit-intent via the agent-commit endpoint, but that
+                # endpoint validates only; the actual push happens here.
+                if game.is_over() or game.player_to_move().is_human:
+                    # Game finished while the player was thinking (e.g.
+                    # opponent resigned through a side channel) or control
+                    # switched to a human player. Close the turn without
+                    # recording the move.
                     self._logging.close_agent_turn(game.game_id, None)
                     return
-                else:
-                    logger.info("move · %s %s (%s) move=%s",
-                                game.game_id[:8],
-                                "white" if game.board.turn == chess.WHITE else "black",
-                                type(player).__name__,
-                                move.uci())
-                    self._push_move(game, move)
+                logger.info("move · %s %s (%s) move=%s",
+                            game.game_id[:8],
+                            "white" if game.board.turn == chess.WHITE else "black",
+                            type(player).__name__,
+                            move.uci())
+                self._push_move(game, move)
                 move_time_ms = int((time.monotonic() - move_start) * 1000)
                 board_after = game.board.copy(stack=False)
                 # Kick off an evaluation in the background; don't block the loop.

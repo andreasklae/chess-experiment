@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Submit a move for the current game. This actually commits the move on the board.
+"""Commit your chosen move for this turn. This is the mandatory closing action.
 
 Positional args (exactly two):
   move       The move in UCI (e2e4, g1f3, e7e8q) or SAN (e4, Nf3, O-O, e8=Q).
@@ -15,12 +15,18 @@ Example:
   run_script("chess", "make_move.py", ["Nf3", "Developed knight; pressures e5."])
 
 Reads CHESS_API_BASE and CHESS_GAME_ID from environment (injected by AgentPlayer).
-POSTs the move to the backend, which validates and applies it.
+
+This script does NOT push the move to the board. It POSTs a commit-intent to
+``/api/games/{id}/agent-commit``, which validates the move against the live
+board (legality, turn, move shape). The bot loop is the single board writer:
+it reads this script's result, parses out the canonical UCI, and pushes the
+move under its own lock. That keeps every player (agent, chesscom, maia,
+human) on the same contract — players return moves, the bot loop pushes them.
 
 Prints on success:
-  {"ok": true, "move": "<original input>", "reasoning": "...", "message": "Move committed. Your turn is over."}
+  {"ok": true, "move": "<canonical-uci>", "reasoning": "...", "message": "Move committed. Your turn is over."}
 
-Prints on error (illegal or invalid):
+Prints on failure (illegal move, wrong turn, parse error):
   {"ok": false, "error": "...", "legal_moves": [...]}
 """
 
@@ -78,8 +84,8 @@ def main() -> None:
     # Strip trailing check/mate notation — descriptive, not part of move identity.
     move_str = args.move.strip().rstrip("+#")
 
-    url = f"{api_base}/api/games/{game_id}/agent-move"
-    payload = json.dumps({"move": move_str}).encode()
+    url = f"{api_base}/api/games/{game_id}/agent-commit"
+    payload = json.dumps({"move": move_str, "reasoning": reasoning}).encode()
     req = urllib.request.Request(
         url,
         data=payload,
@@ -88,10 +94,14 @@ def main() -> None:
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
-            resp.read()
+            body = json.loads(resp.read().decode())
+            # The endpoint returns the canonical UCI it validated. Echo that
+            # back so AgentPlayer.get_move's tool-result parser sees a string
+            # that chess.Move.from_uci can consume without ambiguity.
+            canonical = body.get("move", move_str)
             print(json.dumps({
                 "ok": True,
-                "move": args.move,
+                "move": canonical,
                 "reasoning": reasoning,
                 "message": "Move committed. Your turn is over.",
             }))
@@ -101,7 +111,8 @@ def main() -> None:
             detail = json.loads(body).get("detail", body)
         except Exception:
             detail = body
-        # Fetch legal moves to help the model recover
+        # Fetch legal moves to help the model recover from an illegal move
+        # without burning another tool call on list_legal_moves.py.
         legal_moves = []
         try:
             with urllib.request.urlopen(

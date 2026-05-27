@@ -43,7 +43,7 @@ from app.config import Settings, get_settings
 from app.eval_service import EvalService
 from app.game_service import GameService
 from app.players import PlayerFactory
-from app.schemas import AgentMoveRequest, CHESSCOM_ELOS, CreateGameRequest, GameState, GameSummary, HealthResponse, MAIA_ELOS, MoveRequest, PlayerTypeInfo
+from app.schemas import AgentCommitRequest, CHESSCOM_ELOS, CreateGameRequest, GameState, GameSummary, HealthResponse, MAIA_ELOS, MoveRequest, PlayerTypeInfo
 
 
 @asynccontextmanager
@@ -205,9 +205,16 @@ async def submit_move(game_id: str, request: MoveRequest, service: GameServiceDe
     return await service.submit_human_move(game_id, request.move)
 
 
-@app.post("/api/games/{game_id}/agent-move")
-async def submit_agent_move(game_id: str, request: AgentMoveRequest, service: GameServiceDep) -> GameState:
-    return await service.submit_agent_move(game_id, request.move)
+@app.post("/api/games/{game_id}/agent-commit")
+async def submit_agent_commit(
+    game_id: str, request: AgentCommitRequest, service: GameServiceDep
+) -> dict:
+    """Validate an agent commit-intent (legality, turn, move shape).
+
+    Pure validator: never pushes to the board. See
+    ``GameService.submit_agent_commit`` for the full contract.
+    """
+    return await service.submit_agent_commit(game_id, request.move, request.reasoning)
 
 
 @app.post("/api/games/{game_id}/pause")

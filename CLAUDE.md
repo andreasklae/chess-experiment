@@ -24,9 +24,9 @@ local Gemma 4 31B-it model on eX3 via vLLM. It plays white and invokes
 four skill scripts:
 
 - `show_position.py` — ASCII board + material balance + attack/defense map
-- `imagine_move.py --uci <move>` — one-ply look-ahead with tactical report
+- `imagine_move.py <move>` — one-ply look-ahead with tactical report
 - `list_legal_moves.py` — annotated markdown table of legal moves
-- `make_move.py --uci <move>` — commits the move
+- `make_move.py <move> <reasoning>` — commits the move (validation-only HTTP call via `/agent-commit`; the bot loop is the sole writer to `game.board`)
 
 See [`backend/skills/chess/`](backend/skills/chess/). The
 material+PST static eval previously exposed as a separate

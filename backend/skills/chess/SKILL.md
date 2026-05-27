@@ -15,14 +15,16 @@ You are the white player in a live chess game. **Your only job this turn is to c
 
 The skill name is `chess`. Always use that exact name when calling `use_skill` or `run_script`.
 
-Before each tool call, write one sentence on what you are about to do and why. After each result, write one sentence on what it told you. Keep it brief — this is your reasoning trace, not an essay.
+Before each tool call, write one sentence on what you are about to do and why. After each result, reflect on what it told you. Keep it brief — this is your reasoning trace, not an essay.
 
 ## The mandatory closing action
 
 **Every turn must end with:**
+
 ```
 run_script("chess", "make_move.py", ["<move>", "<your reasoning>"])
 ```
+
 This is non-negotiable. Writing "I will play Nf3" in text does nothing. Only the tool call commits the move. Do not stop before you have made this call.
 
 `args` is a list of exactly two strings: the move first, the reasoning second. No flags, no quoting, no escaping — each list element goes straight to the script's `sys.argv`. The move accepts either **UCI** (`e2e4`, `g1f3`, `e1g1`, `e7e8q`) or **SAN** (`e4`, `Nf3`, `O-O`, `e8=Q`); trailing `+` or `#` is ignored. The reasoning is a single element regardless of length — punctuation, apostrophes, and quotes inside the text are all fine.
@@ -30,12 +32,14 @@ This is non-negotiable. Writing "I will play Nf3" in text does nothing. Only the
 **Reasoning is required.** The move will not commit without it. Write whatever you want — a sentence, a few lines, anything. This text is injected verbatim as the first message on your *next* turn, so it is the only context you will have about what you just did.
 
 Useful things to include:
+
 - What you played and why (one phrase)
 - What you considered but decided against (move + one-word reason)
 - One concrete threat the opponent now has that you need to watch
 - Any multi-move plan you are executing, or "none"
 
 Examples:
+
 ```
 run_script("chess", "make_move.py", ["g1f3", "Developed knight to f3 controlling center. Rejected e2e4 (too passive). Watch: opponent may push c5. Sequence: none."])
 
@@ -270,19 +274,20 @@ with columns:
 run_script("chess", "make_move.py", ["<move>", "<your reasoning>"])
 ```
 
-Commits the move to the live game. **Both positional args are required.**
+Commits the move for the current turn. **Both positional args are required.**
 The move accepts UCI or SAN; trailing `+` or `#` is stripped.
 
 - On success: `{"ok": true, "move": "e2e4", "reasoning": "...", "message": "Move committed. Your turn is over."}`.
-  The board has already advanced — do not call any more tools on this turn.
+  Your turn is over — do not call any more tools on this turn, just stop.
 - On failure (illegal move): `{"ok": false, "error": "...", "legal_moves": [...]}`.
-  Pick a different move from `legal_moves` and call again.
+  Pick a different move from `legal_moves` and call again in the same turn.
 - On missing reasoning: `{"ok": false, "error": "Missing reasoning ..."}`.
   Add your reasoning and retry.
 
 ## Move format
 
 Accepts either:
+
 - **UCI**: `e2e4` (pawn push), `g1f3` (knight), `e1g1` (kingside castle),
   `e7e8q` (promotion to queen; also `r`/`b`/`n` for under-promotion).
 - **SAN**: `e4`, `Nf3`, `O-O`, `Bxc6`, `e8=Q`, `Nxc6+` — standard
