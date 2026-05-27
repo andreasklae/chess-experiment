@@ -398,7 +398,16 @@ class AgentPlayer(Player):
                                 # context before the next run_stream_events call.
                                 self._pending_summary[:] = [(base_prompt, reasoning)]
                                 emit({"type": "context_summary", "content": reasoning})
-                                return chess.Move.from_uci(committed_uci)
+                                # The script accepts either UCI (e2e4) or SAN
+                                # (e4, Nf3). Strip trailing +/# annotation, then
+                                # try UCI first, fall back to SAN against the
+                                # pre-move board snapshot. Same logic as
+                                # GameService._push_uci_move.
+                                cleaned = committed_uci.strip().rstrip("+#")
+                                try:
+                                    return chess.Move.from_uci(cleaned)
+                                except ValueError:
+                                    return board.parse_san(cleaned)
 
             except AgentContextOverflowError as exc:
                 # Infrastructure limit — abort game with no ELO update.
