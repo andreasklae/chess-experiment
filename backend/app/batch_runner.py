@@ -193,15 +193,33 @@ class BatchRunner:
             opp_elo,
         )
 
-        try:
-            state = await self._games.create_game(request)
-        except Exception as exc:
-            logger.exception("batch %s · create_game failed: %s", batch.batch_id[:8], exc)
+        # Retry create_game on transient infrastructure failures (chess.com
+        # page load timeouts, browser launch races, etc.). Two retries
+        # spaced by a short backoff before declaring the batch failed.
+        last_exc: Exception | None = None
+        state = None
+        for attempt in (1, 2, 3):
+            try:
+                state = await self._games.create_game(request)
+                last_exc = None
+                break
+            except Exception as exc:
+                last_exc = exc
+                logger.warning(
+                    "batch %s · create_game attempt %d/3 failed: %s",
+                    batch.batch_id[:8], attempt, exc,
+                )
+                if attempt < 3:
+                    await asyncio.sleep(3.0 * attempt)
+        if last_exc is not None or state is None:
+            logger.error("batch %s · create_game failed after retries", batch.batch_id[:8])
             batch.status = "failed"
-            batch.last_error = str(exc)
+            batch.last_error = str(last_exc) if last_exc else "create_game returned no state"
             self._batches.save(batch)
             self._active_batch_id = None
-            raise
+            if last_exc is not None:
+                raise last_exc
+            return
 
         # Stamp the new in-memory Game with batch metadata.
         game = self._games._game  # type: ignore[attr-defined]

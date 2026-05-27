@@ -21,9 +21,11 @@ Before each tool call, write one sentence on what you are about to do and why. A
 
 **Every turn must end with:**
 ```
-run_script("chess-player", "make_move.py", "--uci <move> --reasoning <your note>")
+run_script("chess-player", "make_move.py", ["--uci", "<move>", "--reasoning", "<your note>"])
 ```
 This is non-negotiable. Writing "I will play Nf3" in text does nothing. Only the tool call commits the move. Do not stop before you have made this call.
+
+`args` is a list of strings. Each element becomes one entry in the script's `sys.argv` — no shell quoting, no escaping, no embedded flags. The reasoning text is one element, even if it contains apostrophes, quotes, or punctuation.
 
 **`--reasoning` is required.** The move will not commit without it. Write whatever you want — a sentence, a few lines, anything. This text is injected verbatim as the first message on your *next* turn, so it is the only context you will have about what you just did.
 
@@ -35,10 +37,10 @@ Useful things to include:
 
 Example:
 ```
-run_script("chess-player", "make_move.py", "--uci g1f3 --reasoning Developed knight to f3 controlling center. Rejected e2e4 (too passive). Watch: opponent may push c5. Sequence: none.")
+run_script("chess-player", "make_move.py", ["--uci", "g1f3", "--reasoning", "Developed knight to f3 controlling center. Rejected e2e4 (too passive). Watch: opponent may push c5. Sequence: none."])
 ```
 
-No quoting needed. Write it as plain text after `--reasoning`.
+The reasoning is a single list element. Write it as plain prose — punctuation, apostrophes, and quotes inside the text are all fine, because the list never goes through a shell parser.
 
 This page tells you what scripts exist and how to use them well.
 
@@ -160,7 +162,7 @@ markdown.
 ### `show_position.py`
 
 ```
-run_script("chess-player", "show_position.py", "")
+run_script("chess-player", "show_position.py", [])
 ```
 
 Returns, top to bottom:
@@ -200,7 +202,7 @@ piece values and the order of recaptures.
 ### `imagine_move.py`
 
 ```
-run_script("chess-player", "imagine_move.py", "--uci e2e4")
+run_script("chess-player", "imagine_move.py", ["--uci", "e2e4"])
 ```
 
 Plays the move on a copy of the board (the live board is **not**
@@ -239,7 +241,7 @@ missing/extra promotion piece, etc.), so revise and retry.
 ### `list_legal_moves.py`
 
 ```
-run_script("chess-player", "list_legal_moves.py", "")
+run_script("chess-player", "list_legal_moves.py", [])
 ```
 
 Returns a markdown table of all legal moves in the current position
@@ -260,7 +262,7 @@ with columns:
 ### `make_move.py`
 
 ```
-run_script("chess-player", "make_move.py", "--uci <move> --reasoning <your note>")
+run_script("chess-player", "make_move.py", ["--uci", "<move>", "--reasoning", "<your note>"])
 ```
 
 Commits the move to the live game. **Both `--uci` and `--reasoning` are required.**

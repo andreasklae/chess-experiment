@@ -143,7 +143,25 @@ class ChessComDriver:
         else:
             self._page = await self._context.new_page()
 
-        await self._page.goto(PLAY_URL, wait_until="domcontentloaded")
+        # chess.com page load is occasionally slow after a previous game in
+        # the same batch (network warm-up, ad-loader, etc.). Retry the goto
+        # once with a longer timeout before giving up.
+        last_exc: Exception | None = None
+        for attempt in (1, 2):
+            try:
+                await self._page.goto(PLAY_URL, wait_until="domcontentloaded", timeout=60_000)
+                last_exc = None
+                break
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                logger.warning(
+                    "chess.com goto failed (attempt %d): %s", attempt, exc
+                )
+                await asyncio.sleep(2.0)
+        if last_exc is not None:
+            raise ChessComSetupError(
+                f"Failed to load {PLAY_URL} after 2 attempts: {last_exc}"
+            ) from last_exc
         await self._dismiss_first_run_modal()
         try:
             await self._page.wait_for_function(_js.BOARD_READY, timeout=30_000)
