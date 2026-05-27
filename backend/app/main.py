@@ -43,7 +43,7 @@ from app.config import Settings, get_settings
 from app.eval_service import EvalService
 from app.game_service import GameService
 from app.players import PlayerFactory
-from app.schemas import CHESSCOM_ELOS, CreateGameRequest, GameState, GameSummary, HealthResponse, MAIA_ELOS, MoveRequest, PlayerTypeInfo
+from app.schemas import AgentMoveRequest, CHESSCOM_ELOS, CreateGameRequest, GameState, GameSummary, HealthResponse, MAIA_ELOS, MoveRequest, PlayerTypeInfo
 
 
 @asynccontextmanager
@@ -206,7 +206,7 @@ async def submit_move(game_id: str, request: MoveRequest, service: GameServiceDe
 
 
 @app.post("/api/games/{game_id}/agent-move")
-async def submit_agent_move(game_id: str, request: MoveRequest, service: GameServiceDep) -> GameState:
+async def submit_agent_move(game_id: str, request: AgentMoveRequest, service: GameServiceDep) -> GameState:
     return await service.submit_agent_move(game_id, request.move)
 
 

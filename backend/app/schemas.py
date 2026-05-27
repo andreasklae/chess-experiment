@@ -55,7 +55,18 @@ class CreateGameRequest(BaseModel):
 
 
 class MoveRequest(BaseModel):
+    """Human-side move submission. Strict UCI shape — chessground drag/drop
+    produces from-square + to-square (+ promotion piece), never SAN."""
     move: Annotated[str, Field(min_length=4, max_length=5, pattern=r"^[a-h][1-8][a-h][1-8][qrbn]?$")]
+
+
+class AgentMoveRequest(BaseModel):
+    """Agent-side move submission. Accepts UCI (e2e4, e1g1, e7e8q) or SAN
+    (e4, Nf3, O-O, e8=Q, Nxc6+). The underlying push path
+    (``GameService._push_uci_move``) tries UCI first, falls back to SAN.
+    Trailing + / # is also tolerated; ``make_move.py`` strips it before
+    POSTing, but we accept it here too in case a caller forgets."""
+    move: Annotated[str, Field(min_length=2, max_length=12)]
 
 
 class PlayerTypeInfo(BaseModel):
