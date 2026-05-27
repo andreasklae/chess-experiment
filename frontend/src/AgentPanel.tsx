@@ -30,18 +30,42 @@ function stripGemmaChannelMarkers(text: string): string {
 
 // ── Tool call / result presentation ───────────────────────────────────────
 
+/** Extract `--uci <value>` from a tool-call args list or legacy shell-format
+ *  string. The SDK now passes `args` as a list of strings (one per sys.argv
+ *  entry); historical agent logs and any pre-refactor callers may still pass
+ *  it as a shell-format single string, so we accept both. */
+function extractUci(rawArgs: unknown): string | null {
+  if (Array.isArray(rawArgs)) {
+    const idx = rawArgs.indexOf('--uci');
+    if (idx >= 0 && idx + 1 < rawArgs.length) {
+      const val = rawArgs[idx + 1];
+      if (typeof val === 'string' && val.length > 0) return val;
+    }
+    return null;
+  }
+  if (typeof rawArgs === 'string') {
+    return rawArgs.match(/--uci\s+(\S+)/)?.[1] ?? null;
+  }
+  return null;
+}
+
+function argsDisplay(rawArgs: unknown): string {
+  if (Array.isArray(rawArgs)) return rawArgs.join(' ');
+  if (typeof rawArgs === 'string') return rawArgs;
+  return '';
+}
+
 function friendlyToolCall(tool: string, args: Record<string, unknown>): string {
   if (tool === 'use_skill') return `use_skill(${args.skill_name ?? ''})`;
   if (tool !== 'run_script') return tool;
 
   const file = args.filename as string | undefined;
-  const scriptArgs = (args.args as string | undefined) ?? '';
-  const uci = scriptArgs.match(/--uci\s+(\S+)/)?.[1];
+  const uci = extractUci(args.args);
 
   if (file === 'list_legal_moves.py') return 'list_legal_moves()';
   if (file === 'show_position.py') return 'show_position()';
   if (file === 'imagine_move.py') return uci ? `imagine_move(${uci})` : 'imagine_move()';
-  if (file === 'make_move.py') return uci ? `make_move(${uci})` : `make_move(${scriptArgs})`;
+  if (file === 'make_move.py') return uci ? `make_move(${uci})` : `make_move(${argsDisplay(args.args)})`;
   return file ?? tool;
 }
 
