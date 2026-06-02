@@ -1,21 +1,22 @@
 """Agent ELO state, classical Elo update formula, and opponent selection.
 
 Methodology choices recorded in
-[knowledge-base/decisions/2026-05-20-elo-and-batch-runner.md] (initial design)
-and the 2026-05-20 update covering adaptive K and streak-based opponent
-stepping (same file, "Matchmaking strategy" section).
+[knowledge-base/decisions/2026-05-20-elo-and-batch-runner.md] (initial design,
+adaptive K) and
+[knowledge-base/decisions/2026-05-26-single-step-matchmaking.md] (current
+opponent-stepping rule, which supersedes that file's doubling policy).
 
 In brief:
 
 - Classical Elo update. K is *adaptive*: 40 for the first
   `PROVISIONAL_GAMES` games (FIDE's provisional-player rule), then 20.
 - Initial ELO 1200 (revised upward from 600; see decisions/2026-05-25-initial-elo-1200.md).
-- Opponent selection uses **streak-based stepping** on the discrete pool
-  (Maia 9-rating grid, chess.com 25-rating grid). A run of consecutive
-  wins doubles the step up the ladder; a run of losses doubles the step
-  down. Single results (no streak) step one notch in the natural direction.
-  This is the cheap-and-defensible version of exponential search and
-  matches how online "rating calibration" tournaments behave.
+- Opponent selection steps **one notch** on the discrete pool (Maia 9-rating
+  grid, chess.com 25-rating grid) in the direction of the running streak: up
+  on a win, down on a loss/draw. A streak counter is still tracked (and draws
+  decay it toward zero), but the step size is always one — this replaced the
+  earlier doubling policy (1, 2, 4 capped at 4), which over-stepped on the
+  compressed low end. See `step_from_streak` below.
 """
 
 from __future__ import annotations

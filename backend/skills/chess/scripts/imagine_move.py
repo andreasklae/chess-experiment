@@ -9,9 +9,13 @@ Reads CHESS_API_BASE and CHESS_GAME_ID from environment (injected by
 AgentPlayer). The live board state is **not** mutated; everything is computed
 on a copy.
 
-Argument (positional, exactly one):
+Argument (one, required):
   move    The move to imagine, in UCI (e2e4, g1f3, e7e8q) or SAN (e4, Nf3,
           O-O, e8=Q). Trailing + or # is ignored.
+
+Exposed as the tool chess__imagine_move after use_skill('chess'). Example:
+  chess__imagine_move(move="e2e4")
+  chess__imagine_move(move="Nf3")
 
 If the move is illegal, the script exits nonzero with a categorised error
 (no piece, blocked, pinned, etc.).
@@ -380,10 +384,9 @@ def main() -> None:
         print(json.dumps({
             "ok": False,
             "error": (
-                "Missing move argument. Call with the move as a single positional "
-                "arg in UCI or SAN form. Example: "
-                "run_script(\"chess\", \"imagine_move.py\", [\"e2e4\"]) "
-                "or run_script(\"chess\", \"imagine_move.py\", [\"Nf3\"])."
+                "Missing move argument. Call with the move in UCI or SAN form. "
+                "Example: chess__imagine_move(move=\"e2e4\") "
+                "or chess__imagine_move(move=\"Nf3\")."
             ),
         }))
         sys.exit(1)

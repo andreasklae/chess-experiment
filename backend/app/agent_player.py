@@ -66,13 +66,15 @@ _BUDGET_WARN_FRACTION = 0.7
 # Built-in SDK tools the chess agent doesn't need. Narrowing the surface is
 # the single biggest factor in keeping turns from looping — manage_todos
 # alone accounted for roughly half of a 169-tool-call runaway turn during
-# stabilization testing. Only ``use_skill`` and ``run_script`` remain.
+# stabilization testing. After use_skill, the chess agent's surface is the
+# skill's own scripts (exposed as typed tools chess__show_position,
+# chess__make_move, …) plus read_reference for the knowledge wiki.
 _DISABLED_TOOLS = [
     "manage_todos",          # no plan/todo workflow needed for chess
     "register_skill",
     "scaffold_skill",
     "write_skill_file",
-    "read_reference",        # chess skill has no references/ dir
+    "list_skill_files",      # wiki is navigated via its index pages, not a flat file list
     "call_client_function",
     "compress_message",      # compaction is harness-driven, not agent-driven
     "retrieve_message",
@@ -82,12 +84,18 @@ _DISABLED_TOOLS = [
     "archive_thread",
     "spawn_agent",
 ]
+# read_reference is intentionally NOT disabled: it is how the agent reads
+# wiki pages (path-based since skillful-agent @435fa8d). search_wiki.py
+# (a skill script, exposed as chess__search_wiki) finds pages by keyword;
+# read_reference reads the page body.
 
 _SYSTEM_PROMPT_EXTRA = (
     "You are playing chess as white. "
     "Your FIRST action every turn must be to call use_skill('chess') — "
-    "it contains the scripts and all instructions for how to play. "
-    "Do not call run_script before you have called use_skill."
+    "it contains all instructions for how to play, and loading it reveals "
+    "the chess tools (chess__show_position, chess__imagine_move, "
+    "chess__make_move, and others). Do not call any chess__ tool before you "
+    "have called use_skill."
 )
 
 
@@ -138,8 +146,17 @@ def _build_agent(game_id: str, history_processor=None):
 
     if ex3_base_url:
         from pydantic_ai.providers.openai import OpenAIProvider
+        from pydantic_ai.models.openai import OpenAIModelProfile
         provider = OpenAIProvider(base_url=ex3_base_url, api_key="dummy")
         model_name = os.getenv("SKILL_AGENT_OPENAI_MODEL", "google/gemma-4-31B-it")
+        # vLLM / Gemma 4: disable strict tool definitions and tool_choice=required.
+        # The default OpenAI profile sends both; vLLM does not support strict, and
+        # tool_choice=required behaviour is undefined for Gemma. These cause
+        # intermittent HTTP 400 errors with malformed JSON messages.
+        model_profile = OpenAIModelProfile(
+            openai_supports_strict_tool_definition=False,
+            openai_supports_tool_choice_required=False,
+        )
     elif azure_endpoint:
         from pydantic_ai.providers.azure import AzureProvider
         provider = AzureProvider(
@@ -148,10 +165,12 @@ def _build_agent(game_id: str, history_processor=None):
             api_key=os.environ["SKILL_AGENT_AZURE_API_KEY"],
         )
         model_name = os.getenv("SKILL_AGENT_OPENAI_MODEL", "gpt-4o-mini")
+        model_profile = None
     else:
         from pydantic_ai.providers.openai import OpenAIProvider
         provider = OpenAIProvider(api_key=os.environ["OPENAI_API_KEY"])
         model_name = os.getenv("SKILL_AGENT_OPENAI_MODEL", "gpt-4o-mini")
+        model_profile = None
 
     cfg = AgentConfig(
         disabled_tools=_DISABLED_TOOLS,
@@ -173,15 +192,23 @@ def _build_agent(game_id: str, history_processor=None):
     return Agent(model=model, skills_dir=SKILLS_DIR, config=cfg)
 
 
+# The make_move script is exposed as this typed tool after use_skill.
+# (skillful-agent registers each scripts/<name>.py as ``<skill>__<name>``.)
+_MAKE_MOVE_TOOL = "chess__make_move"
+
+
 def _committed_move_from_result(
-    tool_name: str, args: dict, result: Any
+    tool_name: str, result: Any
 ) -> tuple[str, str] | None:
-    """Return ``(uci, reasoning)`` from a successful ``make_move.py`` result, or None.
+    """Return ``(uci, reasoning)`` from a successful ``chess__make_move`` result, or None.
 
     ``make_move.py`` prints ``{"ok": true, "move": "...", "reasoning": "...", ...}``
-    on success; the SDK wraps it as ``{"ok": ..., "stdout": "...", ...}``.
+    on success; the script-tool handler wraps it as
+    ``{"ok": ..., "stdout": "...", ...}``. Detection keys on the tool name and
+    the result payload — not on call args — because typed script tools do not
+    record their input to ``tool_log``.
     """
-    if tool_name != "run_script" or args.get("filename") != "make_move.py":
+    if tool_name != _MAKE_MOVE_TOOL:
         return None
     if not isinstance(result, str):
         return None
@@ -386,10 +413,8 @@ class AgentPlayer(Player):
                         # because the most recent tool_call's args are the
                         # ones that produced this result (the model is
                         # serially driven; no parallel tool calls).
-                        if event.name == "run_script":
-                            tool_log = self._agent._deps.tool_log
-                            last_args = tool_log[-1].input if tool_log else {}
-                            result = _committed_move_from_result(event.name, last_args, event.result)
+                        if event.name == _MAKE_MOVE_TOOL:
+                            result = _committed_move_from_result(event.name, event.result)
                             if result is not None:
                                 committed_uci, reasoning = result
                                 flush_thinking()

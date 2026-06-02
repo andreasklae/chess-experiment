@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """Commit your chosen move for this turn. This is the mandatory closing action.
 
-Positional args (exactly two):
+Arguments (both required):
   move       The move in UCI (e2e4, g1f3, e7e8q) or SAN (e4, Nf3, O-O, e8=Q).
              Trailing + or # is ignored.
   reasoning  Your note to yourself about this move. Required. Free text —
-             punctuation, apostrophes, quotes are all fine because the harness
-             passes each list element straight to sys.argv. The text is
+             punctuation, apostrophes, quotes are all fine. The text is
              injected verbatim as the first message on your NEXT turn so you
              remember what you did and why.
 
-Example:
-  run_script("chess", "make_move.py", ["e2e4", "Pushed pawn to control the center."])
-  run_script("chess", "make_move.py", ["Nf3", "Developed knight; pressures e5."])
+Exposed as the tool chess__make_move after use_skill('chess'). Example:
+  chess__make_move(move="e2e4", reasoning="Pushed pawn to control the center.")
+  chess__make_move(move="Nf3", reasoning="Developed knight; pressures e5.")
 
 Reads CHESS_API_BASE and CHESS_GAME_ID from environment (injected by AgentPlayer).
 
@@ -55,9 +54,9 @@ def main() -> None:
         print(json.dumps({
             "ok": False,
             "error": (
-                "Missing move. Call with two positional args: the move (UCI or SAN) "
+                "Missing move. Call with both arguments: the move (UCI or SAN) "
                 "and a reasoning note. Example: "
-                "run_script(\"chess\", \"make_move.py\", [\"e2e4\", \"Pushed pawn to control center.\"])."
+                "chess__make_move(move=\"e2e4\", reasoning=\"Pushed pawn to control center.\")."
             ),
         }))
         sys.exit(1)
@@ -68,9 +67,9 @@ def main() -> None:
             "ok": False,
             "error": (
                 "Missing reasoning. You must explain your move — this text is your memory "
-                "for the next turn. Pass it as the second positional arg. Example: "
-                "run_script(\"chess\", \"make_move.py\", [\"e2e4\", \"I played e4 to control the center. "
-                "Rejected d2d4 (slower). Watch: opponent may push c5.\"])."
+                "for the next turn. Pass it in the reasoning argument. Example: "
+                "chess__make_move(move=\"e2e4\", reasoning=\"I played e4 to control the center. "
+                "Rejected d2d4 (slower). Watch: opponent may push c5.\")."
             ),
         }))
         sys.exit(1)

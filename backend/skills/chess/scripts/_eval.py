@@ -1,9 +1,9 @@
 """Shared helpers for the chess skill's perception scripts.
 
-This module is underscore-prefixed so the agent cannot invoke it via
-`run_script` (the SDK skips underscore-prefixed files when listing a
-skill's scripts). It is intended for `from _eval import ...` use by
-sibling scripts only.
+This module is underscore-prefixed so the SDK does not expose it as a
+typed tool (it skips underscore-prefixed files when listing a skill's
+scripts). It is intended for `from _eval import ...` use by sibling
+scripts only.
 
 Contents:
 

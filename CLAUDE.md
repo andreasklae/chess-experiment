@@ -20,27 +20,29 @@ reference directory:
   reference. The live copy used at runtime is `backend/chesscom_driver/`.
 
 The agent is `pydantic-ai` + the `skillful-agent` SDK running against a
-local Gemma 4 31B-it model on eX3 via vLLM. It plays white and invokes
-four skill scripts:
+local Gemma 4 31B-it model on eX3 via vLLM. It plays white. After
+`use_skill("chess")`, each `scripts/<name>.py` is exposed as a typed tool
+`chess__<name>` (the harness no longer has a generic `run_script`):
 
-- `show_position.py` — ASCII board + material balance + attack/defense map
-- `imagine_move.py <move>` — one-ply look-ahead with tactical report
-- `list_legal_moves.py` — annotated markdown table of legal moves
-- `make_move.py <move> <reasoning>` — commits the move (validation-only HTTP call via `/agent-commit`; the bot loop is the sole writer to `game.board`)
+- `chess__show_position` — ASCII board + material balance + attack/defense map
+- `chess__imagine_move(move=...)` — one-ply look-ahead with tactical report
+- `chess__list_legal_moves` — annotated markdown table of legal moves
+- `chess__make_move(move=..., reasoning=...)` — commits the move (validation-only HTTP call via `/agent-commit`; the bot loop is the sole writer to `game.board`)
+- `chess__search_wiki(args=[...])` — keyword search over the knowledge wiki (returns page paths + frontmatter)
 
-See [`backend/skills/chess/`](backend/skills/chess/). The
-material+PST static eval previously exposed as a separate
-`evaluate_position.py` script is now folded into `show_position` and
-`imagine_move` output (one line each); the eval helpers themselves live
-in `backend/skills/chess/scripts/_eval.py` and are not exposed
-to the agent.
+Plus the built-in `read_reference(skill_name="chess", path=...)` for reading
+wiki pages. See [`backend/skills/chess/`](backend/skills/chess/) and the wiki
+maintenance section below. The material+PST static eval previously exposed as
+a separate `evaluate_position.py` script is now folded into `show_position`
+and `imagine_move` output (one line each); the eval helpers themselves live
+in `backend/skills/chess/scripts/_eval.py` and are not exposed to the agent.
 
 SDK-bundled native tools (`manage_todos`, thread/spawn tools, file
-read/write, etc.) and native skills (`web-search-free`) are explicitly
-disabled in `AgentConfig` for this experiment — the chess agent only
-needs `use_skill` and `run_script`, and a narrower tool surface
-prevents the looping behaviour observed when those were available.
-See `decisions/2026-05-26-stabilization.md`.
+read/write, `list_skill_files`, etc.) and native skills (`web-search-free`)
+are explicitly disabled in `AgentConfig` for this experiment — the chess
+agent needs only `use_skill`, its `chess__*` script tools, and
+`read_reference`; a narrower tool surface prevents the looping behaviour
+observed when those were available. See `decisions/2026-05-26-stabilization.md`.
 
 The agent UI panel subscribes to `/api/games/{id}/agent-events` (SSE).
 On connect, the endpoint **replays all historical events** for the
@@ -172,6 +174,118 @@ cd backend && uv run pytest tests/ -v
 For UI changes, start the dev server and exercise the path manually.
 Type-checking via tsc isn't currently wired into the workflow.
 
+## The agent's chess wiki — you are the maintainer
+
+The chess agent has its own knowledge wiki at
+[`backend/skills/chess/references/`](backend/skills/chess/references/). It
+is the agent-curated corpus the [[tool-fairness]] rulebook turns on, and
+its growth across batches is a Phase 1 result. The architecture, page
+contract, and retrieval mechanism are fixed in
+[`../../knowledge-base/decisions/2026-06-02-chess-agent-wiki-architecture.md`](../../knowledge-base/decisions/2026-06-02-chess-agent-wiki-architecture.md)
+and the fairness rule in
+[`../../knowledge-base/decisions/2026-06-02-tool-fairness-rulebook.md`](../../knowledge-base/decisions/2026-06-02-tool-fairness-rulebook.md).
+**Read both before editing the wiki.**
+
+This is the same division of labour as the thesis knowledge base
+([[karpathy2025wiki]]): the *agent reads* the wiki during play; *you (the
+coding agent, acting as the chess tutor) maintain it*. The agent never
+edits the wiki mid-game. All ingest, lint, and maintenance is done here,
+by you, under the user's direction.
+
+### Layout
+
+```
+references/
+├── index.md                         # routing decision-tree — read FIRST
+├── log.md                           # append-only maintenance log
+├── openings/        principles/     strategic-thinking/{,pawn-structures/}
+├── patterns/{,mating-patterns/}     endgames/         game-analyses/
+```
+
+Every folder has an `index.md`. The agent reaches pages two ways:
+**`read_reference(skill_name="chess", path="<path>")`** reads a page body
+(path-based, subfolder-aware, jailed to `references/` — requires
+skillful-agent ≥ commit `435fa8d`), and **`chess__search_wiki(args=["<kw>"])`**
+(the `scripts/search_wiki.py` tool) finds pages by keyword and returns each
+hit's frontmatter plus the exact `read_reference` call to open it — never
+the body. `read_reference` is intentionally NOT in `_DISABLED_TOOLS`
+(`backend/app/agent_player.py`); it is the wiki page reader. Do not add a
+`references:` list to SKILL.md expecting it to gate anything — the harness
+ignores that frontmatter and serves any file under `references/` by path.
+
+Note the harness no longer has a generic `run_script` tool: each
+`scripts/<name>.py` is exposed as a typed tool `chess__<name>` after
+`use_skill`. The backend detects the agent's move by watching for the
+`chess__make_move` tool result (`_committed_move_from_result` in
+`agent_player.py`), not a `run_script` call.
+
+### Page contract (enforce on every page you write)
+
+Frontmatter (all fields required except `related_pages`):
+
+```yaml
+---
+category: patterns/mating-patterns        # the folder it lives in
+description: One sentence. This is what search_wiki.py shows the agent.
+triggers: [board conditions, that make, this page relevant]
+related_pages: [patterns/deflection, principles/luft]   # [[wikilink]] targets
+tags: [mate, tactic, rook]
+status: draft                             # draft → tested
+updated: YYYY-MM-DD
+---
+```
+
+Body sections, in order: **When to use** · **The idea** · **What to do** ·
+**Watch out for** · **Examples** (FEN/PGN, optional).
+
+Hard rules:
+
+- **~400 words / ~60 lines max per page.** Progressive disclosure is the
+  point; an oversized page defeats it. If a page outgrows the cap, **split
+  it** (`page-part-1.md` / `page-part-2.md`, cross-linked) — do not let it
+  sprawl. `read_reference` truncates at ~15000 chars as a backstop; a page
+  approaching that is far past the soft cap and should already be split.
+- **Verify every concrete claim.** Any FEN/PGN/"this is mate" example must
+  be checked in python-chess before it goes in the wiki — the agent trusts
+  these pages. Use the chess venv:
+  `.venv/bin/python -c "import chess; b=chess.Board('<fen>'); b.push_san('<mv>'); print(b.is_checkmate())"`.
+- **Link with `[[wikilink]]`** inline and mirror the link in
+  `related_pages`. A page pointing the agent to the next relevant page is
+  how progressive disclosure chains.
+- **Register the page in its folder `index.md`** (add a row) and **append
+  to `log.md`** (`## [date] <op> | <path> | <description>`; ops: create,
+  update, split, promote, retire). The log + `git diff` between batch SHAs
+  is half the experiment's data — keep it faithful.
+
+### Operations (mirror the KB's, adapted for this wiki)
+
+- **Ingest.** The user supplies source material (a chess book, an article,
+  an engine analysis) and points you at a topic. Read it, synthesise it
+  into one or more pages following the contract, register them, log it.
+  This is the fair path under the rulebook — reading-and-noting, not
+  dumping a corpus. Start narrow: the user has asked to begin with
+  `strategic-thinking/` and `patterns/mating-patterns/`.
+- **Post-game maintenance.** After a game (and, later, a Lichess analysis
+  pass — see [[experiment-chess]] §"Future work"), write a
+  `game-analyses/` post-mortem, and distil any recurring lesson into a
+  durable `principles/` or `patterns/` page. Promote a page `draft →
+  tested` once a game confirms it helped.
+- **Lint.** Periodically check: every `[[wikilink]]` and `related_pages`
+  entry resolves; every page is listed in its folder index; no page
+  exceeds the cap; `description`/`triggers`/`tags` are present and useful
+  (they are the only thing `search_wiki.py` matches); `status` is honest.
+  Report; don't silently delete.
+- **Validate after editing.** `search_wiki.py` runs standalone; the page
+  reader is the harness's `read_reference`, so smoke-test search directly
+  and confirm the skill still parses + tools register:
+  ```bash
+  cd backend/skills/chess/scripts && python3 search_wiki.py "back rank mate"
+  cd "$OLDPWD" && .venv/bin/python -c "import sys; sys.path.insert(0,'backend'); \
+    from skill_agent.registry import discover_skills; from pathlib import Path; \
+    s=discover_skills([Path('backend/skills')])['chess']; \
+    print(sorted(t.tool_name for t in s.tool_specs))"
+  ```
+
 ## Open invariants (don't break these without a decision record)
 
 - python-chess is the single source of truth for game state on the host.
@@ -191,8 +305,11 @@ The current Phase 1 batches measure the **bare model's** chess strength.
 Any change to the items below alters what the baseline ELO means and
 must be accompanied by a new decision record.
 
-- **Initial agent ELO is 600.** Informed prior from observation, not the
-  conventional 1200. See
+- **Initial agent ELO is 1200** — the conventional "casual amateur
+  novice" anchor, documented as a convention rather than a canonical
+  value. See
+  [`../../knowledge-base/decisions/2026-05-25-initial-elo-1200.md`](../../knowledge-base/decisions/2026-05-25-initial-elo-1200.md)
+  (current), which supersedes the earlier ELO-600 choice at
   [`../../knowledge-base/decisions/2026-05-24-initial-elo-600.md`](../../knowledge-base/decisions/2026-05-24-initial-elo-600.md).
 - **Reasoning must precede the move.** The system prompt enforces an
   explicit ordered sequence; text the model produces after `make_move.py`
@@ -219,8 +336,9 @@ The full experiment design page lives at
 [`../../knowledge-base/work/experiment-chess.md`](../../knowledge-base/work/experiment-chess.md).
 The full ADR set for this experiment:
 
-- [`2026-05-20-elo-and-batch-runner.md`](../../knowledge-base/decisions/2026-05-20-elo-and-batch-runner.md) — ELO formula, batch runner, opponent stepping
+- [`2026-05-20-elo-and-batch-runner.md`](../../knowledge-base/decisions/2026-05-20-elo-and-batch-runner.md) — ELO formula, batch runner, opponent stepping (its §3 opponent-selection rule superseded by single-step, below)
 - [`2026-05-23-ex3-llm-inference-server-architecture.md`](../../knowledge-base/decisions/2026-05-23-ex3-llm-inference-server-architecture.md) — self-hosted inference architecture
-- [`2026-05-24-initial-elo-600.md`](../../knowledge-base/decisions/2026-05-24-initial-elo-600.md)
+- [`2026-05-25-initial-elo-1200.md`](../../knowledge-base/decisions/2026-05-25-initial-elo-1200.md) — initial ELO 1200 (supersedes [`2026-05-24-initial-elo-600.md`](../../knowledge-base/decisions/2026-05-24-initial-elo-600.md))
 - [`2026-05-24-reason-before-move.md`](../../knowledge-base/decisions/2026-05-24-reason-before-move.md)
 - [`2026-05-24-per-turn-fresh-context.md`](../../knowledge-base/decisions/2026-05-24-per-turn-fresh-context.md)
+- [`2026-05-26-single-step-matchmaking.md`](../../knowledge-base/decisions/2026-05-26-single-step-matchmaking.md) — single-step opponent selection (current)
