@@ -11,11 +11,9 @@ technique you either know or don't, so consult the relevant page.
 
 ## Pages
 
-_(none yet.)_
-
 | Page | When it applies | Read with |
 |------|-----------------|-----------|
-| _(none yet)_ | _—_ | _—_ |
+| king-pawn-endings | Only kings and pawns left; promotion, opposition, pawn races, creating a passed pawn | `read_reference(skill_name="chess", path="endgames/king-pawn-endings.md")` |
 
 ## Routing
 

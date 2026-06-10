@@ -10,11 +10,10 @@ rule of thumb instead, use [`../principles/`](../principles/index.md).
 
 ## Pages
 
-_(none yet.)_
-
 | Page | When it applies | Read with |
 |------|-----------------|-----------|
-| _(none yet)_ | _—_ | _—_ |
+| convert-advantage | You are clearly ahead in material and need to finish the game | `read_reference(skill_name="chess", path="strategic-thinking/convert-advantage.md")` |
+| make-a-plan | Quiet/unclear position, or your recent moves have been aimless | `read_reference(skill_name="chess", path="strategic-thinking/make-a-plan.md")` |
 
 ## Subfolders
 

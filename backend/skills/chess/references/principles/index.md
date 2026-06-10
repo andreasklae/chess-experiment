@@ -10,11 +10,10 @@ consult; a plan is what you build in [`../strategic-thinking/`](../strategic-thi
 
 ## Pages
 
-_(none yet.)_
-
 | Page | When it applies | Read with |
 |------|-----------------|-----------|
-| _(none yet)_ | _—_ | _—_ |
+| avoid-stalemate | You are far ahead and the enemy king has few squares — read before quiet moves | `read_reference(skill_name="chess", path="principles/avoid-stalemate.md")` |
+| luft | Your castled king sits behind unmoved pawns and files are opening | `read_reference(skill_name="chess", path="principles/luft.md")` |
 
 ## Routing
 

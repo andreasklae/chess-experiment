@@ -13,6 +13,28 @@ what the agent learned and when — keep it faithful.
 
 ---
 
+## [2026-06-10] create | raw/chess-fundamentals-capablanca.md | Ingested Capablanca's Chess Fundamentals (Gutenberg #33870, public domain): Ch. I §1-4 + Ch. II §9-13 converted to FEN + SAN, every line replayed in python-chess. Source for the simple-mates / promotion / opposition pages.
+
+## [2026-06-10] create | patterns/mating-patterns/ladder-mate.md | Two-major-piece ladder mate, with the slide-away trick. Example line verified mate. status: draft.
+
+## [2026-06-10] create | patterns/mating-patterns/king-queen-mate.md | K+Q basic mate: knight's-move shadowing, king walk, stalemate trap (verified). status: draft.
+
+## [2026-06-10] create | patterns/mating-patterns/king-rook-mate.md | K+R basic mate: fence + opposition + waiting move; stalemate trap (verified). status: draft.
+
+## [2026-06-10] create | patterns/deflection.md | Removing the sole guard of a mating square; Qc8+ example verified mate. Resolves the dead [[patterns/deflection]] link from back-rank-mate. status: draft.
+
+## [2026-06-10] create | principles/luft.md | Escape square for the castled king; with/without-luft FENs verified. Resolves the dead [[principles/luft]] link from back-rank-mate. status: draft.
+
+## [2026-06-10] create | principles/avoid-stalemate.md | Stalemate awareness when far ahead; three verified stalemate traps (Q, R, pawn). status: draft.
+
+## [2026-06-10] create | strategic-thinking/convert-advantage.md | The conversion staircase: trade pieces → passed pawn → promote → basic mate; checks-with-a-purpose; move-budget urgency. status: draft.
+
+## [2026-06-10] create | strategic-thinking/make-a-plan.md | Forming, writing down, keeping, and replacing a standing plan; pairs with the plan field in make_move. status: draft.
+
+## [2026-06-10] create | endgames/king-pawn-endings.md | King-in-front rule, opposition, race counting, passed-pawn creation, wrong rook's pawn. Examples from the Capablanca raw notes. status: draft.
+
+## [2026-06-10] update | (indexes) | Registered all new pages in patterns/, patterns/mating-patterns/, principles/, strategic-thinking/, endgames/ folder indexes; added "choose the simplest mate" routing note to mating-patterns index.
+
 ## [2026-06-02] create | patterns/mating-patterns/back-rank-mate.md | First seed page — validates the page contract (frontmatter + When-to-use/Idea/What-to-do/Watch-out/Examples). FEN verified mate in python-chess. status: draft.
 
 ## [2026-06-02] create | (scaffold) | Initial wiki skeleton: top index, per-folder indexes, this log. No content pages yet.

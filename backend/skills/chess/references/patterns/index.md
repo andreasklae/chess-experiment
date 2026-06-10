@@ -11,11 +11,9 @@ an overworked defender. If you suspect a tactic but can't name it, call
 
 ## Pages
 
-_(none yet.)_
-
 | Page | When it applies | Read with |
 |------|-----------------|-----------|
-| _(none yet)_ | _—_ | _—_ |
+| deflection | A mate or capture fails only because one enemy piece guards the key square | `read_reference(skill_name="chess", path="patterns/deflection.md")` |
 
 ## Subfolders
 

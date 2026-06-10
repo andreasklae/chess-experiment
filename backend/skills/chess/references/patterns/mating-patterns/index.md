@@ -10,10 +10,19 @@ mobility** line in `imagine_move`), the king is on the back rank or cornered,
 or you have a material edge and want to convert by mating rather than
 grinding.
 
+**Choose the simplest mate available.** With two major pieces the ladder is
+fully forced — look no further. With a lone queen or rook plus king, use the
+basic technique page. Only hunt fancier mates when no simple one exists;
+often the fastest "mate" is to promote a pawn first and then mate with the
+queen ([[strategic-thinking/convert-advantage]]).
+
 ## Pages
 
 | Page | When it applies | Read with |
 |------|-----------------|-----------|
+| ladder-mate | You have two rooks / queen+rook vs a king in the open — the simplest forced mate | `read_reference(skill_name="chess", path="patterns/mating-patterns/ladder-mate.md")` |
+| king-queen-mate | King + queen vs bare king (e.g. right after promoting) | `read_reference(skill_name="chess", path="patterns/mating-patterns/king-queen-mate.md")` |
+| king-rook-mate | King + rook vs bare king | `read_reference(skill_name="chess", path="patterns/mating-patterns/king-rook-mate.md")` |
 | back-rank-mate | Enemy king on its back rank, escape squares blocked by its own pawns, you have a rook/queen that can check along the rank | `read_reference(skill_name="chess", path="patterns/mating-patterns/back-rank-mate.md")` |
 
 ## Routing
