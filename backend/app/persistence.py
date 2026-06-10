@@ -70,6 +70,7 @@ def save_game(
     agent_elo_before: str | None = None,
     agent_elo_after: str | None = None,
     subfolder: str = "",
+    initial_fen: str | None = None,
 ) -> None:
     """Write the per-game JSON. Optional ``agent_elo_before`` and
     ``agent_elo_after`` capture the agent's ELO snapshot for this game (only
@@ -91,6 +92,10 @@ def save_game(
         "result": result,
         "created_at": created_at,
     }
+    # Custom starting position (puzzle mode). Omitted for standard games so
+    # historical game files keep their exact shape.
+    if initial_fen:
+        data["initial_fen"] = initial_fen
     if agent_elo_before or agent_elo_after:
         data["agent_elo"] = {
             "before": agent_elo_before or None,

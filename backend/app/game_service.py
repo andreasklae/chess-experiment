@@ -117,6 +117,9 @@ class Game:
     # is declared a draw (1/2-1/2) regardless of position. Prevents infinite
     # endgames where neither bot can deliver mate. Default 150 = 75 full moves.
     max_half_moves: int = 150
+    # Custom starting position (puzzle mode). chess.STARTING_FEN for normal
+    # games; persisted so replays/loads reconstruct the right board.
+    initial_fen: str = chess.STARTING_FEN
     # Subfolder under ``games_dir`` where this game's JSON lives. Resolved
     # once at game creation by ``folder_resolver.resolve_target_folder`` so
     # every write during the game lands in the same place even if git state
@@ -276,9 +279,11 @@ class GameService:
             game_id = uuid.uuid4().hex
             from app.folder_resolver import resolve_target_folder
             subfolder = resolve_target_folder().folder
+            initial_fen = request.initial_fen or chess.STARTING_FEN
             game = Game(
                 game_id=game_id,
-                board=chess.Board(),
+                board=chess.Board(initial_fen),
+                initial_fen=initial_fen,
                 white_config=request.white,
                 black_config=request.black,
                 white_player=self._player_factory.create(
@@ -316,7 +321,8 @@ class GameService:
             data = load_game_file(self._games_dir, game_id)
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail="Game not found.")
-        board = chess.Board()
+        initial_fen = data.get("initial_fen") or chess.STARTING_FEN
+        board = chess.Board(initial_fen)
         for uci in data["uci_moves"]:
             board.push(chess.Move.from_uci(uci))
         white_config = PlayerConfig(**data["white"])
@@ -349,6 +355,7 @@ class GameService:
         game = Game(
             game_id=data["game_id"],
             board=board,
+            initial_fen=initial_fen,
             white_config=white_config,
             black_config=black_config,
             white_player=white_player,
@@ -368,7 +375,7 @@ class GameService:
         summaries = []
         for data in list_game_files(self._games_dir):
             try:
-                board = chess.Board()
+                board = chess.Board(data.get("initial_fen") or chess.STARTING_FEN)
                 for uci in data["uci_moves"]:
                     board.push(chess.Move.from_uci(uci))
                 result = board.result(claim_draw=True) if board.is_game_over(claim_draw=True) else None
@@ -787,6 +794,9 @@ class GameService:
         save_game(
             self._games_dir,
             game_id=game.game_id,
+            initial_fen=(
+                game.initial_fen if game.initial_fen != chess.STARTING_FEN else None
+            ),
             white=game.white_config.model_dump(),
             black=game.black_config.model_dump(),
             uci_moves=list(game.uci_moves),

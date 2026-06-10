@@ -44,6 +44,11 @@ class PlayerConfig(BaseModel):
 class CreateGameRequest(BaseModel):
     white: PlayerConfig
     black: PlayerConfig
+    # Optional custom starting position ("puzzle mode"). Used to drop the
+    # agent into specific positions (mating exercises, conversion endgames)
+    # without playing a full game to reach them. Such games land in
+    # experimental.csv like any non-main game; they are never ranked.
+    initial_fen: Annotated[str | None, Field(default=None)] = None
 
     @model_validator(mode="after")
     def validate_sides(self) -> "CreateGameRequest":
@@ -51,6 +56,24 @@ class CreateGameRequest(BaseModel):
             raise ValueError("chess.com bots can only play as black.")
         if self.black.type == "agent":
             raise ValueError("Agent players can only play as white.")
+        if self.initial_fen is not None:
+            if self.white.type == "chesscom" or self.black.type == "chesscom":
+                raise ValueError(
+                    "chess.com games cannot start from a custom position — "
+                    "the browser board always begins at the standard setup."
+                )
+            import chess
+            try:
+                board = chess.Board(self.initial_fen)
+            except ValueError as exc:
+                raise ValueError(f"Invalid initial_fen: {exc}") from exc
+            if not board.is_valid():
+                raise ValueError(
+                    f"Invalid initial_fen: position fails validity check "
+                    f"({board.status()!r})."
+                )
+            if board.is_game_over():
+                raise ValueError("Invalid initial_fen: position is already game over.")
         return self
 
 
