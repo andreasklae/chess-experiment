@@ -292,6 +292,9 @@ position plus a tactical report:
 - **Move** — UCI + SAN, capture details with material value in
   centipawns, castle / en passant / promotion notes.
 - **Check** — `gives check`, `gives checkmate`, `stalemate`, or `none`.
+- **Draw warning** (when applicable) — the move would draw by threefold
+  repetition or the 50-move rule, or recreates an earlier position. When
+  you are winning, treat these moves as losing half a point.
 - **Material balance: before → after (Δ delta)** with the same
   verdict band and warning as `chess__show_position`.
 - **ASCII board** of the resulting position.
@@ -332,7 +335,11 @@ with columns:
 - **SAN** — standard algebraic notation (e.g. `Nf3`, `Bxc4`, `O-O`,
   `e8=Q+`).
 - **Description** — short prose (`pawn to e4`, `bishop takes knight on c4`, `kingside castle`).
-- **Flag** — `check` / `checkmate` / `stalemate` / blank.
+- **Flag** — `check` / `checkmate` / `stalemate` / blank, plus draw-rule
+  warnings: `draw:repetition` and `draw:50-move` mean **playing this move
+  instantly draws the game** (never play these while winning);
+  `repeats!` means the move recreates an earlier position — one more
+  repeat is a draw, so prefer a move that makes progress.
 - **King mvt** — enemy king mobility before → after (Δ). Shows how
   many squares the enemy king can legally move to before and after this
   move. Negative delta means the move restricts the king; `0` after

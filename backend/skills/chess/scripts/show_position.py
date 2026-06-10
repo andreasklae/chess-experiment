@@ -49,6 +49,7 @@ from _eval import (  # noqa: E402 — sys.path adjusted above
     phase_score,
     render_eval_line,
 )
+from _live import board_with_history, fetch_state  # noqa: E402
 from _radar import render_radar  # noqa: E402
 
 # Re-export phase_score so tests and external callers that previously imported
@@ -254,44 +255,12 @@ def render_position(board: chess.Board, move_cap: int | None = None) -> str:
 
 
 def main() -> None:
-    api_base = os.environ.get("CHESS_API_BASE", "http://localhost:8000").rstrip("/")
-    game_id = os.environ.get("CHESS_GAME_ID", "")
-    if not game_id:
-        print("error: CHESS_GAME_ID not set", file=sys.stderr)
-        sys.exit(1)
-
-    url = f"{api_base}/api/games/{game_id}"
-    try:
-        with urllib.request.urlopen(url, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
-    except Exception as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    fen = data.get("fen")
-    if not fen:
-        print("error: backend response missing 'fen'", file=sys.stderr)
-        sys.exit(1)
-
-    # Rebuild the board with its move history when the backend provides it —
-    # the radar's repetition check needs the stack. Replay starts from the
-    # game's initial_fen (puzzle games don't begin at the standard setup).
-    # History reconstruction must NEVER take down the board view: any failure
-    # (bad move, missing field, python-chess AssertionError on an illegal
-    # push) falls back to the bare-FEN board, which loses only the
-    # repetition check.
-    board = chess.Board(fen)
-    uci_moves = data.get("uci_moves") or []
-    if uci_moves:
-        try:
-            replay = chess.Board(data.get("initial_fen") or chess.STARTING_FEN)
-            for uci in uci_moves:
-                replay.push(chess.Move.from_uci(uci))
-            if replay.fen() == fen:
-                board = replay
-        except Exception:
-            pass
-
+    data = fetch_state()
+    # Board carries the real move history when it replays cleanly (the
+    # radar's repetition check needs the stack); _live.board_with_history
+    # falls back to a bare-FEN board on any reconstruction problem so the
+    # board view can never be taken down by history issues.
+    board = board_with_history(data)
     print(render_position(board, move_cap=data.get("move_cap")))
 
 

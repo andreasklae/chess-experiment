@@ -703,8 +703,19 @@ def render_moves_table(board: chess.Board, moves: list[chess.Move]) -> str:
 
     The 'King mvt' column shows enemy king legal squares before → after (Δ delta),
     e.g. '6→3 (−3)'. A negative delta means the move restricts the enemy king;
-    moves that reduce king mobility to 0 typically give check or checkmate."""
+    moves that reduce king mobility to 0 typically give check or checkmate.
+
+    When `board` carries its move stack, the Flag column also warns about
+    draw-by-rule moves: 'draw:repetition' / 'draw:50-move' (the move ends the
+    game as a draw on the spot) and 'repeats!' (recreates an earlier
+    position; one more repeat draws). Pure rules-of-chess bookkeeping."""
     annotated = [annotate_move(board, m) for m in moves]
+    if board.move_stack:
+        from _live import draw_flag
+        for a, m in zip(annotated, moves):
+            df = draw_flag(board, m)
+            if df and a["flag"] != "checkmate":
+                a["flag"] = f"{a['flag']}, {df}" if a["flag"] else df
     annotated.sort(key=lambda a: a["uci"])
     if not annotated:
         return "_(no legal moves)_"

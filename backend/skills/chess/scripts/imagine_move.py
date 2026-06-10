@@ -50,6 +50,7 @@ from _eval import (  # noqa: E402
     render_eval_delta_line,
     render_moves_table,
 )
+from _live import board_with_history, fetch_state  # noqa: E402
 from show_position import (  # noqa: E402
     compute_attack_chain,
     format_chain,
@@ -302,6 +303,23 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
     out.append(f"## Move: {_move_summary(board_before, move)}")
     out.append("")
     out.append(f"**Check:** {check_text}")
+    if board_before.move_stack and not board_after.is_checkmate():
+        if board_after.is_repetition(3):
+            out.append(
+                "**Draw warning:** this move immediately draws by threefold "
+                "repetition — the position has now occurred three times. "
+                "Pick a move that makes progress instead."
+            )
+        elif board_after.is_fifty_moves():
+            out.append(
+                "**Draw warning:** this move triggers the 50-move rule "
+                "(50 moves without a capture or pawn move) — instant draw."
+            )
+        elif board_after.is_repetition(2):
+            out.append(
+                "**Draw warning:** this move recreates a position that has "
+                "already occurred — one more repetition is an automatic draw."
+            )
     out.append(king_mobility_line)
     out.append("")
     if hanging_warning:
@@ -391,26 +409,10 @@ def main() -> None:
         }))
         sys.exit(1)
 
-    api_base = os.environ.get("CHESS_API_BASE", "http://localhost:8000").rstrip("/")
-    game_id = os.environ.get("CHESS_GAME_ID", "")
-    if not game_id:
-        print("error: CHESS_GAME_ID not set", file=sys.stderr)
-        sys.exit(1)
-
-    url = f"{api_base}/api/games/{game_id}"
-    try:
-        with urllib.request.urlopen(url, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
-    except Exception as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    fen = data.get("fen")
-    if not fen:
-        print("error: backend response missing 'fen'", file=sys.stderr)
-        sys.exit(1)
-
-    board = chess.Board(fen)
+    data = fetch_state()
+    # Board carries the move stack when possible so the report can flag
+    # repetition/50-move draws.
+    board = board_with_history(data)
 
     try:
         move = parse_move(board, args.move)
