@@ -49,6 +49,7 @@ from _eval import (  # noqa: E402 — sys.path adjusted above
     phase_score,
     render_eval_line,
 )
+from _radar import render_radar  # noqa: E402
 
 # Re-export phase_score so tests and external callers that previously imported
 # it from show_position keep working. `detect_phase` is already imported above.
@@ -205,10 +206,14 @@ def attack_defense_section(
     return "\n".join(lines)
 
 
-def render_position(board: chess.Board) -> str:
+def render_position(board: chess.Board, move_cap: int | None = None) -> str:
     """Markdown-formatted position report. Each section is a small heading
     so the agent (and the UI) can scan; the ASCII board sits in a fenced
-    code block to preserve monospace alignment in markdown renderers."""
+    code block to preserve monospace alignment in markdown renderers.
+
+    Pass a board carrying the real move stack when available — the radar's
+    repetition and move-cap checks need it (a bare-FEN board still works,
+    those checks just stay silent)."""
     own_color = board.turn
     opp_color = not own_color
     phase, score, move = detect_phase(board)
@@ -242,6 +247,9 @@ def render_position(board: chess.Board) -> str:
             action="attacked by your",
         ).lstrip("\n"),
     ]
+    radar = render_radar(board, move_cap=move_cap)
+    if radar:
+        out += ["", radar]
     return "\n".join(out)
 
 
@@ -265,7 +273,21 @@ def main() -> None:
         print("error: backend response missing 'fen'", file=sys.stderr)
         sys.exit(1)
 
-    print(render_position(chess.Board(fen)))
+    # Rebuild the board with its move history when the backend provides it —
+    # the radar's repetition check needs the stack. Fall back to bare FEN.
+    board = chess.Board(fen)
+    uci_moves = data.get("uci_moves") or []
+    if uci_moves:
+        replay = chess.Board()
+        try:
+            for uci in uci_moves:
+                replay.push(chess.Move.from_uci(uci))
+        except ValueError:
+            replay = None
+        if replay is not None and replay.fen() == fen:
+            board = replay
+
+    print(render_position(board, move_cap=data.get("move_cap")))
 
 
 if __name__ == "__main__":

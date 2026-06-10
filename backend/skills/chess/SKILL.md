@@ -245,6 +245,15 @@ Returns, top to bottom:
    least one opponent attacker: who attacks it, and which of your
    pieces defend it.
 6. **Opponent pieces you are attacking** — same, from the other side.
+7. **Mate & draw radar** (only when it has something to say) — mechanical
+   facts that deserve your attention: the opponent is down to a bare king
+   and your material gives a known forced mate (with the exact wiki page to
+   read), the enemy king is on the edge/in a corner with few legal moves,
+   back-rank mate geometry exists, passed pawns and their distance from
+   promotion, and draw-rule warnings (repetition, 50-move rule, and the
+   game's move cap). **Treat radar lines as priorities: if it names a wiki
+   page, read that page before picking candidates; if it warns about
+   repetition or the move cap, pick a forcing move that makes progress.**
 
 Attacker and defender lists expand x-ray batteries. If a sliding
 piece sits behind an immediate attacker on the same line to the

@@ -111,6 +111,9 @@ class GameState(BaseModel):
     # Paused state — see GameService.set_paused. Pause is honoured between
     # turns: an in-flight bot turn finishes, then the loop stops.
     paused: bool = False
+    # Forced-draw ply cap (Game.max_half_moves). Exposed so the chess skill's
+    # radar can warn the agent when the budget to convert a win is running out.
+    move_cap: int = 150
 
 
 class GameSummary(BaseModel):

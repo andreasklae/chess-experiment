@@ -186,6 +186,7 @@ class Game:
             eval_cp=self.eval_cp,
             eval_mate=self.eval_mate,
             paused=self.paused,
+            move_cap=self.max_half_moves,
         )
 
     def summary(self) -> GameSummary:
