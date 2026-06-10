@@ -28,23 +28,23 @@ chess__make_move(move="<move>", reasoning="<your reasoning>")
 
 This is non-negotiable. Writing "I will play Nf3" in text does nothing. Only the tool call commits the move. Do not stop before you have made this call.
 
-Both arguments are required. The `move` accepts either **UCI** (`e2e4`, `g1f3`, `e1g1`, `e7e8q`) or **SAN** (`e4`, `Nf3`, `O-O`, `e8=Q`); trailing `+` or `#` is ignored. The `reasoning` is one string of any length — punctuation, apostrophes, and quotes inside it are all fine.
+`move` and `reasoning` are required; `plan` is optional. The `move` accepts either **UCI** (`e2e4`, `g1f3`, `e1g1`, `e7e8q`) or **SAN** (`e4`, `Nf3`, `O-O`, `e8=Q`); trailing `+` or `#` is ignored. `reasoning` and `plan` are strings of any length — punctuation, apostrophes, and quotes are all fine.
 
-**Reasoning is required.** The move will not commit without it. Write whatever you want — a sentence, a few lines, anything. This text is injected verbatim as the first message on your *next* turn, so it is the only context you will have about what you just did.
+## Your memory between turns
 
-Useful things to include:
+You do not see the whole game transcript — you see a small curated memory at the start of each turn:
 
-- What you played and why (one phrase)
-- What you considered but decided against (move + one-word reason)
-- One concrete threat the opponent now has that you need to watch
-- Any multi-move plan you are executing, or "none"
+1. **Your note** (`reasoning`, required every move) — what you just played and why. Shown back to you once, on the next turn, then replaced by your next note. Good notes name: the move's purpose, one rejected alternative, one opponent threat to watch.
+2. **Your standing plan** (`plan`, optional) — your multi-move plan, **goal + method in 1–2 sentences**. It does NOT reset: it is shown back to you every turn, with its age, until you pass a new one. Omit `plan` to keep your current plan. Pass a new `plan` when you form, change, or complete one; pass `plan="none"` to clear it.
+
+The FEN in each turn's message is the complete game state, and `chess__show_position`'s radar tracks repetition/draw rules — so the plan is the one thing only *you* can carry forward. **A plan you do not write down is lost at the end of the turn.** When your memory says "no standing plan" and no tactic decides the move, form one (read `strategic-thinking/make-a-plan.md`) and record it with your move.
 
 Examples:
 
 ```
-chess__make_move(move="g1f3", reasoning="Developed knight to f3 controlling center. Rejected e2e4 (too passive). Watch: opponent may push c5. Sequence: none.")
+chess__make_move(move="g1f3", reasoning="Developed knight to f3 controlling center. Rejected e2e4 (too passive). Watch: opponent may push c5.")
 
-chess__make_move(move="Nf3", reasoning="Same move in SAN — both forms work.")
+chess__make_move(move="a5a6", reasoning="Pushed the passer. Queen on b7 guards a7. Watch: perpetual check tries on e-file.", plan="Promote the a-pawn: escort with queen, block checks, then king-queen mate.")
 ```
 
 This page tells you what tools exist and how to use them well.
@@ -151,6 +151,11 @@ well under ten tool calls. Between each tool call/step, do some reasoning, think
    `checkmate`, play it immediately — there is nothing to verify.
    **Do not skip this step in any position where you have a material
    advantage** — the goal is to win, not just to maintain an edge.
+0b. **Consult your memory.** Your prior note and standing plan are shown
+   at the top of the turn. If the plan still fits the position, prefer
+   candidate moves that advance it; deviate only for tactics (a free
+   capture, a mate, a threat that must be answered). If it no longer
+   fits — or you have none — plan to write a new one when you commit.
 1. **See the position.** Call `chess__show_position` to get the ASCII
    board, the material balance (with verdict and caveat), and the
    attack/defense map. The turn message gives you the FEN, but reading
@@ -367,12 +372,15 @@ chess wiki when you pass `skill_name="chess"`.
 
 ```
 chess__make_move(move="<move>", reasoning="<your reasoning>")
+chess__make_move(move="<move>", reasoning="<your reasoning>", plan="<standing plan>")
 ```
 
-Commits the move for the current turn. **Both arguments are required.**
-The move accepts UCI or SAN; trailing `+` or `#` is stripped.
+Commits the move for the current turn. **`move` and `reasoning` are
+required**; `plan` is optional (see "Your memory between turns" — pass it
+only when your standing plan changes). The move accepts UCI or SAN;
+trailing `+` or `#` is stripped.
 
-- On success: `{"ok": true, "move": "e2e4", "reasoning": "...", "message": "Move committed. Your turn is over."}`.
+- On success: `{"ok": true, "move": "e2e4", "reasoning": "...", "plan": ..., "message": "Move committed. Your turn is over."}`.
   Your turn is over — do not call any more tools on this turn, just stop.
 - On failure (illegal move): `{"ok": false, "error": "...", "legal_moves": [...]}`.
   Pick a different move from `legal_moves` and call again in the same turn.

@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """Commit your chosen move for this turn. This is the mandatory closing action.
 
-Arguments (both required):
-  move       The move in UCI (e2e4, g1f3, e7e8q) or SAN (e4, Nf3, O-O, e8=Q).
-             Trailing + or # is ignored.
-  reasoning  Your note to yourself about this move. Required. Free text —
-             punctuation, apostrophes, quotes are all fine. The text is
-             injected verbatim as the first message on your NEXT turn so you
-             remember what you did and why.
+Arguments:
+  move       Required. The move in UCI (e2e4, g1f3, e7e8q) or SAN (e4, Nf3,
+             O-O, e8=Q). Trailing + or # is ignored.
+  reasoning  Required. Your note to yourself about THIS move. Free text —
+             punctuation, apostrophes, quotes are all fine. Shown back to you
+             on your next turn, then replaced by the next note.
+  plan       Optional. Your STANDING multi-move plan (goal + method, 1-2
+             sentences). It persists across turns until you pass a new plan,
+             and is shown back to you every turn. Omit it to keep your
+             current plan; pass it when you form, change, or complete a plan;
+             pass plan="none" to clear it.
 
-Exposed as the tool chess__make_move after use_skill('chess'). Example:
-  chess__make_move(move="e2e4", reasoning="Pushed pawn to control the center.")
+Exposed as the tool chess__make_move after use_skill('chess'). Examples:
   chess__make_move(move="Nf3", reasoning="Developed knight; pressures e5.")
+  chess__make_move(move="a6", reasoning="Pushed the passer; b7 guards a7.",
+                   plan="Promote the a-pawn: escort with the queen, then ladder mate.")
 
 Reads CHESS_API_BASE and CHESS_GAME_ID from environment (injected by AgentPlayer).
 
@@ -23,7 +28,7 @@ move under its own lock. That keeps every player (agent, chesscom, maia,
 human) on the same contract — players return moves, the bot loop pushes them.
 
 Prints on success:
-  {"ok": true, "move": "<canonical-uci>", "reasoning": "...", "message": "Move committed. Your turn is over."}
+  {"ok": true, "move": "<canonical-uci>", "reasoning": "...", "plan": "..."|null, "message": "Move committed. Your turn is over."}
 
 Prints on failure (illegal move, wrong turn, parse error):
   {"ok": false, "error": "...", "legal_moves": [...]}
@@ -38,6 +43,18 @@ import urllib.request
 
 def main() -> None:
     parser = argparse.ArgumentParser(add_help=False)
+    # --plan must be declared before the REMAINDER positional: the harness's
+    # build_argv emits flags first, and argparse stops option parsing once
+    # REMAINDER starts consuming.
+    parser.add_argument(
+        "--plan",
+        default=None,
+        help=(
+            "Your standing multi-move plan (goal + method). Persists across "
+            "turns until you pass a new one; omit to keep the current plan; "
+            "pass 'none' to clear it."
+        ),
+    )
     parser.add_argument("move", nargs="?", default="")
     # Capture everything after the move as reasoning. argparse.REMAINDER
     # joins the tail without splitting punctuation; whitespace tokens are
@@ -98,10 +115,12 @@ def main() -> None:
             # back so AgentPlayer.get_move's tool-result parser sees a string
             # that chess.Move.from_uci can consume without ambiguity.
             canonical = body.get("move", move_str)
+            plan = args.plan.strip() if isinstance(args.plan, str) else None
             print(json.dumps({
                 "ok": True,
                 "move": canonical,
                 "reasoning": reasoning,
+                "plan": plan if plan else None,
                 "message": "Move committed. Your turn is over.",
             }))
     except urllib.error.HTTPError as exc:
