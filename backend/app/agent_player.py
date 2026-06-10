@@ -252,6 +252,23 @@ def _looks_like_provider_400(exc: Exception) -> bool:
     return bad_request or json_parse
 
 
+def _looks_like_transient_network(exc: Exception) -> bool:
+    """True for network blips between laptop and eX3 (the SSH tunnel
+    stalling or dropping mid-stream). These deserve a retry attempt, not a
+    game abort: the position is unchanged and the next attempt opens a
+    fresh connection. Persistent outages still abort once the per-turn
+    attempt budget is exhausted."""
+    name = type(exc).__name__
+    msg = str(exc)
+    return (
+        "ReadTimeout" in name or "ReadTimeout" in msg
+        or "ConnectTimeout" in name
+        or "APIConnectionError" in name
+        or "Connection error" in msg
+        or "ConnectionResetError" in name
+    )
+
+
 _BUDGET_REMINDER_TEMPLATE = (
     "**Budget warning:** in your previous attempt this turn you ran more than "
     "{threshold} tools without committing a move. Do not run an extended "
@@ -574,7 +591,7 @@ class AgentPlayer(Player):
                 continue
 
             except Exception as exc:
-                if _looks_like_provider_400(exc):
+                if _looks_like_provider_400(exc) or _looks_like_transient_network(exc):
                     flush_thinking()
                     emit({"type": "provider_error_recovered", "message": str(exc)[:300]})
                     continue

@@ -100,6 +100,10 @@ def run_puzzle(base: str, puzzle: dict, elo: int, poll_s: float, timeout_s: floa
             last_san = state["san_moves"][-1] if state["san_moves"] else "-"
             print(f"    ply {plies:3d}  last {last_san}", flush=True)
             last_plies = plies
+        if state.get("aborted_reason"):
+            return {"id": puzzle["id"], "game_id": game_id, "result": "ABORTED",
+                    "termination": state["aborted_reason"][:120],
+                    "plies": len(state["uci_moves"]), "mate": False}
         if state["status"] == "finished":
             break
     else:

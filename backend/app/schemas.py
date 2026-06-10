@@ -1,5 +1,6 @@
 from typing import Annotated, Literal
 
+import chess
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -137,6 +138,13 @@ class GameState(BaseModel):
     # Forced-draw ply cap (Game.max_half_moves). Exposed so the chess skill's
     # radar can warn the agent when the budget to convert a win is running out.
     move_cap: int = 150
+    # Starting position of the game (puzzle mode may differ from standard).
+    # Consumers replaying uci_moves MUST start from this FEN.
+    initial_fen: str = chess.STARTING_FEN
+    # Non-empty when a player exception aborted the game (infrastructure
+    # failure — no chess result, no ELO change). Lets API consumers
+    # distinguish "agent is thinking" from "game is dead".
+    aborted_reason: str = ""
 
 
 class GameSummary(BaseModel):

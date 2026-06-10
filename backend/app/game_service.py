@@ -190,6 +190,8 @@ class Game:
             eval_mate=self.eval_mate,
             paused=self.paused,
             move_cap=self.max_half_moves,
+            initial_fen=self.initial_fen,
+            aborted_reason=self.aborted_reason,
         )
 
     def summary(self) -> GameSummary:

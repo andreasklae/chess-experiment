@@ -24,10 +24,10 @@ local Gemma 4 31B-it model on eX3 via vLLM. It plays white. After
 `use_skill("chess")`, each `scripts/<name>.py` is exposed as a typed tool
 `chess__<name>` (the harness no longer has a generic `run_script`):
 
-- `chess__show_position` — ASCII board + material balance + attack/defense map
+- `chess__show_position` — ASCII board + material balance + attack/defense map + the **mate & draw radar** (`scripts/_radar.py`: mechanical facts — basic-mate material classes with wiki pointers, enemy-king geometry, back-rank geometry, passed pawns, repetition/50-move/move-cap warnings)
 - `chess__imagine_move(move=...)` — one-ply look-ahead with tactical report
 - `chess__list_legal_moves` — annotated markdown table of legal moves
-- `chess__make_move(move=..., reasoning=...)` — commits the move (validation-only HTTP call via `/agent-commit`; the bot loop is the sole writer to `game.board`)
+- `chess__make_move(move=..., reasoning=..., plan=...)` — commits the move (validation-only HTTP call via `/agent-commit`; the bot loop is the sole writer to `game.board`). `reasoning` is the per-move note; optional `plan` is the standing plan that persists across turns (see `decisions/2026-06-10-structured-turn-memory.md`)
 - `chess__search_wiki(args=[...])` — keyword search over the knowledge wiki (returns page paths + frontmatter)
 
 Plus the built-in `read_reference(skill_name="chess", path=...)` for reading
@@ -121,6 +121,10 @@ methods; the code is downstream of those decisions.
   rationale on not mixing pools mid-batch.
 - **Stockfish evaluation is UX-only.** The agent has no access to it;
   it's just the advantage needle next to the board.
+- **Puzzle mode.** `POST /api/games` accepts an optional `initial_fen` to
+  start from any legal position (refused for chess.com games). Used by
+  `scripts/run_puzzles.py` to drop the agent into mating/conversion
+  exercises; such games land in `experimental.csv` like any non-main game.
 - **Per-PR game folders.** Game JSONs and agent logs live in
   `backend/games/<folder>/` named for the PR's `headRefName` (or branch
   name when no PR exists). Pre-PR baseline games are in
@@ -316,12 +320,16 @@ must be accompanied by a new decision record.
   is labelled "post-move" in the UI and discarded for analysis (recorded
   but not cited as the move's justification). See
   [`../../knowledge-base/decisions/2026-05-24-reason-before-move.md`](../../knowledge-base/decisions/2026-05-24-reason-before-move.md).
-- **Per-turn fresh context.** `AgentPlayer.get_move()` calls
-  `self._agent.clear_conversation()` at the start of every turn. The
-  agent sees only system prompt + skill list + one user message (opponent
-  move + FEN). No cross-turn memory. The FEN is the complete game state.
-  See
-  [`../../knowledge-base/decisions/2026-05-24-per-turn-fresh-context.md`](../../knowledge-base/decisions/2026-05-24-per-turn-fresh-context.md).
+- **Curated turn memory (was: per-turn fresh context).** The agent sees
+  system prompt + a synthetic prior exchange carrying exactly: the previous
+  turn's prompt, its own reasoning note for the last move, and its standing
+  plan (which persists until it writes a new one). Everything else is
+  forgotten each turn; the FEN remains the complete game state.
+  `clear_conversation()` is still only called between games. History:
+  [`2026-05-24-per-turn-fresh-context.md`](../../knowledge-base/decisions/2026-05-24-per-turn-fresh-context.md)
+  → [`2026-05-26-agent-turn-memory.md`](../../knowledge-base/decisions/2026-05-26-agent-turn-memory.md)
+  → [`2026-06-10-structured-turn-memory.md`](../../knowledge-base/decisions/2026-06-10-structured-turn-memory.md)
+  (current; also documents the fixed system-prompt-loss bug).
 - **Aborted games are recorded but do not affect ELO.** When a player
   exception fires (context overflow, illegal move, browser crash), the
   game record carries `result=""` and an `aborted_reason`; ELO is

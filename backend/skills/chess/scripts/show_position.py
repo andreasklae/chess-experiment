@@ -274,18 +274,23 @@ def main() -> None:
         sys.exit(1)
 
     # Rebuild the board with its move history when the backend provides it —
-    # the radar's repetition check needs the stack. Fall back to bare FEN.
+    # the radar's repetition check needs the stack. Replay starts from the
+    # game's initial_fen (puzzle games don't begin at the standard setup).
+    # History reconstruction must NEVER take down the board view: any failure
+    # (bad move, missing field, python-chess AssertionError on an illegal
+    # push) falls back to the bare-FEN board, which loses only the
+    # repetition check.
     board = chess.Board(fen)
     uci_moves = data.get("uci_moves") or []
     if uci_moves:
-        replay = chess.Board()
         try:
+            replay = chess.Board(data.get("initial_fen") or chess.STARTING_FEN)
             for uci in uci_moves:
                 replay.push(chess.Move.from_uci(uci))
-        except ValueError:
-            replay = None
-        if replay is not None and replay.fen() == fen:
-            board = replay
+            if replay.fen() == fen:
+                board = replay
+        except Exception:
+            pass
 
     print(render_position(board, move_cap=data.get("move_cap")))
 
