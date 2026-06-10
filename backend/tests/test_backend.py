@@ -69,10 +69,17 @@ def test_player_types(tmp_path) -> None:
         response = test_client.get("/api/player-types")
 
     assert response.status_code == 200
-    assert response.json() == [
-        {"type": "human", "elo_required": False, "allowed_elos": []},
-        {"type": "maia", "elo_required": True, "allowed_elos": [1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900]},
-    ]
+    types = {entry["type"]: entry for entry in response.json()}
+    assert set(types) == {"human", "maia", "agent", "chesscom"}
+    assert types["human"] == {"type": "human", "elo_required": False, "allowed_elos": []}
+    assert types["maia"] == {
+        "type": "maia",
+        "elo_required": True,
+        "allowed_elos": [1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900],
+    }
+    assert types["agent"]["elo_required"] is False
+    assert types["chesscom"]["elo_required"] is True
+    assert len(types["chesscom"]["allowed_elos"]) > 0
 
 
 def test_create_human_vs_human_game(tmp_path) -> None:
@@ -160,7 +167,7 @@ def test_finished_game_rejects_more_moves(tmp_path) -> None:
 
 async def test_sse_subscription_emits_initial_state(tmp_path) -> None:
     service = build_test_service(tmp_path)
-    created = service.create_game(CreateGameRequest(white=PlayerConfig(type="human"), black=PlayerConfig(type="human")))
+    created = await service.create_game(CreateGameRequest(white=PlayerConfig(type="human"), black=PlayerConfig(type="human")))
     queue = await service.subscribe(created.game_id)
 
     payload = await queue.get()
