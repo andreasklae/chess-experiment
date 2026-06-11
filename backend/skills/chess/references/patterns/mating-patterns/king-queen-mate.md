@@ -1,56 +1,55 @@
 ---
 category: patterns/mating-patterns
-description: Basic mate with king and queen against a bare king — box the king to the edge with knight-move shadowing, bring your king up, mate. Under ten moves, but beware stalemate.
+description: K+Q vs K as a three-phase drill — knight's-move shadowing to the edge, stop and bring the king, mate with king support. Stalemate is the only way to fail.
 triggers: [king and queen versus king, bare king, queen mate, basic mate, K+Q]
 related_pages: [patterns/mating-patterns/ladder-mate, patterns/mating-patterns/king-rook-mate, principles/avoid-stalemate]
-tags: [mate, endgame, queen, technique]
+tags: [mate, endgame, queen, technique, recipe]
 status: draft
-updated: 2026-06-10
+updated: 2026-06-11
 ---
 
-# King + Queen vs King
+# King + Queen vs King — the drill
 
 ## When to use
 
-You have queen and king against a bare (or nearly bare) king — typically
-right after promoting a pawn. This mate is always forced and should take
-under ten moves. If you also have a rook, prefer the even simpler
-[[patterns/mating-patterns/ladder-mate]].
+Queen and king against a bare (or nearly bare) king — typically right
+after promoting. Forced mate in under ten moves. If you also have a rook,
+prefer the even simpler [[patterns/mating-patterns/ladder-mate]].
 
-## The idea
+## What to do — three phases, in order
 
-The queen alone cannot mate — the king must help. Phase 1: the queen shrinks
-the enemy king's box and herds it to an edge. Phase 2: your king walks up.
-Phase 3: mate on the edge with the king supporting the queen or sealing the
-escape squares.
+**Phase 1 — shrink (queen only, NO checks needed):**
+1. Place the queen a **knight's-move away** from the enemy king (e.g.
+   king d5 → queen c3, e3, b4, or f4 — pick the side toward the centre of
+   the board so the king is pushed to the nearer edge).
+2. Every time the king moves, move the queen to restore the knight's-move
+   distance, mirroring it. The king's box shrinks toward the edge by
+   itself.
+3. **STOP shadowing the moment the king reaches the edge.** Park the
+   queen where it confines the king to two or three edge squares, and do
+   not move her again until phase 3. One more shadow step here is the
+   classic stalemate.
 
-## What to do
+**Phase 2 — march:** walk your king straight toward the enemy king, one
+square a turn, until it stands on the adjacent rank/file (a knight's-move
+or one diagonal step away from the enemy king).
 
-1. **Place the queen a knight's-move away from the enemy king**, then mirror
-   its moves, keeping that knight's-move distance. The king is pushed
-   steadily to an edge — no checks needed.
-2. **Stop shadowing when the king reaches the edge** — leave it two or three
-   squares to shuffle between (this is where stalemate happens).
-3. March your own king straight toward the enemy king.
-4. When your king is close (one file/rank away), deliver mate: queen checks
-   along the edge rank/file, or lands in front of the king supported by
-   yours.
+**Phase 3 — mate:** queen checks on the edge rank/file (supported by your
+king or from distance), or lands directly in front of the king protected
+by yours. Confirm `gives checkmate` with `chess__imagine_move`.
 
 ## Watch out for
 
-- **Stalemate is the only way to ruin this.** While your king walks over,
-  every quiet queen move must leave the enemy king at least one legal move.
-  Example trap: White Qb6+Kc6 vs Ka8 with Black to move is stalemate
-  (`k7/8/1QK5/8/8/8/8/8 b - - 0 1`). A cornered king with the queen a
-  knight's-move away = danger; check with `chess__imagine_move` (it reports
-  `stalemate`).
-- Don't chase with aimless checks — each check should shrink the box or
-  it is a wasted move. The shadowing method needs no checks at all.
+- **Stalemate, the only real risk:** while your king marches (phase 2),
+  every quiet move must leave the enemy king at least one square.
+  `k7/8/1QK5/8/8/8/8/8 b` is stalemate — queen a knight's-move from a
+  *cornered* king with your king close is exactly the trap. If
+  `chess__imagine_move` reports `stalemate` on any candidate, pick another.
+- Aimless checks make no progress and risk `repeats!` — the drill needs
+  no checks until the final move.
 
 ## Examples
 
-`7k/8/6K1/8/8/8/8/1Q6 w - - 0 1` — 1.Qb8# (king supports nothing here;
-it seals g7/g8/h7). Verified mate.
-Full technique from the centre: see Example 4 of the Capablanca notes
-(`raw/chess-fundamentals-capablanca.md`): 1.Qc6 Kd4 2.Kd2 Ke5 3.Ke3 ... and
-mates on move 8.
+`7k/8/6K1/8/8/8/8/1Q6 w - - 0 1` — phase 3: 1.Qb8#. Verified.
+Full worked mate from the centre: Capablanca Example 4 in
+`raw/chess-fundamentals-capablanca.md` (1.Qc6 Kd4 2.Kd2 ... mate on move 8).

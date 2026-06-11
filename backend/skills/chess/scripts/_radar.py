@@ -250,6 +250,13 @@ def render_radar(board: chess.Board, move_cap: int | None = None) -> str | None:
     lines += _mating_material_lines(board, own)
     lines += _king_geometry_lines(board, own)
     lines += _back_rank_lines(board, own)
+    # Wiki-driven pattern triggers: geometry-present hints, each tracing to
+    # a page the agent owns. See _patterns.py for the fairness contract.
+    try:
+        from _patterns import match_patterns
+        lines += match_patterns(board)
+    except Exception:
+        pass  # pattern hints are never allowed to take down the radar
     lines += _passed_pawn_lines(board, own)
     lines += _draw_rule_lines(board, move_cap)
     if not lines:

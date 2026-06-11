@@ -1,52 +1,57 @@
 ---
 category: patterns/mating-patterns
-description: Basic mate with king and rook against a bare king — fence with the rook, walk the kings into opposition, check to push the king back, mate on the edge.
+description: K+R vs K as a six-rule drill — fence with the rook, march the king, check only in opposition, slide away when attacked, waiting move when dodged.
 triggers: [king and rook versus king, rook mate, bare king, basic mate, K+R]
 related_pages: [patterns/mating-patterns/ladder-mate, patterns/mating-patterns/king-queen-mate, endgames/king-pawn-endings]
-tags: [mate, endgame, rook, technique, opposition]
+tags: [mate, endgame, rook, technique, opposition, recipe]
 status: draft
-updated: 2026-06-10
+updated: 2026-06-11
 ---
 
-# King + Rook vs King
+# King + Rook vs King — the drill
 
 ## When to use
 
-You have king and rook against a bare king and no faster mate is available.
-Forced win, at most ~16 moves with good technique. Slower and more exacting
-than the queen mate — if you can promote to a queen instead, do that.
+King and rook against a bare king. Forced win ≤16 moves — but only by the
+drill. Freestyle checking does NOT work (it walks into the 50-move rule).
 
 ## The idea
 
-The rook fences the king behind a rank (or file); your king does the real
-work. The enemy king is pushed back one rank at a time: when the two kings
-stand **directly facing each other** (one square between them — the
-opposition), a rook check on that rank forces the enemy king back. Repeat
-until it is mated on the edge.
+The rook is a fence the king may never cross; your king does the pushing.
+The enemy king only retreats a rank when checked **while the kings face
+each other** — every other check is a wasted move.
 
-## What to do
+## What to do — apply the FIRST rule that matches, every turn
 
-1. Rook cuts the king off on one rank; keep it far from the enemy king on
-   its rank so it cannot be attacked.
-2. Walk your king up the neighbouring file toward the enemy king.
-3. **Kings face each other → rook checks → king retreats a rank.**
-4. If the enemy king steps aside instead of facing yours, **make a waiting
-   move with the rook along its rank** ("losing" one tempo) — the king must
-   then face yours, and the check lands.
-5. On the last rank, the same check is mate (your king covers the escape
-   squares).
+1. **Rook not yet fencing?** Put it on the rank directly below the enemy
+   king (its rank minus one, from a file far from both kings). Done for
+   the turn.
+2. **Enemy king attacks your rook?** Slide the rook to the far end of the
+   SAME rank (a- or h-file, whichever is farther). The fence holds. Done.
+3. **Kings directly facing each other** (same file, exactly one rank
+   between, your king on the fence rank)? **Rook checks on the enemy
+   king's rank.** It must retreat. Next turn, move the fence up (rule 1
+   onto the new rank). This is the ONLY time you check.
+4. **Enemy king moved sideways, not facing you?** If your king can step
+   toward it (staying on your side of the fence), do that. If your king
+   already mirrors it (same file), the enemy just dodged: make a
+   **waiting move — rook one square along the fence rank** (stay far from
+   the king). Now it must step into opposition and rule 3 fires.
+5. **Enemy king on the edge rank?** Same rules; rule 3's check is mate
+   once your king stands one rank away facing it.
 
 ## Watch out for
 
-- **Two stalemate traps:** king cornered with the rook sealing it but no
-  check — e.g. White Ka6+Rb1 vs Ka8, Black to move, is stalemate
-  (`k7/8/K7/8/8/8/8/1R6 b - - 0 1`). Always leave the fenced king a square
-  to move to, or give check.
-- Checking too early (kings not in opposition) lets the king zigzag and
-  wastes many moves. Check only when the kings face each other.
+- Never check outside rule 3. Never move the rook off the fence rank
+  except rules 2–4.
+- Stalemate trap when the king is cornered: `k7/8/K7/8/8/8/8/1R6 b` is
+  stalemate — when the enemy king has ≤2 squares, prefer rule-3 checks
+  and watch `chess__imagine_move` for `stalemate`.
+- A `repeats!`/`draw:repetition` flag means you broke the drill — re-read
+  this page and apply rule 1.
 
 ## Examples
 
-`4k3/8/4K3/8/8/8/8/7R w - - 0 1` — kings in opposition: 1.Rh8#. Verified.
-Full technique from the centre: Examples 1–2 of the Capablanca notes
-(`raw/chess-fundamentals-capablanca.md`) — mate in 10–11 from any start.
+`4k3/8/4K3/8/8/8/8/7R w - - 0 1` — rule 3 with the enemy king on the edge:
+1.Rh8#. Verified. Full worked mate: Capablanca Examples 1–2 in
+`raw/chess-fundamentals-capablanca.md` (mate in 10–11 from anywhere).
