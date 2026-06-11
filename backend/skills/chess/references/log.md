@@ -38,3 +38,9 @@ what the agent learned and when — keep it faithful.
 ## [2026-06-02] create | patterns/mating-patterns/back-rank-mate.md | First seed page — validates the page contract (frontmatter + When-to-use/Idea/What-to-do/Watch-out/Examples). FEN verified mate in python-chess. status: draft.
 
 ## [2026-06-02] create | (scaffold) | Initial wiki skeleton: top index, per-folder indexes, this log. No content pages yet.
+
+## [2026-06-11] create | patterns/mating-patterns/{smothered,anastasia,arabian,hook,greco,queen-contact,opera,blind-swine}-mate.md | Eight named-mate recipe pages distilled from raw/checkmate-patterns-wikipedia.md; all FENs verified; each carries machine-readable template_ frontmatter for the pattern-trigger matcher. status: draft.
+
+## [2026-06-11] update | patterns/mating-patterns/{king-rook-mate,ladder-mate,king-queen-mate}.md | Rewritten as numbered apply-first-matching-rule drills (live sessions showed concepts don't execute; the ladder draw happened at the missing slide-far-then-mate finish, now an explicit two-move template).
+
+## [2026-06-11] update | patterns/mating-patterns/index.md | Registered the eight new pages.
