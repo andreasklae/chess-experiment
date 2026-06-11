@@ -387,9 +387,46 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
     return "\n".join(out)
 
 
+def render_pass(board: chess.Board) -> str:
+    """Hypothetical: the side to move passes. Lists the other side's
+    follow-up moves (the standard way to see what a position *threatens*).
+    Pure rules mechanics — the agent decides which threats matter."""
+    if board.is_check():
+        return (
+            "_Cannot imagine a pass here: the side to move is in check and "
+            "must respond. Imagine the actual checks/replies instead._"
+        )
+    after = board.copy()
+    after.push(chess.Move.null())
+    mover = color_name(after.turn)
+    out = [
+        f"## Hypothetical: {color_name(board.turn)} passes (null move)",
+        "",
+        f"If {color_name(board.turn)} did nothing, **{mover}** could play "
+        f"(scan the Flag column — `checkmate` here means the position "
+        f"threatens mate in one):",
+        "",
+        render_moves_table(after, list(after.legal_moves)),
+        "",
+        "_A real opponent moves — threats they cannot parry are the "
+        "valuable ones. Use this to check what YOUR last imagined move "
+        "threatens (pass on its FEN), or what the opponent threatens "
+        "against you (pass on the live board)._",
+    ]
+    return "\n".join(out)
+
+
 def main() -> None:
-    # One positional: the move (UCI or SAN). No flags.
     parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument(
+        "--fen",
+        default=None,
+        help=(
+            "Imagine the move on this position instead of the live game — "
+            "chain hypotheticals by passing the FEN a previous "
+            "chess__imagine_move returned."
+        ),
+    )
     parser.add_argument("move", nargs="?", default="")
     parser.add_argument("-h", "--help", action="store_true")
     args = parser.parse_args()
@@ -409,10 +446,25 @@ def main() -> None:
         }))
         sys.exit(1)
 
-    data = fetch_state()
-    # Board carries the move stack when possible so the report can flag
-    # repetition/50-move draws.
-    board = board_with_history(data)
+    if args.fen:
+        try:
+            board = chess.Board(args.fen)
+        except ValueError as exc:
+            print(json.dumps({"ok": False, "error": f"Invalid fen: {exc}"}))
+            sys.exit(1)
+    else:
+        data = fetch_state()
+        # Board carries the move stack when possible so the report can flag
+        # repetition/50-move draws.
+        board = board_with_history(data)
+
+    # "pass": the null move — see what the side to move could do NEXT if
+    # the opponent did nothing. The agent composes threat detection from
+    # this primitive: imagine a candidate, then imagine "pass" on the
+    # resulting FEN and read its own follow-ups (checkmate flags included).
+    if args.move.strip().lower() in ("pass", "null", "--"):
+        print(render_pass(board))
+        return
 
     try:
         move = parse_move(board, args.move)

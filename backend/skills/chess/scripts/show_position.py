@@ -255,6 +255,30 @@ def render_position(board: chess.Board, move_cap: int | None = None) -> str:
 
 
 def main() -> None:
+    import argparse
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument(
+        "--fen",
+        default=None,
+        help=(
+            "Analyse this position instead of the live game — a hypothetical "
+            "board, e.g. the FEN that chess__imagine_move returned. The live "
+            "game is not touched."
+        ),
+    )
+    args = parser.parse_args()
+
+    if args.fen:
+        try:
+            board = chess.Board(args.fen)
+        except ValueError as exc:
+            print(f"error: invalid FEN {args.fen!r}: {exc}", file=sys.stderr)
+            sys.exit(1)
+        # Hypothetical boards have no history or move cap — the radar's
+        # repetition/cap lines simply stay silent.
+        print(render_position(board))
+        return
+
     data = fetch_state()
     # Board carries the real move history when it replays cleanly (the
     # radar's repetition check needs the stack); _live.board_with_history

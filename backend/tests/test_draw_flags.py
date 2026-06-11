@@ -115,3 +115,26 @@ class TestBoardWithHistory:
         b = board_with_history(data)
         assert b.fen() == data["fen"]
         assert not b.move_stack
+
+
+class TestHypotheticalPrimitives:
+    """The fen= / pass primitives let the agent compose its own threat
+    detection (imagine candidate -> pass on the resulting FEN -> read own
+    follow-ups). Mechanics only: the tool lists moves, the agent concludes."""
+
+    def test_pass_lists_other_sides_moves_with_mate_flags(self):
+        from imagine_move import render_pass
+        b = chess.Board("6k1/5ppp/8/8/8/8/8/R5K1 b - - 0 1")
+        out = render_pass(b)
+        assert "white" in out and "checkmate" in out  # Ra8# would be the threat
+
+    def test_pass_refused_in_check(self):
+        from imagine_move import render_pass
+        b = chess.Board("4k3/8/8/8/8/8/8/4R1K1 b - - 0 1")  # black in check from Re1
+        out = render_pass(b)
+        assert "Cannot imagine a pass" in out
+
+    def test_render_position_works_on_arbitrary_fen(self):
+        from show_position import render_position
+        out = render_position(chess.Board("7k/8/5N2/8/8/8/8/R6K w - - 0 1"))
+        assert "Pattern trigger" in out  # radar runs on hypothetical boards too

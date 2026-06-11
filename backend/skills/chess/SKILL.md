@@ -221,16 +221,23 @@ markdown.
 
 Most chess tools are exposed by `use_skill` as `chess__<name>` and take
 their arguments as named fields shown below. Tools that take no chess
-arguments (`chess__show_position`, `chess__list_legal_moves`,
-`chess__search_wiki`) accept a generic `args` list of strings; pass `args=[]`
-when there is nothing to send. The wiki reader is the built-in
+arguments (`chess__list_legal_moves`, `chess__search_wiki`) accept a
+generic `args` list of strings; pass `args=[]` when there is nothing to
+send. `chess__show_position` and `chess__imagine_move` take an optional
+`fen` to analyse hypothetical positions. The wiki reader is the built-in
 `read_reference` tool, not a `chess__` tool.
 
 ### `chess__show_position`
 
 ```
-chess__show_position(args=[])
+chess__show_position()
+chess__show_position(fen="<fen>")   # analyse a hypothetical position
 ```
+
+With no arguments it reads the live game. With `fen=` it analyses **any
+position you give it** — typically the FEN that `chess__imagine_move` just
+returned, so you can run the full attack/defence map and radar on an
+imagined position before committing. The live game is never touched.
 
 Returns, top to bottom:
 
@@ -280,10 +287,25 @@ piece values and the order of recaptures.
 ```
 chess__imagine_move(move="e2e4")
 chess__imagine_move(move="Nf3")
+chess__imagine_move(fen="<fen>", move="Qh5")   # imagine on a hypothetical board
+chess__imagine_move(move="pass")               # what does this position threaten?
 ```
 
 Pass the move in `move` — UCI (`e2e4`, `g1f3`, `e1g1`, `e7e8q`) or SAN
 (`e4`, `Nf3`, `O-O`, `e8=Q`) both work. Trailing `+` or `#` is ignored.
+
+Two composable extras:
+
+- **`fen=`** imagines the move on any position instead of the live board —
+  chain look-aheads by feeding back the FEN a previous call returned.
+- **`move="pass"`** answers "what does this position *threaten*?": the side
+  to move does nothing and you get the other side's full move table, mate
+  flags included. **Finding your own threats:** imagine your candidate,
+  then call `chess__imagine_move(fen="<resulting fen>", move="pass")` — a
+  `checkmate` flag in that table means your candidate threatens mate in
+  one. Quiet moves that create unstoppable threats are how mating nets are
+  built. (Threats the opponent can easily parry are worth little — check
+  their replies before celebrating.)
 
 Plays the move on a copy of the board (the live board is **not**
 changed — only `chess__make_move` commits) and returns the resulting
