@@ -172,8 +172,20 @@ class Game:
 
     def state(self) -> GameState:
         outcome = self.outcome()
-        result = outcome.result() if outcome else None
-        termination = outcome.termination.name if outcome else None
+        # result() (not board.outcome()) is the authority: it also covers the
+        # move-cap draw and result overrides, where outcome is None. Computing
+        # status from outcome alone left cap-ended games "active" forever
+        # (game aa1a22ac, 2026-06-12): the bot loop had finished and recorded
+        # the game while every API consumer kept polling an immortal ghost.
+        result = self.result()
+        if outcome is not None:
+            termination = outcome.termination.name
+        elif result is not None:
+            termination = (
+                "RESULT_OVERRIDE" if self.result_override is not None else "MOVE_CAP"
+            )
+        else:
+            termination = None
         return GameState(
             game_id=self.game_id,
             fen=self.board.fen(),
