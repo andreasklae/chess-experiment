@@ -1,0 +1,48 @@
+{
+  "game_id": "75fb62382d8548f897c7174def16754b",
+  "model": "google/gemma-4-31B-it",
+  "turns": [
+    {
+      "move_number": 1,
+      "prompt": "Game start.\n\nCurrent position (FEN):\n8/8/5k2/8/5K2/8/4P3/8 w - - 0 1",
+      "events": [
+        {
+          "type": "prompt",
+          "content": "Game start.\n\nCurrent position (FEN):\n8/8/5k2/8/5K2/8/4P3/8 w - - 0 1\nLegal moves: Kg4, Ke4, Kg3, Kf3, Ke3, e3, e4"
+        },
+        {
+          "type": "provider_error_recovered",
+          "message": "Connection error."
+        },
+        {
+          "type": "retry",
+          "attempt": 2
+        },
+        {
+          "type": "prompt",
+          "content": "Game start.\n\nCurrent position (FEN):\n8/8/5k2/8/5K2/8/4P3/8 w - - 0 1\nLegal moves: Kg4, Ke4, Kg3, Kf3, Ke3, e3, e4"
+        },
+        {
+          "type": "provider_error_recovered",
+          "message": "Connection error."
+        },
+        {
+          "type": "retry",
+          "attempt": 3
+        },
+        {
+          "type": "prompt",
+          "content": "Game start.\n\nCurrent position (FEN):\n8/8/5k2/8/5K2/8/4P3/8 w - - 0 1\nLegal moves: Kg4, Ke4, Kg3, Kf3, Ke3, e3, e4"
+        }
+      ],
+      "move_chosen": null,
+      "evals": {
+        "stockfish_cp_before": null,
+        "stockfish_cp_after": null,
+        "static_cp_before": null,
+        "static_cp_after": null,
+        "move_time_ms": null
+      }
+    }
+  ]
+}
