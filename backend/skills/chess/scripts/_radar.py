@@ -122,6 +122,59 @@ def _mating_material_lines(board: chess.Board, own: bool) -> list[str]:
     return lines
 
 
+def _pawn_escort_lines(board: chess.Board, own: bool, psq: int) -> list[str]:
+    """Which rule of the K+P escort drill applies now. Pure geometry:
+    king-in-front, opposition, and the never-7th-with-check trap that drew
+    game 9d2e1e58 (e7+?? Ke8, then the pawn fell)."""
+    opp = not own
+    my_k, opp_k = board.king(own), board.king(opp)
+    pf, pr = chess.square_file(psq), chess.square_rank(psq)
+    forward = 1 if own == chess.WHITE else -1
+    promo_rank = 7 if own == chess.WHITE else 0
+    seventh = promo_rank - forward
+    pre = "- **Drill state** (K+P escort): "
+
+    king_ahead = (
+        (chess.square_rank(my_k) - pr) * forward > 0
+        and abs(chess.square_file(my_k) - pf) <= 1
+    )
+    opposition = (
+        chess.square_file(my_k) == chess.square_file(opp_k)
+        and abs(chess.square_rank(my_k) - chess.square_rank(opp_k)) == 2
+    )
+
+    if pr == seventh:
+        promo_sq = chess.square(pf, promo_rank)
+        controlled = board.is_attacked_by(own, promo_sq)
+        if controlled:
+            return [pre + "your pawn is one step from promotion and your "
+                    "king controls the promotion square — push it (verify "
+                    "no stalemate with imagine_move), then mate with the "
+                    "new queen."]
+        return [pre + "your pawn stands on the second-to-last rank but your "
+                "king does NOT control the promotion square — do NOT push "
+                "yet. Bring your king to control the promotion square "
+                "first; if the enemy king blockades, use opposition to "
+                "lever it off."]
+    if not king_ahead:
+        return [pre + "your king is NOT in front of the pawn — RULE: march "
+                "the KING (not the pawn) until it stands ahead of the pawn "
+                "on its file or an adjacent file. The pawn only moves when "
+                "the king already controls the square in front of it. "
+                "NEVER push the pawn to the second-to-last rank with check "
+                "— that position is a known draw."]
+    if opposition:
+        return [pre + "king in front ✓ and kings in opposition ✓ (enemy "
+                "must give way) — RULE: advance your king diagonally to "
+                "the side the enemy king did not go, or push the pawn one "
+                "step to keep the king ahead. Re-check opposition next "
+                "turn."]
+    return [pre + "king in front ✓, kings NOT in opposition — RULE: move "
+            "so the enemy king must step aside: take the opposition (same "
+            "file, two ranks apart) or, if it refuses to commit, advance "
+            "the pawn ONE step (never two) as a waiting move."]
+
+
 def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
     """Which numbered rule of the basic-mate drill applies RIGHT NOW.
 
@@ -140,6 +193,11 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
         sq for pt in (chess.QUEEN, chess.ROOK) for sq in board.pieces(pt, own)
     ]
     if not majors:
+        # K+P vs K: the escort drill. Fires only for the single-pawn case
+        # (the multi-pawn endgame has too many shapes for a one-line rule).
+        pawns = list(board.pieces(chess.PAWN, own))
+        if len(pawns) == 1:
+            return _pawn_escort_lines(board, own, pawns[0])
         return []
 
     ksq = board.king(opp)
@@ -181,6 +239,22 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
         sq for sq in majors
         if chess.square_distance(sq, ksq) == 1 and not board.is_attacked_by(own, sq)
     ]
+
+    def _slide_away_text(sq: int) -> str:
+        """Name the slide-away move concretely: the piece's fence line and
+        the far-side square. 'Slide along its line' alone was ambiguous —
+        game 3a787edc slid the fence rook up the FILE (b5-b8) instead of
+        along the rank, losing the fence."""
+        f, r = chess.square_file(sq), chess.square_rank(sq)
+        if edge.startswith("rank"):
+            far_file = 7 if kf <= 3 else 0
+            tgt = chess.square_name(chess.square(far_file, r))
+            return (f"slide it ALONG RANK {r + 1} (sideways, not up the "
+                    f"file) to the far side from the king — e.g. {tgt}")
+        far_rank = 7 if kr <= 3 else 0
+        tgt = chess.square_name(chess.square(f, far_rank))
+        return (f"slide it ALONG FILE {'abcdefgh'[f]} (vertically) to the "
+                f"far side from the king — e.g. {tgt}")
 
     out = []
     pre = "- **Drill state** (vs bare king): "
@@ -244,8 +318,8 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
     if touchable:
         out.append(
             pre + f"the enemy king can capture your piece on "
-            f"{chess.square_name(touchable[0])} — RULE: slide it to the far "
-            f"end of its line NOW, nothing else."
+            f"{chess.square_name(touchable[0])} — RULE: "
+            f"{_slide_away_text(touchable[0])}. Nothing else this turn."
         )
     elif not on_fence:
         out.append(
@@ -270,9 +344,8 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
             out.append(
                 pre + f"the enemy king is touching your piece on "
                 f"{chess.square_name(harassed[0])} — even defended it cannot "
-                f"ladder from there. RULE: slide it along its own {own_word} "
-                f"to the FAR side of the board, away from the king. Nothing "
-                f"else this turn."
+                f"ladder from there. RULE: "
+                f"{_slide_away_text(harassed[0])}. Nothing else this turn."
             )
         elif stacked:
             out.append(

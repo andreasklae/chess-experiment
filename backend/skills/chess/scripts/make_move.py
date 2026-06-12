@@ -121,9 +121,16 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> str | None:
         if defenders:
             continue
         value = MATERIAL.get(victim.piece_type, 0)
+        # A free capture that leaves us unable to EVER win outranks raw
+        # value: losing the last pawn in K+P vs K (100cp) is a draw on the
+        # spot (game 9d2e1e58: Kc7?? Kxe7). Rules-of-chess fact.
+        b2 = after.copy(stack=False)
+        b2.push(reply)
+        if b2.has_insufficient_material(mover):
+            value = 10_000
         if worst is None or value > worst[0]:
             taker = after.piece_at(reply.from_square)
-            worst = (value, (
+            desc = (
                 f"after this move the opponent can play "
                 f"{after.san(reply)} and take your "
                 f"{PIECE_NAMES[victim.piece_type]} on "
@@ -131,7 +138,13 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> str | None:
                 f"of yours defends that square (capturer: "
                 f"{PIECE_NAMES[taker.piece_type]} from "
                 f"{chess.square_name(reply.from_square)})"
-            ))
+            )
+            if value >= 10_000:
+                desc += (
+                    ". Losing it leaves you with INSUFFICIENT MATERIAL TO "
+                    "WIN — the game would be dead drawn"
+                )
+            worst = (value, desc)
     if worst is not None and worst[0] >= 300:  # minor piece or better
         return worst[1]
     return None

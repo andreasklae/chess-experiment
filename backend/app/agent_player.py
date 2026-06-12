@@ -257,6 +257,35 @@ def _looks_like_transient_network(exc: Exception) -> bool:
     )
 
 
+def _drill_state_for_prompt(board: chess.Board) -> str:
+    """Drill-state advisor line(s) for the turn prompt, or ''.
+
+    The advisor lives in the skill's _radar.py (it is also embedded in
+    chess__show_position output), but transcripts show the model skips
+    show_position on half its turns and then freestyles out of the drill
+    (game 3a787edc: 8 of 15 turns never saw the drill line). The turn
+    prompt already carries mechanical board facts (FEN, legal moves);
+    the drill state is the same class of fact, so deliver it the same way.
+    Best-effort: any import or compute failure returns ''.
+    """
+    try:
+        import importlib.util
+        global _RADAR_MODULE
+        if "_RADAR_MODULE" not in globals() or _RADAR_MODULE is None:
+            radar_path = SKILLS_DIR / "chess" / "scripts" / "_radar.py"
+            spec = importlib.util.spec_from_file_location("_chess_radar", radar_path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            _RADAR_MODULE = module
+        lines = _RADAR_MODULE._drill_state_lines(board, board.turn)
+        return "\n" + "\n".join(lines) if lines else ""
+    except Exception:
+        return ""
+
+
+_RADAR_MODULE = None
+
+
 _BUDGET_REMINDER_TEMPLATE = (
     "**Budget warning:** in your previous attempt this turn you ran more than "
     "{threshold} tools without committing a move. Do not run an extended "
@@ -538,6 +567,7 @@ class AgentPlayer(Player):
             + f"\nLegal moves: {legal_line}"
             + plan_line
             + goal_line
+            + _drill_state_for_prompt(board)
         )
 
         max_turns_cfg = getattr(self._agent._config, "max_turns", None) or 16

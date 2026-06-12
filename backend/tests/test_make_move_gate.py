@@ -51,6 +51,12 @@ class TestFreeCaptures:
         # Recapture exists / pawn-level losses are not gated.
         assert _gate(mm, "8/8/3p4/4p3/3P4/8/8/4K2k w - - 0 1", "d4e5") is None
 
+    def test_hanging_last_pawn_flagged(self, mm):
+        # Game 9d2e1e58: Kc7?? abandoned the e7 pawn to Kxe7 — a 100cp loss
+        # by value, but it leaves insufficient material: dead draw.
+        w = _gate(mm, "4k3/4P3/3K4/8/8/8/8/8 w - - 0 1", "d6c7")
+        assert w is not None and "INSUFFICIENT MATERIAL" in w
+
 
 class TestGameEndingTraps:
     def test_checkmate_passes(self, mm):
