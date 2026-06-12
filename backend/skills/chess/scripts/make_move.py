@@ -110,6 +110,12 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> str | None:
             )
 
     # Free captures: an opponent reply that takes a piece nobody recaptures.
+    # Netted against what THIS move just captured — taking a pawn and being
+    # recaptured pawn-for-pawn is a trade, not a giveaway.
+    my_gain = 0
+    if board.is_capture(move):
+        taken = board.piece_at(move.to_square)
+        my_gain = MATERIAL.get(taken.piece_type, 0) if taken else MATERIAL[chess.PAWN]
     worst: tuple[int, str] | None = None
     for reply in after.legal_moves:
         if not after.is_capture(reply):
@@ -120,10 +126,12 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> str | None:
         defenders = after.attackers(mover, reply.to_square)
         if defenders:
             continue
-        value = MATERIAL.get(victim.piece_type, 0)
-        # A free capture that leaves us unable to EVER win outranks raw
-        # value: losing the last pawn in K+P vs K (100cp) is a draw on the
-        # spot (game 9d2e1e58: Kc7?? Kxe7). Rules-of-chess fact.
+        value = MATERIAL.get(victim.piece_type, 0) - my_gain
+        if value <= 0:
+            continue  # compensated — a trade, not a giveaway
+        # An uncompensated loss that leaves us unable to EVER win outranks
+        # raw value: losing the last pawn in K+P vs K (100cp) is a draw on
+        # the spot (game 9d2e1e58: Kc7?? Kxe7). Rules-of-chess fact.
         b2 = after.copy(stack=False)
         b2.push(reply)
         if b2.has_insufficient_material(mover):
