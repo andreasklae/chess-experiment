@@ -207,6 +207,19 @@ def attack_defense_section(
     return "\n".join(lines)
 
 
+def _piece_list(board: chess.Board, color: bool) -> str:
+    """Compact square-level inventory ("Kg1, Ra4, Rb1") — grounds the
+    model's reasoning in the actual squares; FEN alone gets misread."""
+    order = {chess.KING: 0, chess.QUEEN: 1, chess.ROOK: 2, chess.BISHOP: 3,
+             chess.KNIGHT: 4, chess.PAWN: 5}
+    pieces = sorted(
+        ((order[board.piece_type_at(sq)], board.piece_at(sq).symbol().upper(), sq)
+         for sq in chess.SQUARES if (pc := board.piece_at(sq)) and pc.color == color),
+        key=lambda t: (t[0], t[2]),
+    )
+    return ", ".join(f"{sym}{chess.square_name(sq)}" for _, sym, sq in pieces) or "(none)"
+
+
 def render_position(board: chess.Board, move_cap: int | None = None) -> str:
     """Markdown-formatted position report. Each section is a small heading
     so the agent (and the UI) can scan; the ASCII board sits in a fenced
@@ -229,6 +242,8 @@ def render_position(board: chess.Board, move_cap: int | None = None) -> str:
         render_ascii(board),
         "```",
         "",
+        f"**Pieces:** white: {_piece_list(board, chess.WHITE)} · "
+        f"black: {_piece_list(board, chess.BLACK)}",
         f"**FEN:** `{board.fen()}`",
         f"**Side to move:** {color_name(own_color)}",
         "",

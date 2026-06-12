@@ -1,50 +1,24 @@
 """AgentPlayer: skillful-agent backed chess player for the white side.
 
-A turn proceeds as a sequence of ``run_stream`` calls (attempts). On the very
-first turn of a game the conversation is empty. On subsequent turns the agent
-sees a small, curated memory instead of the raw conversation ("turn memory").
+Memory model (blocklist, since 2026-06-12): the conversation PERSISTS across
+turns within a game — the skill stays loaded, wiki pages the agent read stay
+in context, the system prompt is always present. A pydantic-ai history
+processor prunes what is provably stale before every model request: old
+perception-tool dumps are collapsed to a marker, old thinking text is
+truncated. See ``_make_pruning_processor`` for the exact keep/drop sets.
 
-Turn memory is structured and agent-authored (``TurnMemory``):
-
-- ``reasoning`` (required on ``make_move``) — the agent's note about the move
-  it just played. Carried for exactly one turn, then replaced by the next
-  note. Older notes are deliberately forgotten: the FEN is the complete game
-  state, and a weak model handed a transcript hallucinates more, not less.
-- ``plan`` (optional on ``make_move``) — the agent's standing multi-move
-  plan. It persists across turns until the agent writes a new one (or clears
-  it with ``plan="none"``), and is re-shown every turn with its age. This is
-  the piece of memory that must NOT reset each turn — losing the plan every
-  move is how won endgames drifted into 150-ply draws.
-
-Injection is a pydantic-ai history processor registered at construction. Once
-per attempt (the ``armed`` flag, set by ``get_move`` before each
-``run_stream``), it replaces the incoming history with a synthetic exchange:
-
-    ModelRequest(system prompt + previous turn's user prompt)
-    ModelResponse(rendered memory: last note + standing plan)
-    <current request>
-
-and then passes subsequent within-attempt requests through untouched so the
-in-flight tool conversation survives. Replacing per attempt (rather than once
-per turn) keeps retry attempts fresh instead of accumulating failed-attempt
-context.
-
-The synthetic request **re-injects the system prompt**: pydantic-ai only
-attaches the system prompt to the first request of an empty history, so the
-previous implementation — which rebuilt history without a SystemPromptPart —
-silently dropped the system prompt (skill list, harness instructions, the
-"call use_skill first" rule) from every turn after the first. Verified
-against pydantic-ai 1.99 with a FunctionModel probe before fixing.
+The agent still authors two explicit memory channels on ``make_move``:
+``reasoning`` (its note, kept in history naturally) and ``plan`` (the
+standing plan, tracked in ``TurnMemory`` and re-stated in every turn prompt
+together with the legal-move list).
 
 ``clear_conversation()`` is only called between games, not between turns.
 
-See ``decisions/2026-05-24-per-turn-fresh-context.md`` for the original
-per-turn fresh-context baseline, ``2026-05-25-agent-resigns-when-stuck.md``
-for the resignation policy, ``2026-05-26-stabilization.md`` for the
-budget-warning mechanism, ``2026-05-26-agent-turn-memory.md`` for the
-agent-authored turn memory decision, and
-``2026-06-10-structured-turn-memory.md`` for the structured plan-carrying
-memory and the system-prompt fix.
+Decision trail: 2026-05-24-per-turn-fresh-context (baseline) →
+2026-05-26-agent-turn-memory (single note) → 2026-06-10-structured-turn-memory
+(plan channel + system-prompt-loss fix) → this blocklist model (persistent
+pruned context; motivated by repetitions/phantom pieces/illegal moves traced
+to per-turn re-derivation of the position).
 """
 
 from __future__ import annotations
@@ -111,11 +85,14 @@ _DISABLED_TOOLS = [
 
 _SYSTEM_PROMPT_EXTRA = (
     "You are playing chess as white. "
-    "Your FIRST action every turn must be to call use_skill('chess') — "
-    "it contains all instructions for how to play, and loading it reveals "
-    "the chess tools (chess__show_position, chess__imagine_move, "
-    "chess__make_move, and others). Do not call any chess__ tool before you "
-    "have called use_skill."
+    "On your FIRST turn of the game, call use_skill('chess') — it contains "
+    "all instructions for how to play and reveals the chess tools "
+    "(chess__show_position, chess__imagine_move, chess__make_move, and "
+    "others). The skill and its instructions STAY LOADED for the whole "
+    "game — do not reload it on later turns unless the chess__ tools are "
+    "missing from your tool list. Earlier turns of this game remain in your "
+    "context; stale tool outputs from previous turns are pruned and marked "
+    "as such — re-run a tool if you need fresh eyes on the position."
 )
 
 
@@ -205,7 +182,7 @@ def _build_agent(game_id: str, history_processor=None):
         # show_position + 1–3 imagine_move + make_move, with reasoning text
         # between). 16 leaves headroom for one or two illegal-move retries
         # inside a single run_stream before the harness-level retry kicks in.
-        max_turns=16,
+        max_turns=24,
         history_processors=[history_processor] if history_processor is not None else [],
     )
     model = OpenAIChatModel(model_name, provider=provider)
@@ -368,48 +345,72 @@ class TurnMemory:
         return "\n\n".join(parts)
 
 
-def _make_turn_memory_processor(memory: TurnMemory, system_prompt_getter):
-    """Return a pydantic-ai history processor that injects the turn memory.
+def _make_pruning_processor(memory: TurnMemory):
+    """Blocklist memory: the conversation persists across turns; this
+    processor only PRUNES what is provably stale, before every model
+    request.
 
-    On the first model request of each attempt (``memory.armed``), the
-    incoming history is replaced with:
+    Kept in full: the system prompt, every user prompt, tool calls
+    (names+args), make_move results, use_skill output (the skill stays
+    loaded), and read_reference results (theory the agent chose to read
+    stays available). Pruned: perception-tool outputs from earlier turns
+    (show_position / imagine_move / list_legal_moves dumps describe stale
+    positions and dominate token count), and old thinking text is truncated
+    to its head. The current turn (everything after the last user prompt)
+    is never touched.
 
-        ModelRequest(SystemPromptPart + previous turn's prompt)
-        ModelResponse(memory.render_note())
-        <current request>
-
-    The SystemPromptPart is re-injected explicitly: pydantic-ai attaches the
-    system prompt only to the first request of an *empty* history, so a
-    rebuilt history without it would send the model no system prompt at all
-    (the pre-2026-06-10 implementation had exactly this bug).
-
-    Subsequent requests within the attempt (tool-call loops) pass through
-    untouched. Turn 1 has no memory; the processor disarms and passes
-    through, leaving pydantic-ai's own system-prompt handling in place.
-
-    ``system_prompt_getter`` is a zero-arg callable evaluated lazily — the
-    skillful-agent Agent that owns the system prompt is constructed *after*
-    this processor.
+    Rationale (2026-06-12 session review): the previous allowlist memory
+    forced the model to re-derive the position every turn, producing
+    repetitions, phantom pieces, and illegal moves. Persistent-but-pruned
+    context keeps theory and intentions while preventing overflow.
     """
     from pydantic_ai.messages import (
-        ModelRequest, ModelResponse, SystemPromptPart, TextPart, UserPromptPart,
+        ModelRequest, ModelResponse, TextPart, ToolReturnPart, UserPromptPart,
     )
+    import dataclasses
+
+    KEEP_TOOLS = ("use_skill", "read_reference", "chess__make_move", "chess__search_wiki")
+    PRUNED_NOTE = "[stale output from an earlier turn pruned - re-run the tool for the current position]"
 
     def processor(messages):
-        if not memory.armed:
-            return messages
-        memory.armed = False
-        if not memory.has_memory():
-            return messages
-        current_request = messages[-1]
-        return [
-            ModelRequest(parts=[
-                SystemPromptPart(content=system_prompt_getter()),
-                UserPromptPart(content=memory.last_prompt),
-            ]),
-            ModelResponse(parts=[TextPart(content=memory.render_note())]),
-            current_request,
-        ]
+        # Find the start of the current turn: the last ModelRequest that
+        # carries a UserPromptPart.
+        last_user_idx = 0
+        for i, m in enumerate(messages):
+            if isinstance(m, ModelRequest) and any(
+                isinstance(pt, UserPromptPart) for pt in m.parts
+            ):
+                last_user_idx = i
+
+        out = []
+        for i, m in enumerate(messages):
+            if i >= last_user_idx:
+                out.append(m)
+                continue
+            if isinstance(m, ModelRequest):
+                parts = []
+                for pt in m.parts:
+                    if (
+                        isinstance(pt, ToolReturnPart)
+                        and pt.tool_name not in KEEP_TOOLS
+                        and isinstance(pt.content, str)
+                        and len(pt.content) > 400
+                    ):
+                        pt = dataclasses.replace(pt, content=PRUNED_NOTE)
+                    parts.append(pt)
+                out.append(dataclasses.replace(m, parts=parts))
+            elif isinstance(m, ModelResponse):
+                parts = []
+                for pt in m.parts:
+                    if isinstance(pt, TextPart) and len(pt.content) > 400:
+                        pt = dataclasses.replace(
+                            pt, content=pt.content[:380] + " [truncated]"
+                        )
+                    parts.append(pt)
+                out.append(dataclasses.replace(m, parts=parts))
+            else:
+                out.append(m)
+        return out
 
     return processor
 
@@ -435,21 +436,25 @@ class AgentPlayer(Player):
         # at each successful commit; rendered into the synthetic prior
         # exchange by the history processor at the start of each attempt.
         self._memory = TurnMemory()
-        # The system prompt lives on the skillful-agent Agent, which is
-        # constructed below — hence the lazy getter.
-        processor = _make_turn_memory_processor(
-            self._memory, lambda: self._agent._system_prompt
-        )
+        processor = _make_pruning_processor(self._memory)
         self._agent = _build_agent(game_id, history_processor=processor)
 
     async def get_move(self, board: chess.Board, last_san: str | None = None) -> chess.Move:
         from skill_agent import AgentContextOverflowError, TextDeltaEvent, ToolCallEvent, ToolResultEvent
         from pydantic_ai.exceptions import UsageLimitExceeded
 
+        legal_sans = [board.san(m) for m in board.legal_moves]
+        legal_line = ", ".join(legal_sans[:90])
+        plan_line = (
+            f"\nYour standing plan (set on move {self._memory.plan_move}): "
+            f"{self._memory.plan}"
+            if self._memory.plan else ""
+        )
         base_prompt = (
-            f"Opponent played {last_san}.\n\nCurrent position (FEN):\n{board.fen()}"
-            if last_san else
-            f"Game start.\n\nCurrent position (FEN):\n{board.fen()}"
+            (f"Opponent played {last_san}." if last_san else "Game start.")
+            + f"\n\nCurrent position (FEN):\n{board.fen()}"
+            + f"\nLegal moves: {legal_line}"
+            + plan_line
         )
 
         max_turns_cfg = getattr(self._agent._config, "max_turns", None) or 16
@@ -507,11 +512,6 @@ class AgentPlayer(Player):
 
             tool_call_count = 0
             budget_warning_emitted = False
-
-            # Arm the memory injection for this attempt: the processor
-            # replaces history once (fresh attempt, system prompt + memory),
-            # then lets the in-flight tool conversation pass through.
-            self._memory.armed = True
 
             try:
                 async for event in self._agent.run_stream(prompt):

@@ -16,13 +16,14 @@ from pydantic_ai.messages import (
     ModelResponse,
     SystemPromptPart,
     TextPart,
+    ToolReturnPart,
     UserPromptPart,
 )
 
 from app.agent_player import (
     TurnMemory,
     _committed_move_from_result,
-    _make_turn_memory_processor,
+    _make_pruning_processor,
 )
 
 
@@ -65,127 +66,38 @@ class TestTurnMemoryState:
         assert TurnMemory().has_memory() is False
 
 
-class TestRenderNote:
-    def test_renders_note_and_plan(self):
-        m = TurnMemory()
-        commit(m, 12, uci="a5a6", reasoning="pushed the passer", plan="promote the a-pawn")
-        text = m.render_note()
-        assert "a5a6" in text and "pushed the passer" in text
-        assert "standing plan (set on move 12" in text
-        assert "promote the a-pawn" in text
+class TestPruningProcessor:
+    """Blocklist memory: history persists; only stale bulk is pruned."""
 
-    def test_old_plan_gets_age_warning(self):
-        m = TurnMemory()
-        commit(m, 5, plan="promote the a-pawn")
-        commit(m, 20)
-        assert "15 moves ago" in m.render_note()
-
-    def test_fresh_plan_has_no_age_warning(self):
-        m = TurnMemory()
-        commit(m, 5, plan="promote the a-pawn")
-        commit(m, 7)
-        assert "moves ago" not in m.render_note()
-
-    def test_no_plan_nudges_to_form_one(self):
-        m = TurnMemory()
-        commit(m, 5)
-        assert "no standing plan" in m.render_note().lower()
-
-
-class TestProcessor:
-    def _messages(self):
+    def _history(self):
         return [
             ModelRequest(parts=[SystemPromptPart(content="SYS"), UserPromptPart(content="turn 1")]),
-            ModelResponse(parts=[TextPart(content="old stuff")]),
+            ModelResponse(parts=[TextPart(content="thinking " * 100)]),
+            ModelRequest(parts=[
+                ToolReturnPart(tool_name="chess__show_position", content="X" * 2000, tool_call_id="1"),
+                ToolReturnPart(tool_name="read_reference", content="WIKI " * 200, tool_call_id="2"),
+            ]),
             ModelRequest(parts=[UserPromptPart(content="turn 2 prompt")]),
+            ModelRequest(parts=[
+                ToolReturnPart(tool_name="chess__show_position", content="FRESH" * 200, tool_call_id="3"),
+            ]),
         ]
 
-    def test_armed_with_memory_replaces_history(self):
-        m = TurnMemory()
-        commit(m, 3, prompt="turn 1", reasoning="my note", plan="my plan")
-        m.armed = True
-        proc = _make_turn_memory_processor(m, lambda: "SYS")
-        out = proc(self._messages())
-        assert len(out) == 3
-        sys_parts = [p for p in out[0].parts if isinstance(p, SystemPromptPart)]
-        assert sys_parts and sys_parts[0].content == "SYS"
-        assert isinstance(out[1], ModelResponse)
-        assert "my note" in out[1].parts[0].content
-        assert "my plan" in out[1].parts[0].content
-        # current request preserved as the last message
-        assert out[2].parts[-1].content == "turn 2 prompt"
+    def test_prunes_stale_perception_keeps_wiki_and_system(self):
+        proc = _make_pruning_processor(TurnMemory())
+        out = proc(self._history())
+        assert any(isinstance(pt, SystemPromptPart) for pt in out[0].parts)
+        stale = [pt for pt in out[2].parts if pt.tool_name == "chess__show_position"][0]
+        assert "pruned" in stale.content
+        wiki = [pt for pt in out[2].parts if pt.tool_name == "read_reference"][0]
+        assert "WIKI" in wiki.content  # theory read stays available
+        assert "thinking" in out[1].parts[0].content and "[truncated]" in out[1].parts[0].content
 
-    def test_disarms_after_first_request(self):
-        m = TurnMemory()
-        commit(m, 3)
-        m.armed = True
-        proc = _make_turn_memory_processor(m, lambda: "SYS")
-        proc(self._messages())
-        msgs = self._messages()
-        assert proc(msgs) is msgs  # passthrough for within-attempt requests
-
-    def test_unarmed_passes_through(self):
-        m = TurnMemory()
-        commit(m, 3)
-        proc = _make_turn_memory_processor(m, lambda: "SYS")
-        msgs = self._messages()
-        assert proc(msgs) is msgs
-
-    def test_no_memory_passes_through(self):
-        m = TurnMemory()
-        m.armed = True
-        proc = _make_turn_memory_processor(m, lambda: "SYS")
-        msgs = self._messages()
-        assert proc(msgs) is msgs
-
-
-class TestSystemPromptRegression:
-    """Turn 2+ requests must carry the system prompt. The pre-2026-06-10
-    injection rebuilt history without a SystemPromptPart, so the model
-    received no system prompt after turn 1."""
-
-    def test_turn_two_request_has_system_prompt(self):
-        captured = []
-
-        def model_fn(messages, info):
-            captured.append(list(messages))
-            return ModelResponse(parts=[TextPart(content="ok")])
-
-        memory = TurnMemory()
-        proc = _make_turn_memory_processor(memory, lambda: "SYSTEM PROMPT")
-        try:
-            from pydantic_ai.capabilities import ProcessHistory as Cap
-        except ImportError:  # pydantic-ai 1.x name
-            from pydantic_ai.capabilities import HistoryProcessor as Cap
-
-        agent = Agent(
-            FunctionModel(model_fn),
-            system_prompt="SYSTEM PROMPT",
-            capabilities=[Cap(proc)],
-        )
-        memory.armed = True
-        r1 = agent.run_sync("turn 1 prompt")
-        commit(memory, 1, prompt="turn 1 prompt", reasoning="note 1", plan="the plan")
-        memory.armed = True
-        agent.run_sync("turn 2 prompt", message_history=r1.all_messages())
-
-        turn2 = captured[-1]
-        sys_present = any(
-            isinstance(p, SystemPromptPart)
-            for msg in turn2
-            if isinstance(msg, ModelRequest)
-            for p in msg.parts
-        )
-        assert sys_present, "system prompt missing from turn-2 request"
-        # and the memory exchange is present
-        joined = " ".join(
-            p.content
-            for msg in turn2
-            if isinstance(msg, ModelResponse)
-            for p in msg.parts
-            if isinstance(p, TextPart)
-        )
-        assert "the plan" in joined
+    def test_current_turn_untouched(self):
+        proc = _make_pruning_processor(TurnMemory())
+        out = proc(self._history())
+        fresh = out[4].parts[0]
+        assert fresh.content.startswith("FRESH")
 
 
 class TestCommitParsing:
