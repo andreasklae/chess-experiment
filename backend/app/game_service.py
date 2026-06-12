@@ -392,9 +392,18 @@ class GameService:
             san_moves=list(data["san_moves"]),
             subfolder=existing_subfolder(self._games_dir, data["game_id"]),
         )
+        # A recorded final result is authoritative: cap-ended and overridden
+        # games are NOT board-game-over, and resuming them replays a finished
+        # game. Worse, BoardPage auto-loads on a 404 — so an open browser tab
+        # on a finished game silently evicted the live puzzle game and
+        # resumed the old one (observed twice on 2026-06-13).
+        recorded_result = (data.get("result") or "").strip()
+        if recorded_result and recorded_result != "*":
+            game.result_override = recorded_result
+
         self._game = game
         asyncio.create_task(self._update_eval(game))
-        if not game_over:
+        if not game_over and not game.is_over():
             self._schedule_bot_turns(game)
         return game.state()
 
@@ -405,7 +414,13 @@ class GameService:
                 board = chess.Board(data.get("initial_fen") or chess.STARTING_FEN)
                 for uci in data["uci_moves"]:
                     board.push(chess.Move.from_uci(uci))
-                result = board.result(claim_draw=True) if board.is_game_over(claim_draw=True) else None
+                # Recorded result first: cap-ended/overridden games are not
+                # board-game-over and would otherwise list as "active".
+                recorded = (data.get("result") or "").strip()
+                if recorded and recorded != "*":
+                    result = recorded
+                else:
+                    result = board.result(claim_draw=True) if board.is_game_over(claim_draw=True) else None
                 san_moves = data["san_moves"]
                 summaries.append(GameSummary(
                     game_id=data["game_id"],
