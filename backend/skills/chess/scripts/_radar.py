@@ -162,7 +162,7 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
         fence_line = kr - 1 if edge == "rank-top" else kr + 1
         on_fence = [sq for sq in majors if chess.square_rank(sq) == fence_line]
         line_word, line_name = "rank", fence_line + 1
-        king_line = kr
+        king_line_name = f"rank {kr + 1}"
         opposition = (
             chess.square_file(my_k) == kf
             and abs(chess.square_rank(my_k) - kr) == 2
@@ -171,7 +171,7 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
         fence_line = kf - 1 if edge == "file-h" else kf + 1
         on_fence = [sq for sq in majors if chess.square_file(sq) == fence_line]
         line_word, line_name = "file", "abcdefgh"[fence_line]
-        king_line = kf
+        king_line_name = f"file {'abcdefgh'[kf]}"
         opposition = (
             chess.square_rank(my_k) == kr
             and abs(chess.square_file(my_k) - kf) == 2
@@ -197,13 +197,40 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
             abs(chess.square_file(qsq) - kf), abs(chess.square_rank(qsq) - kr)
         ) in ((1, 2), (2, 1))
         if not on_edge:
-            return [pre + f"phase 1 (shrink): keep the queen a KNIGHT'S-MOVE "
-                    f"from the enemy king and mirror its moves — no checks "
-                    f"needed. NEVER place the queen on a square adjacent to "
-                    f"the king unless it is protected (the king just takes "
-                    f"it)." + ("" if knight_dist else
-                    f" The queen on {chess.square_name(qsq)} is not at "
-                    f"knight's-move distance now.")]
+            msg = (pre + f"phase 1 (shrink): keep the queen a KNIGHT'S-MOVE "
+                   f"from the enemy king and MIRROR its moves — no checks "
+                   f"needed. Mirror means copy the king's last move "
+                   f"DIRECTION (king went toward a rank/file, queen steps "
+                   f"the same way), not just restore the distance on a "
+                   f"different side. NEVER place the queen adjacent to the "
+                   f"king unless protected (the king just takes it).")
+            if not knight_dist:
+                msg += (f" The queen on {chess.square_name(qsq)} is not at "
+                        f"knight's-move distance now.")
+            # Direction of the king's last step, read off the move stack —
+            # the concrete fact the mirror rule needs.
+            if board.move_stack:
+                last = board.move_stack[-1]
+                if last.to_square == ksq:
+                    df = chess.square_file(ksq) - chess.square_file(last.from_square)
+                    dr = chess.square_rank(ksq) - chess.square_rank(last.from_square)
+                    ew = "kingside (h)" if df > 0 else ("queenside (a)" if df < 0 else "")
+                    ns = "up (rank 8)" if dr > 0 else ("down (rank 1)" if dr < 0 else "")
+                    direction = " and ".join(x for x in (ew, ns) if x)
+                    if direction:
+                        msg += (f" The king's last step went {direction} — "
+                                f"shift the queen one square the same way.")
+            # Anti-oscillation: returning the queen to the square she just
+            # left is the no-progress loop that draws by repetition.
+            if len(board.move_stack) >= 2:
+                prev_own = board.move_stack[-2]
+                if prev_own.to_square == qsq:
+                    msg += (f" Your queen just came FROM "
+                            f"{chess.square_name(prev_own.from_square)} — do "
+                            f"NOT move her back there. If no mirroring square "
+                            f"makes progress, leave the queen and march YOUR "
+                            f"king one square toward the enemy king instead.")
+            return [msg]
         if chess.square_distance(my_k, ksq) > 2:
             return [pre + "phase 2 (march): the enemy king is on the edge — "
                     "STOP moving the queen (one more shadow step risks "
@@ -229,14 +256,16 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
     elif len(majors) >= 2:
         out.append(
             pre + f"fence on {line_word} {line_name} ✓ — RULE: check with "
-            f"your OTHER major piece on the enemy king's {line_word}, from "
-            f"far away; the king retreats one line; the old checker becomes "
-            f"the new fence. Repeat to the edge."
+            f"your OTHER major piece on {king_line_name} (the enemy king's "
+            f"{line_word}), from far away; the king retreats one line; the "
+            f"old checker becomes the new fence. Repeat to the edge."
         )
     elif opposition:
         out.append(
-            pre + f"fence ✓ and kings in opposition ✓ — RULE: CHECK on the "
-            f"enemy king's {line_word} now; it must retreat. Then re-fence."
+            pre + f"fence ✓ and kings in opposition ✓ — RULE: CHECK on "
+            f"{king_line_name} (the enemy king's {line_word}) now — a rook "
+            f"move TO that {line_word}, far from the king; it must retreat. "
+            f"Then re-fence. A check on any other line is a wasted move."
         )
     else:
         out.append(

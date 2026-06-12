@@ -44,3 +44,5 @@ what the agent learned and when — keep it faithful.
 ## [2026-06-11] update | patterns/mating-patterns/{king-rook-mate,ladder-mate,king-queen-mate}.md | Rewritten as numbered apply-first-matching-rule drills (live sessions showed concepts don't execute; the ladder draw happened at the missing slide-far-then-mate finish, now an explicit two-move template).
 
 ## [2026-06-11] update | patterns/mating-patterns/index.md | Registered the eight new pages.
+
+## [2026-06-12] update | patterns/mating-patterns/king-queen-mate.md | Phase 1 mirror rule made operational after game 185afd0b drew by repetition with the queen oscillating d5/e4: mirror = copy the king's last move DIRECTION; never return the queen to the square she just left — march your own king instead (early phase 2). status: draft.

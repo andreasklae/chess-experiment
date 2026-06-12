@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AgentPanel } from './AgentPanel';
 import { ChessBoard } from './ChessBoard';
 import { EvalBar } from './EvalBar';
-import { gameEventsUrl, getActiveBatch, getAgentElo, getGame, loadGame, pauseGame, resumeGame, submitMove } from './api';
+import { gameEventsUrl, getActiveBatch, getAgentElo, getGame, listGames, loadGame, pauseGame, resumeGame, submitMove } from './api';
 import type { AgentElo, Batch, GameState, PlayerConfig } from './types';
 
 function formatPlayer(config: PlayerConfig): string {
@@ -79,6 +79,18 @@ export function BoardPage() {
           active.status === 'running'
         ) {
           navigate(`/games/${active.current_game_id}`);
+          return;
+        }
+        // No batch driving the board: follow standalone game sequences too
+        // (the puzzle runner starts a fresh game the moment one finishes).
+        const games = await listGames();
+        if (cancelled) return;
+        const current = games.find((g) => g.game_id === gameId);
+        const nextActive = games.find(
+          (g) => g.status === 'active' && g.game_id !== gameId,
+        );
+        if (nextActive && (!current || current.status === 'finished')) {
+          navigate(`/games/${nextActive.game_id}`);
         }
       } catch {
         // ignore — keep polling

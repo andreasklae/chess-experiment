@@ -22,10 +22,17 @@ prefer the even simpler [[patterns/mating-patterns/ladder-mate]].
 1. Place the queen a **knight's-move away** from the enemy king (e.g.
    king d5 → queen c3, e3, b4, or f4 — pick the side toward the centre of
    the board so the king is pushed to the nearer edge).
-2. Every time the king moves, move the queen to restore the knight's-move
-   distance, mirroring it. The king's box shrinks toward the edge by
-   itself.
-3. **STOP shadowing the moment the king reaches the edge.** Park the
+2. **Mirror means: copy the king's last move direction.** King steps
+   toward a1 → queen steps one square toward a1 too, recreating the
+   knight's-move shape on the same side. Copying the direction is what
+   shrinks the box; restoring knight-distance on a different side undoes
+   your progress.
+3. **Never move the queen back to a square she just left.** If the king
+   dances so that mirroring would repeat your previous square, the queen
+   has done all she can: leave her standing and **march YOUR king one
+   square toward the enemy king instead** (phase 2 starts early).
+   Oscillating queen moves are how this drill draws by repetition.
+4. **STOP shadowing the moment the king reaches the edge.** Park the
    queen where it confines the king to two or three edge squares, and do
    not move her again until phase 3. One more shadow step here is the
    classic stalemate.

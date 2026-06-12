@@ -70,9 +70,11 @@ def draw_flag(board: chess.Board, move: chess.Move) -> str:
     """
     b = board.copy()  # full copy, stack included
     b.push(move)
-    if b.is_repetition(3):
+    # can_claim_*, not is_repetition(3)/is_fifty_moves: the backend ends
+    # non-chesscom games with claim_draw=True, so a claimable draw IS a draw.
+    if b.can_claim_threefold_repetition():
         return "draw:repetition"
-    if b.is_fifty_moves():
+    if b.can_claim_fifty_moves():
         return "draw:50-move"
     if b.is_repetition(2):
         return "repeats!"

@@ -86,13 +86,24 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> str | None:
             "draw. If you are winning, this throws away the win."
         )
 
-    if board.move_stack and (after.is_repetition(3) or after.is_fifty_moves()):
+    # The backend ends non-chesscom games with claim_draw=True, so the
+    # moment a draw is CLAIMABLE it is a draw — can_claim_* (not the stricter
+    # is_repetition(3)/is_fifty_moves) is the rule that actually ends games.
+    # Observed: game 185afd0b drew on a Qd5 where is_repetition(3) was False
+    # but can_claim_threefold_repetition() was True.
+    if board.move_stack and (
+        after.can_claim_threefold_repetition() or after.can_claim_fifty_moves()
+    ):
         my_mat = sum(MATERIAL[p.piece_type] for p in board.piece_map().values()
                      if p.color == mover and p.piece_type != chess.KING)
         their_mat = sum(MATERIAL[p.piece_type] for p in board.piece_map().values()
                         if p.color != mover and p.piece_type != chess.KING)
         if my_mat > their_mat:
-            rule = "threefold repetition" if after.is_repetition(3) else "the 50-move rule"
+            rule = (
+                "threefold repetition"
+                if after.can_claim_threefold_repetition()
+                else "the 50-move rule"
+            )
             return (
                 f"this move instantly DRAWS the game by {rule} while you are "
                 f"ahead on material. Pick a move that makes progress instead."

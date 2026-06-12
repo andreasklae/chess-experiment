@@ -304,13 +304,12 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
     out.append("")
     out.append(f"**Check:** {check_text}")
     if board_before.move_stack and not board_after.is_checkmate():
-        if board_after.is_repetition(3):
+        if board_after.can_claim_threefold_repetition():
             out.append(
                 "**Draw warning:** this move immediately draws by threefold "
-                "repetition — the position has now occurred three times. "
-                "Pick a move that makes progress instead."
+                "repetition. Pick a move that makes progress instead."
             )
-        elif board_after.is_fifty_moves():
+        elif board_after.can_claim_fifty_moves():
             out.append(
                 "**Draw warning:** this move triggers the 50-move rule "
                 "(50 moves without a capture or pawn move) — instant draw."
