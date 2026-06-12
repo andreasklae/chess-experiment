@@ -255,6 +255,20 @@ class GameService:
         if game is None:
             return
         logger.info("cancel_current_game · %s", game.game_id[:8])
+        await self._teardown(game)
+        self._game = None
+        logger.info("cancel_current_game · cleared")
+
+    async def _teardown(self, game: Game) -> None:
+        """Stop a game's bot loop and release its players.
+
+        Cancelling the task BEFORE closing players matters: the loop may be
+        mid-agent-turn, and an agent left running while a new game is built
+        commits moves against the wrong game — the skill scripts read the
+        process-global CHESS_GAME_ID, which the newest AgentPlayer owns.
+        Observed 2026-06-12 as illegal b1b5 pushes crashing two bot loops
+        when a stale game was re-loaded over a fresh puzzle game.
+        """
         if game.task is not None and not game.task.done():
             game.task.cancel()
             try:
@@ -262,8 +276,6 @@ class GameService:
             except (asyncio.CancelledError, Exception):
                 pass
         await game.close_players()
-        self._game = None
-        logger.info("cancel_current_game · cleared")
 
     def set_paused(self, paused: bool) -> bool:
         """Pause/resume the active game. Returns the new state."""
@@ -284,8 +296,8 @@ class GameService:
                     request.black.type,
                     f" (elo {request.black.elo})" if request.black.elo is not None else "")
         if self._game is not None:
-            logger.info("create_game · closing prior game %s", self._game.game_id[:8])
-            await self._game.close_players()
+            logger.info("create_game · tearing down prior game %s", self._game.game_id[:8])
+            await self._teardown(self._game)
         try:
             self._player_factory.validate_config(request.white)
             self._player_factory.validate_config(request.black)
@@ -352,7 +364,7 @@ class GameService:
             )
 
         if self._game is not None:
-            await self._game.close_players()
+            await self._teardown(self._game)
 
         try:
             white_player = self._player_factory.create(

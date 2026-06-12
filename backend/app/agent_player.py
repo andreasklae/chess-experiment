@@ -512,6 +512,14 @@ class AgentPlayer(Player):
         from skill_agent import AgentContextOverflowError, TextDeltaEvent, ToolCallEvent, ToolResultEvent
         from pydantic_ai.exceptions import UsageLimitExceeded
 
+        # Re-assert ownership of the process-global script env every turn.
+        # Skill scripts read CHESS_GAME_ID from os.environ at exec time; if
+        # another AgentPlayer was built since (game replaced mid-turn), the
+        # var points at the wrong game and commits cross games. Belt to the
+        # GameService._teardown braces.
+        os.environ["CHESS_GAME_ID"] = self._game_id
+        os.environ["CHESS_API_BASE"] = API_BASE
+
         legal_sans = [board.san(m) for m in board.legal_moves]
         legal_line = ", ".join(legal_sans[:90])
         plan_line = (
