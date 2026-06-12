@@ -23,9 +23,12 @@ your king, ~5–8 moves from anywhere.
 
 1. **Neither piece adjacent (in rank) to the enemy king?** Put piece A on
    the rank directly below the king's rank — the fence. Done.
-2. **Enemy king attacks (or next move can attack) either piece?** Slide
-   that piece along its own rank to the far edge (a/h-file). Fence
-   intact. Done.
+2. **Enemy king attacks or touches either piece?** Slide that piece along
+   its own rank to the far edge (a/h-file). Fence intact. Done. (A rook
+   the king touches is paralysed even if defended — it cannot ladder.)
+2b. **Both pieces on the same file?** They block each other and the king
+   chases both at once. Move one to the OPPOSITE wing along its rank —
+   the ladder needs the rooks on different sides. Done.
 3. **Fence in place (piece A one rank below the king)?** Check with piece
    B **on the king's rank**, from far away. The king must retreat one
    rank toward the edge. Done.

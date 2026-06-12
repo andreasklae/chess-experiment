@@ -254,12 +254,42 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
             f"the king. The king must never cross it."
         )
     elif len(majors) >= 2:
-        out.append(
-            pre + f"fence on {line_word} {line_name} ✓ — RULE: check with "
-            f"your OTHER major piece on {king_line_name} (the enemy king's "
-            f"{line_word}), from far away; the king retreats one line; the "
-            f"old checker becomes the new fence. Repeat to the edge."
-        )
+        # Ladder pathologies before the generic check rule. Both are pure
+        # geometry: a king touching a rook paralyses it even when the rook
+        # is defended (it cannot ladder from there), and two majors stacked
+        # on the same cross-line block each other's leapfrog while letting
+        # the king chase both at once.
+        harassed = [sq for sq in majors if chess.square_distance(sq, ksq) <= 1]
+        if edge.startswith("rank"):
+            stacked = len({chess.square_file(sq) for sq in majors[:2]}) == 1
+            cross_word, own_word = "file", "rank"
+        else:
+            stacked = len({chess.square_rank(sq) for sq in majors[:2]}) == 1
+            cross_word, own_word = "rank", "file"
+        if harassed:
+            out.append(
+                pre + f"the enemy king is touching your piece on "
+                f"{chess.square_name(harassed[0])} — even defended it cannot "
+                f"ladder from there. RULE: slide it along its own {own_word} "
+                f"to the FAR side of the board, away from the king. Nothing "
+                f"else this turn."
+            )
+        elif stacked:
+            out.append(
+                pre + f"both your major pieces stand on the same {cross_word} "
+                f"— they block each other's ladder and the king can chase "
+                f"both. RULE: move one to the OPPOSITE side of the board "
+                f"along its {own_word} (keep the fence line), so the rooks "
+                f"work from different wings."
+            )
+        else:
+            out.append(
+                pre + f"fence on {line_word} {line_name} ✓ — RULE: check with "
+                f"your OTHER major piece on {king_line_name} (the enemy "
+                f"king's {line_word}), from far away; the king retreats one "
+                f"line; the old checker becomes the new fence. Repeat to "
+                f"the edge."
+            )
     elif opposition:
         out.append(
             pre + f"fence ✓ and kings in opposition ✓ — RULE: CHECK on "
