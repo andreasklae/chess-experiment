@@ -163,16 +163,36 @@ def main() -> None:
         print(f"No puzzles match {args.only}. Available: {[p['id'] for p in PUZZLES]}")
         sys.exit(1)
 
+    # Puzzles run strictly one at a time: each run_puzzle call blocks until
+    # its game finishes before the next POST /api/games happens (and the
+    # backend's single-game slot would close a still-running game anyway).
+    # Infra aborts stop the whole suite — when the eX3 tunnel drops, every
+    # subsequent game would just burn its attempts and record a bogus 0-1
+    # (observed 2026-06-12: games 037-039 all "agent_resigned_no_move"
+    # within 30 seconds of a tunnel failure in 036).
+    _INFRA_MARKERS = (
+        "peer closed", "incomplete chunked read", "tunnel", "connection",
+        "game_vanished", "context_overflow", "timed out",
+    )
     results = []
     for puzzle in suite:
         print(f"\n=== {puzzle['id']}: {puzzle['name']}")
         print(f"  FEN    {puzzle['fen']}")
         print(f"  expect {puzzle['expect']}")
         try:
-            results.append(run_puzzle(args.base, puzzle, args.elo, args.poll, args.timeout))
+            res = run_puzzle(args.base, puzzle, args.elo, args.poll, args.timeout)
+            results.append(res)
         except Exception as exc:
             print(f"  ERROR: {exc}")
             results.append({"id": puzzle["id"], "result": "ERROR", "error": str(exc)})
+            print("  Backend unreachable — stopping the suite.")
+            break
+        term = str(res.get("termination") or "").lower()
+        if res["result"] == "ABORTED" and any(m in term for m in _INFRA_MARKERS):
+            print(f"  Infrastructure abort ({res['termination']}) — stopping "
+                  f"the suite. Fix the tunnel/backend and re-run with --only "
+                  f"for the remaining puzzles.")
+            break
 
     print("\n===== Summary =====")
     print(f"{'puzzle':18} {'result':8} {'plies':>5}  mate  game")

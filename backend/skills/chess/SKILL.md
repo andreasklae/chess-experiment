@@ -33,10 +33,25 @@ This is non-negotiable. Writing "I will play Nf3" in text does nothing. Only the
 
 ## Your memory between turns
 
-You do not see the whole game transcript — you see a small curated memory at the start of each turn:
+Earlier turns of this game stay in your context, but pruned: old board
+printouts and imagined-move reports are collapsed (they describe stale
+positions — re-run the tool for fresh eyes), while your own reasoning
+notes, committed moves, and every wiki page you have read remain. On top
+of that, three channels you author via `chess__make_move` are shown back
+to you at the start of each turn:
 
 1. **Your note** (`reasoning`, required every move) — what you just played and why. Shown back to you once, on the next turn, then replaced by your next note. Good notes name: the move's purpose, one rejected alternative, one opponent threat to watch.
-2. **Your standing plan** (`plan`, optional) — your multi-move plan, **goal + method in 1–2 sentences**. It does NOT reset: it is shown back to you every turn, with its age, until you pass a new one. Omit `plan` to keep your current plan. Pass a new `plan` when you form, change, or complete one; pass `plan="none"` to clear it.
+2. **Your standing plan** (`plan`, optional) — your LONG-TERM plan, **goal + method in 1–2 sentences** (e.g. "trade down to the K+R endgame, then drill-mate"). It does NOT reset: it is shown back to you every turn, with its age, until you pass a new one. Omit `plan` to keep your current plan. Pass a new `plan` when you form, change, or complete one; pass `plan="none"` to clear it.
+3. **Your current goal** (`goal`, optional) — your SHORT-TERM objective: what the next 1–3 moves must achieve (e.g. "drive the king from e6 to the 8th rank", "get my king to f5"). Same persistence as `plan`. Keep it concrete and checkable — when the board shows it achieved, set the next goal with your move.
+
+Keep the two horizons in sync: the plan says where the game is going, the
+goal says what you are doing about it right now. Update the goal often
+(every few moves); update the plan when the position's character changes.
+
+**When your strategy changes**, wiki pages you read for the old strategy
+are dead weight. Pass `dismiss_references="<path>[,<path>...]"` (or
+`"all"`) with your move to drop their text from your context from the
+next turn on — you can always `read_reference` them again later.
 
 The FEN in each turn's message is the complete game state, and `chess__show_position`'s radar tracks repetition/draw rules — so the plan is the one thing only *you* can carry forward. **A plan you do not write down is lost at the end of the turn.** **When you start a forced sequence from a wiki page (e.g. the smothered-mate sequence), write the REMAINING moves into `plan` verbatim** (e.g. plan="Forced: now Nf7+, then Nh6+ double check, then Qg8+!! sacrifice, then Nf7#") and on each following turn play the next move of the plan after confirming the opponent replied as forced — order is everything in a forced line. When your memory says "no standing plan" and no tactic decides the move, form one (read `strategic-thinking/make-a-plan.md`) and record it with your move.
 
@@ -152,11 +167,13 @@ well under ten tool calls. Between each tool call/step, do some reasoning, think
    `checkmate`, play it immediately — there is nothing to verify.
    **Do not skip this step in any position where you have a material
    advantage** — the goal is to win, not just to maintain an edge.
-0b. **Consult your memory.** Your prior note and standing plan are shown
-   at the top of the turn. If the plan still fits the position, prefer
-   candidate moves that advance it; deviate only for tactics (a free
-   capture, a mate, a threat that must be answered). If it no longer
-   fits — or you have none — plan to write a new one when you commit.
+0b. **Consult your memory.** Your prior note, standing plan, and current
+   goal are shown at the top of the turn. If they still fit the position,
+   prefer candidate moves that advance the goal; deviate only for tactics
+   (a free capture, a mate, a threat that must be answered). If the goal
+   is achieved or stale — or you have none — write a new one when you
+   commit. A turn that neither advances the goal nor reacts to a threat
+   is shuffling; do not shuffle.
 1. **See the position.** Call `chess__show_position` to get the ASCII
    board, the material balance (with verdict and caveat), and the
    attack/defense map. The turn message gives you the FEN, but reading
@@ -402,13 +419,16 @@ chess wiki when you pass `skill_name="chess"`.
 
 ```
 chess__make_move(move="<move>", reasoning="<your reasoning>")
-chess__make_move(move="<move>", reasoning="<your reasoning>", plan="<standing plan>")
+chess__make_move(move="<move>", reasoning="<your reasoning>",
+                 plan="<long-term plan>", goal="<short-term objective>",
+                 dismiss_references="<path>,<path>")
 ```
 
 Commits the move for the current turn. **`move` and `reasoning` are
-required**; `plan` is optional (see "Your memory between turns" — pass it
-only when your standing plan changes). The move accepts UCI or SAN;
-trailing `+` or `#` is stripped.
+required**; `plan`, `goal`, and `dismiss_references` are optional (see
+"Your memory between turns" — pass `plan`/`goal` only when they change,
+`dismiss_references` when pages you read no longer serve your strategy).
+The move accepts UCI or SAN; trailing `+` or `#` is stripped.
 
 - On success: `{"ok": true, "move": "e2e4", "reasoning": "...", "plan": ..., "message": "Move committed. Your turn is over."}`.
   Your turn is over — do not call any more tools on this turn, just stop.
@@ -416,6 +436,15 @@ trailing `+` or `#` is stripped.
   Pick a different move from `legal_moves` and call again in the same turn.
 - On missing reasoning: `{"ok": false, "error": "Missing reasoning ..."}`.
   Add your reasoning and retry.
+- **On a SAFETY CHECK error** — the move was NOT committed because a
+  one-ply mechanical check found it gives away a piece for free (the
+  opponent has a capture nobody recaptures), delivers stalemate, or
+  instantly draws by rule while you are ahead on material. This is the
+  same geometry `chess__imagine_move` reports; it means you skipped
+  verification. **Default response: pick a better move.** Only if the
+  loss is genuinely intentional (a real sacrifice you have calculated)
+  repeat the call with `confirm=true`. Never pass `confirm=true` as a
+  routine habit — it disables the only net under you.
 
 ## Move format
 

@@ -16,6 +16,7 @@ from pydantic_ai.messages import (
     ModelResponse,
     SystemPromptPart,
     TextPart,
+    ToolCallPart,
     ToolReturnPart,
     UserPromptPart,
 )
@@ -99,6 +100,70 @@ class TestPruningProcessor:
         fresh = out[4].parts[0]
         assert fresh.content.startswith("FRESH")
 
+    def _history_with_ref_call(self):
+        """Like _history but the read_reference result has a matching
+        ToolCallPart so dismissal can resolve its path."""
+        return [
+            ModelRequest(parts=[SystemPromptPart(content="SYS"), UserPromptPart(content="turn 1")]),
+            ModelResponse(parts=[ToolCallPart(
+                tool_name="read_reference",
+                args={"skill_name": "chess", "path": "endgames/king-pawn-endings.md"},
+                tool_call_id="2",
+            )]),
+            ModelRequest(parts=[
+                ToolReturnPart(tool_name="read_reference", content="WIKI " * 200, tool_call_id="2"),
+            ]),
+            ModelRequest(parts=[UserPromptPart(content="turn 2 prompt")]),
+        ]
+
+    def test_dismissed_reference_is_collapsed(self):
+        memory = TurnMemory()
+        memory.record_commit(
+            prompt="p", uci="e2e4", reasoning="r", plan=None, move_number=3,
+            dismissed=["endgames/king-pawn-endings.md"],
+        )
+        proc = _make_pruning_processor(memory)
+        out = proc(self._history_with_ref_call())
+        wiki = out[2].parts[0]
+        assert "WIKI" not in wiki.content and "dismissed" in wiki.content
+
+    def test_dismiss_all_collapses_every_reference(self):
+        memory = TurnMemory()
+        memory.record_commit(
+            prompt="p", uci="e2e4", reasoning="r", plan=None, move_number=3,
+            dismissed=["all"],
+        )
+        proc = _make_pruning_processor(memory)
+        out = proc(self._history_with_ref_call())
+        assert "dismissed" in out[2].parts[0].content
+
+    def test_undismissed_reference_stays(self):
+        memory = TurnMemory()
+        memory.record_commit(
+            prompt="p", uci="e2e4", reasoning="r", plan=None, move_number=3,
+            dismissed=["patterns/some-other-page.md"],
+        )
+        proc = _make_pruning_processor(memory)
+        out = proc(self._history_with_ref_call())
+        assert "WIKI" in out[2].parts[0].content
+
+    def test_goal_recorded_and_cleared(self):
+        memory = TurnMemory()
+        memory.record_commit(
+            prompt="p", uci="e2e4", reasoning="r", plan=None, move_number=3,
+            goal="drive the king to the 8th rank",
+        )
+        assert memory.goal == "drive the king to the 8th rank"
+        assert memory.goal_move == 3
+        # Omitted goal persists.
+        memory.record_commit(prompt="p", uci="e2e4", reasoning="r", plan=None, move_number=4)
+        assert memory.goal == "drive the king to the 8th rank"
+        # Clear word clears it.
+        memory.record_commit(
+            prompt="p", uci="e2e4", reasoning="r", plan=None, move_number=5, goal="none",
+        )
+        assert memory.goal is None
+
 
 class TestCommitParsing:
     def _wrap(self, inner: dict) -> str:
@@ -106,11 +171,23 @@ class TestCommitParsing:
 
     def test_parses_plan(self):
         result = self._wrap({"ok": True, "move": "e2e4", "reasoning": "r", "plan": "p"})
-        assert _committed_move_from_result("chess__make_move", result) == ("e2e4", "r", "p")
+        inner = _committed_move_from_result("chess__make_move", result)
+        assert (inner["move"], inner["reasoning"], inner["plan"]) == ("e2e4", "r", "p")
 
     def test_missing_plan_is_none(self):
         result = self._wrap({"ok": True, "move": "e2e4", "reasoning": "r", "plan": None})
-        assert _committed_move_from_result("chess__make_move", result) == ("e2e4", "r", None)
+        inner = _committed_move_from_result("chess__make_move", result)
+        assert (inner["move"], inner["reasoning"], inner.get("plan")) == ("e2e4", "r", None)
+
+    def test_parses_goal_and_dismissals(self):
+        result = self._wrap({
+            "ok": True, "move": "e2e4", "reasoning": "r",
+            "goal": "push king to rank 8",
+            "dismissed_references": ["endgames/king-pawn-endings.md"],
+        })
+        inner = _committed_move_from_result("chess__make_move", result)
+        assert inner["goal"] == "push king to rank 8"
+        assert inner["dismissed_references"] == ["endgames/king-pawn-endings.md"]
 
     def test_failed_commit_returns_none(self):
         result = self._wrap({"ok": False, "error": "illegal"})

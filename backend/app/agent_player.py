@@ -196,9 +196,10 @@ _MAKE_MOVE_TOOL = "chess__make_move"
 
 def _committed_move_from_result(
     tool_name: str, result: Any
-) -> tuple[str, str, str | None] | None:
-    """Return ``(uci, reasoning, plan)`` from a successful ``chess__make_move``
-    result, or None. ``plan`` is None when the agent did not pass one.
+) -> dict[str, Any] | None:
+    """Return the inner payload dict from a successful ``chess__make_move``
+    result, or None. Carries ``move``, ``reasoning``, and the optional memory
+    channels ``plan``, ``goal``, and ``dismissed_references``.
 
     ``make_move.py`` prints ``{"ok": true, "move": "...", "reasoning": "...",
     "plan": ..., ...}`` on success; the script-tool handler wraps it as
@@ -216,8 +217,18 @@ def _committed_move_from_result(
     except (json.JSONDecodeError, TypeError, AttributeError):
         return None
     if inner.get("ok") and inner.get("move"):
-        return inner["move"], inner.get("reasoning", ""), inner.get("plan") or None
+        return inner
     return None
+
+
+def _result_says_game_vanished(result: Any) -> bool:
+    """True when a chess tool result indicates the backend no longer has the
+    game (deleted, superseded, or finished out from under the agent). Without
+    this check the turn loop burns all its attempts re-asking a dead game for
+    state — observed as a 10-attempt 404 cascade in game 291e7938 (2026-06-12)."""
+    if not isinstance(result, str):
+        return False
+    return "Game not found" in result or "HTTP Error 404" in result
 
 
 def _looks_like_provider_400(exc: Exception) -> bool:
@@ -282,20 +293,27 @@ class TurnMemory:
 
     plan: str | None = None
     plan_move: int | None = None        # fullmove number when the plan was set
+    goal: str | None = None             # short-term objective (next 1-3 moves)
+    goal_move: int | None = None        # fullmove number when the goal was set
     last_prompt: str | None = None      # previous turn's user prompt
     last_reasoning: str | None = None   # agent's note at last commit
     last_move_uci: str | None = None
     last_move_number: int | None = None
+    # Wiki pages the agent has dismissed as no-longer-relevant. The pruning
+    # processor collapses their read_reference results from the next model
+    # request onward. "all" (the literal string) wipes every page read so far.
+    dismissed_refs: set[str] | None = None
     # Set by get_move before each run_stream attempt; consumed by the history
     # processor on the attempt's first model request. Within-attempt requests
     # (tool-call loops) pass through so the in-flight conversation survives.
     armed: bool = False
 
-    _CLEAR_WORDS = frozenset({"none", "no plan", "clear", "-", ""})
+    _CLEAR_WORDS = frozenset({"none", "no plan", "no goal", "clear", "-", ""})
 
     def record_commit(
         self, *, prompt: str, uci: str, reasoning: str,
         plan: str | None, move_number: int,
+        goal: str | None = None, dismissed: list[str] | None = None,
     ) -> None:
         self.last_prompt = prompt
         self.last_reasoning = reasoning
@@ -309,6 +327,23 @@ class TurnMemory:
             else:
                 self.plan = cleaned
                 self.plan_move = move_number
+        if goal is not None:
+            cleaned = goal.strip()
+            if cleaned.lower() in self._CLEAR_WORDS:
+                self.goal = None
+                self.goal_move = None
+            else:
+                self.goal = cleaned
+                self.goal_move = move_number
+        if dismissed:
+            if self.dismissed_refs is None:
+                self.dismissed_refs = set()
+            for path in dismissed:
+                cleaned = path.strip().lstrip("/")
+                if cleaned.startswith("references/"):
+                    cleaned = cleaned[len("references/"):]
+                if cleaned:
+                    self.dismissed_refs.add(cleaned)
 
     def has_memory(self) -> bool:
         return self.last_prompt is not None
@@ -365,12 +400,33 @@ def _make_pruning_processor(memory: TurnMemory):
     context keeps theory and intentions while preventing overflow.
     """
     from pydantic_ai.messages import (
-        ModelRequest, ModelResponse, TextPart, ToolReturnPart, UserPromptPart,
+        ModelRequest, ModelResponse, TextPart, ToolCallPart, ToolReturnPart,
+        UserPromptPart,
     )
     import dataclasses
 
     KEEP_TOOLS = ("use_skill", "read_reference", "chess__make_move", "chess__search_wiki")
     PRUNED_NOTE = "[stale output from an earlier turn pruned - re-run the tool for the current position]"
+    DISMISSED_NOTE = "[wiki page dismissed by you as no longer relevant - re-read it with read_reference if it becomes relevant again]"
+    # Old thinking text is kept up to this length; the head usually carries
+    # the conclusion ("I will play X because..."), the tail the rambling.
+    THINKING_KEEP = 600
+
+    def _ref_path_of_call(pt) -> str | None:
+        """Wiki path from a read_reference ToolCallPart, normalised the same
+        way TurnMemory.record_commit normalises dismissals."""
+        args = pt.args
+        if isinstance(args, str):
+            try:
+                args = json.loads(args)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        if not isinstance(args, dict):
+            return None
+        path = str(args.get("path") or "").strip().lstrip("/")
+        if path.startswith("references/"):
+            path = path[len("references/"):]
+        return path or None
 
     def processor(messages):
         # Find the start of the current turn: the last ModelRequest that
@@ -382,6 +438,21 @@ def _make_pruning_processor(memory: TurnMemory):
             ):
                 last_user_idx = i
 
+        # Map read_reference tool_call_ids to wiki paths so dismissals (which
+        # name paths) can find the results to collapse.
+        dismissed = memory.dismissed_refs or set()
+        dismissed_call_ids: set[str] = set()
+        if dismissed:
+            wipe_all = "all" in dismissed
+            for m in messages:
+                if not isinstance(m, ModelResponse):
+                    continue
+                for pt in m.parts:
+                    if isinstance(pt, ToolCallPart) and pt.tool_name == "read_reference":
+                        path = _ref_path_of_call(pt)
+                        if wipe_all or (path is not None and path in dismissed):
+                            dismissed_call_ids.add(pt.tool_call_id)
+
         out = []
         for i, m in enumerate(messages):
             if i >= last_user_idx:
@@ -390,21 +461,19 @@ def _make_pruning_processor(memory: TurnMemory):
             if isinstance(m, ModelRequest):
                 parts = []
                 for pt in m.parts:
-                    if (
-                        isinstance(pt, ToolReturnPart)
-                        and pt.tool_name not in KEEP_TOOLS
-                        and isinstance(pt.content, str)
-                        and len(pt.content) > 400
-                    ):
-                        pt = dataclasses.replace(pt, content=PRUNED_NOTE)
+                    if isinstance(pt, ToolReturnPart) and isinstance(pt.content, str):
+                        if pt.tool_call_id in dismissed_call_ids:
+                            pt = dataclasses.replace(pt, content=DISMISSED_NOTE)
+                        elif pt.tool_name not in KEEP_TOOLS and len(pt.content) > 400:
+                            pt = dataclasses.replace(pt, content=PRUNED_NOTE)
                     parts.append(pt)
                 out.append(dataclasses.replace(m, parts=parts))
             elif isinstance(m, ModelResponse):
                 parts = []
                 for pt in m.parts:
-                    if isinstance(pt, TextPart) and len(pt.content) > 400:
+                    if isinstance(pt, TextPart) and len(pt.content) > THINKING_KEEP:
                         pt = dataclasses.replace(
-                            pt, content=pt.content[:380] + " [truncated]"
+                            pt, content=pt.content[:THINKING_KEEP - 20] + " [truncated]"
                         )
                     parts.append(pt)
                 out.append(dataclasses.replace(m, parts=parts))
@@ -446,15 +515,21 @@ class AgentPlayer(Player):
         legal_sans = [board.san(m) for m in board.legal_moves]
         legal_line = ", ".join(legal_sans[:90])
         plan_line = (
-            f"\nYour standing plan (set on move {self._memory.plan_move}): "
+            f"\nYour standing plan (long-term, set on move {self._memory.plan_move}): "
             f"{self._memory.plan}"
             if self._memory.plan else ""
+        )
+        goal_line = (
+            f"\nYour current goal (short-term, set on move {self._memory.goal_move}): "
+            f"{self._memory.goal}"
+            if self._memory.goal else ""
         )
         base_prompt = (
             (f"Opponent played {last_san}." if last_san else "Game start.")
             + f"\n\nCurrent position (FEN):\n{board.fen()}"
             + f"\nLegal moves: {legal_line}"
             + plan_line
+            + goal_line
         )
 
         max_turns_cfg = getattr(self._agent._config, "max_turns", None) or 16
@@ -540,32 +615,47 @@ class AgentPlayer(Player):
                     elif isinstance(event, ToolResultEvent):
                         flush_thinking()
                         emit({"type": "tool_result", "tool": event.name, "result": event.result})
+                        # A dead game means no number of retries can produce
+                        # a move — abort the game instead of looping through
+                        # the attempt budget against 404s.
+                        if (
+                            event.name.startswith("chess__")
+                            and _result_says_game_vanished(event.result)
+                        ):
+                            raise PlayerError(
+                                "game_vanished: backend no longer has this game "
+                                "(404/Game not found from a chess tool)."
+                            )
                         # Check directly against the result we just received,
                         # rather than scanning the SDK's tool_log. This works
                         # because the most recent tool_call's args are the
                         # ones that produced this result (the model is
                         # serially driven; no parallel tool calls).
                         if event.name == _MAKE_MOVE_TOOL:
-                            result = _committed_move_from_result(event.name, event.result)
-                            if result is not None:
-                                committed_uci, reasoning, plan = result
+                            inner = _committed_move_from_result(event.name, event.result)
+                            if inner is not None:
+                                committed_uci = inner["move"]
+                                reasoning = inner.get("reasoning", "")
                                 flush_thinking()
                                 # Memory update fires only on a successful
                                 # commit: the note replaces last turn's; the
-                                # plan persists unless the agent wrote a new
-                                # one. The processor renders both at the
+                                # plan/goal persist unless the agent wrote new
+                                # ones. The processor renders both at the
                                 # start of the next turn's first attempt.
                                 self._memory.record_commit(
                                     prompt=base_prompt,
                                     uci=committed_uci,
                                     reasoning=reasoning,
-                                    plan=plan,
+                                    plan=inner.get("plan") or None,
+                                    goal=inner.get("goal") or None,
+                                    dismissed=inner.get("dismissed_references") or None,
                                     move_number=board.fullmove_number,
                                 )
                                 emit({
                                     "type": "context_summary",
                                     "content": reasoning,
                                     "plan": self._memory.plan,
+                                    "goal": self._memory.goal,
                                 })
                                 # ``committed_uci`` here is the canonical UCI
                                 # returned by ``/agent-commit`` — already
@@ -589,6 +679,9 @@ class AgentPlayer(Player):
                 flush_thinking()
                 warn_next_attempt = True
                 continue
+
+            except PlayerError:
+                raise  # game_vanished and friends — never retried as transient
 
             except Exception as exc:
                 if _looks_like_provider_400(exc) or _looks_like_transient_network(exc):

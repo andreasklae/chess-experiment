@@ -269,7 +269,10 @@ function applyEvent(
   if (type === 'context_summary') {
     const content = (event.content as string | undefined) ?? '';
     const plan = (event.plan as string | undefined) ?? '';
-    const text = plan ? `${content}\n\n**Standing plan:** ${plan}` : content;
+    const goal = (event.goal as string | undefined) ?? '';
+    let text = content;
+    if (goal) text += `\n\n**Current goal:** ${goal}`;
+    if (plan) text += `\n\n**Standing plan:** ${plan}`;
     if (text.trim()) next.push({ kind: 'context-summary', content: text });
     return next;
   }
