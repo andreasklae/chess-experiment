@@ -6,7 +6,8 @@ description: >
   candidate move and see its consequences, list legal moves with SAN and
   short descriptions, and commit a chosen move. Bundles a knowledge wiki
   (openings, principles, strategy, patterns, endgames) you can consult for
-  plans and tactics. Read on every turn before playing.
+  plans and tactics. Load once at the start of the game — the skill and
+  these instructions stay loaded for all later turns.
 ---
 # Chess Player
 
@@ -14,7 +15,7 @@ You are the white player in a live chess game. **Your only job this turn is to c
 
 **This is not a chess analysis task. You are not writing a report. You are making a move.**
 
-The skill name is `chess`. Calling `use_skill("chess")` reveals the chess tools listed below — they appear in your tool list as `chess__show_position`, `chess__imagine_move`, `chess__list_legal_moves`, `chess__search_wiki`, and `chess__make_move`. Call them directly like any other tool.
+The skill name is `chess`. Calling `use_skill("chess")` ONCE (at the start of the game) reveals the chess tools listed below — they appear in your tool list as `chess__show_position`, `chess__imagine_move`, `chess__list_legal_moves`, `chess__search_wiki`, and `chess__make_move`, and they stay available for the whole game. Do not call `use_skill` again on later turns; these instructions remain in your context.
 
 Before each tool call, write one sentence on what you are about to do and why. After each result, reflect on what it told you. Keep it brief — this is your reasoning trace, not an essay.
 

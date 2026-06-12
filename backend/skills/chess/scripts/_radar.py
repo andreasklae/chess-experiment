@@ -121,6 +121,96 @@ def _mating_material_lines(board: chess.Board, own: bool) -> list[str]:
     return lines
 
 
+def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
+    """Which numbered rule of the basic-mate drill applies RIGHT NOW.
+
+    Pure geometry matched against the wiki recipes (fence line present?
+    piece touchable by the king? kings in opposition?) — the same check a
+    human drilling the technique performs at a glance. It names the rule
+    and the geometric condition; choosing and verifying the move stays with
+    the agent. Only fires vs a bare king (the drills' precondition).
+    """
+    opp = not own
+    opp_mat = _material(board, opp)
+    if sum(opp_mat.values()) > 0:
+        return []
+    own_mat = _material(board, own)
+    majors = [
+        sq for pt in (chess.QUEEN, chess.ROOK) for sq in board.pieces(pt, own)
+    ]
+    if not majors:
+        return []
+
+    ksq = board.king(opp)
+    my_k = board.king(own)
+    kf, kr = chess.square_file(ksq), chess.square_rank(ksq)
+
+    # Target edge: the nearest board edge (rank or file). The fence is the
+    # line between the king and the board centre, one step centre-side.
+    dists = {"rank-top": 7 - kr, "rank-bottom": kr, "file-h": 7 - kf, "file-a": kf}
+    edge = min(dists, key=dists.get)
+    if edge.startswith("rank"):
+        fence_line = kr - 1 if edge == "rank-top" else kr + 1
+        on_fence = [sq for sq in majors if chess.square_rank(sq) == fence_line]
+        line_word, line_name = "rank", fence_line + 1
+        king_line = kr
+        opposition = (
+            chess.square_file(my_k) == kf
+            and abs(chess.square_rank(my_k) - kr) == 2
+        )
+    else:
+        fence_line = kf - 1 if edge == "file-h" else kf + 1
+        on_fence = [sq for sq in majors if chess.square_file(sq) == fence_line]
+        line_word, line_name = "file", "abcdefgh"[fence_line]
+        king_line = kf
+        opposition = (
+            chess.square_rank(my_k) == kr
+            and abs(chess.square_file(my_k) - kf) == 2
+        )
+
+    touchable = [
+        sq for sq in majors
+        if chess.square_distance(sq, ksq) == 1 and not board.is_attacked_by(own, sq)
+    ]
+
+    out = []
+    pre = "- **Drill state** (vs bare king): "
+    if touchable:
+        out.append(
+            pre + f"the enemy king can capture your piece on "
+            f"{chess.square_name(touchable[0])} — RULE: slide it to the far "
+            f"end of its line NOW, nothing else."
+        )
+    elif not on_fence:
+        out.append(
+            pre + f"no fence — RULE: put a rook/queen on {line_word} "
+            f"{line_name} (one line centre-side of the enemy king), far from "
+            f"the king. The king must never cross it."
+        )
+    elif len(majors) >= 2:
+        out.append(
+            pre + f"fence on {line_word} {line_name} ✓ — RULE: check with "
+            f"your OTHER major piece on the enemy king's {line_word}, from "
+            f"far away; the king retreats one line; the old checker becomes "
+            f"the new fence. Repeat to the edge."
+        )
+    elif opposition:
+        out.append(
+            pre + f"fence ✓ and kings in opposition ✓ — RULE: CHECK on the "
+            f"enemy king's {line_word} now; it must retreat. Then re-fence."
+        )
+    else:
+        out.append(
+            pre + f"fence on {line_word} {line_name} ✓, kings NOT in "
+            f"opposition — RULE: step YOUR king one square toward the enemy "
+            f"king (stay on your side of the fence). Do not move the fence "
+            f"piece; do not check yet. If the enemy king just stepped aside "
+            f"to dodge, make a one-square waiting move along the fence "
+            f"instead."
+        )
+    return out
+
+
 def _king_geometry_lines(board: chess.Board, own: bool) -> list[str]:
     """Edge/corner status and legal-move count of the enemy king. Shown only
     when the king is already restricted or the game is thinning out."""
@@ -275,6 +365,7 @@ def render_radar(board: chess.Board, move_cap: int | None = None) -> str | None:
     own = board.turn
     lines: list[str] = []
     lines += _mating_material_lines(board, own)
+    lines += _drill_state_lines(board, own)
     lines += _king_geometry_lines(board, own)
     lines += _back_rank_lines(board, own)
     # Wiki-driven pattern triggers: geometry-present hints, each tracing to

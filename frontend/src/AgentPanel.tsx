@@ -64,6 +64,11 @@ function argsDisplay(rawArgs: unknown): string {
 
 function friendlyToolCall(tool: string, args: Record<string, unknown>): string {
   if (tool === 'use_skill') return `use_skill(${args.skill_name ?? ''})`;
+  if (tool === 'read_reference') return `read_reference(${(args.path as string) ?? ''})`;
+  if (tool.startsWith('chess__')) {
+    const arg = (args.move as string) ?? (args.fen ? 'fen=…' : extractMove(args.args));
+    return `${tool.slice(7)}(${arg || ''})`;
+  }
   if (tool !== 'run_script') return tool;
 
   const file = args.filename as string | undefined;

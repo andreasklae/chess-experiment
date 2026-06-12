@@ -470,9 +470,15 @@ def main() -> None:
         move = parse_move(board, args.move)
     except ValueError:
         cleaned = args.move.strip().rstrip("+#")
+        legal = [board.san(m) for m in board.legal_moves]
         print(json.dumps({
             "ok": False,
-            "error": f"Illegal or unrecognised move '{args.move}': {classify_illegal_move(board, cleaned)}",
+            "error": (
+                f"'{args.move}' is not a legal move in the CURRENT position "
+                f"({classify_illegal_move(board, cleaned)}). Do not retry the "
+                f"same string — pick a move from legal_moves below."
+            ),
+            "legal_moves": legal[:90],
         }))
         sys.exit(1)
     if move not in board.legal_moves:
