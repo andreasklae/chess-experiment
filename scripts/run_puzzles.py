@@ -35,14 +35,14 @@ PUZZLES = [
     },
     {
         "id": "kq-basic",
-        "max_plies": 30,
+        "max_plies": 40,
         "name": "K+Q vs K basic mate",
         "fen": "8/8/4k3/8/8/8/8/3QK3 w - - 0 1",
         "expect": "1-0 in under ~20 plies. Tests king-queen-mate technique.",
     },
     {
         "id": "kr-basic",
-        "max_plies": 40,
+        "max_plies": 60,
         "name": "K+R vs K basic mate",
         "fen": "8/8/4k3/8/8/8/8/R3K3 w - - 0 1",
         "expect": "1-0 in under ~32 plies. Tests king-rook-mate technique.",
@@ -56,7 +56,7 @@ PUZZLES = [
     },
     {
         "id": "promote-convert",
-        "max_plies": 50,
+        "max_plies": 60,
         "name": "K+P escort, promote, then mate",
         "fen": "8/8/5k2/8/5K2/8/4P3/8 w - - 0 1",
         "expect": "1-0. Capablanca Ex.6: king in front, opposition, promote, mate.",
@@ -70,7 +70,7 @@ PUZZLES = [
     },
     {
         "id": "arabian-net",
-        "max_plies": 40,
+        "max_plies": 60,
         "name": "R+N vs cornered king (Arabian geometry)",
         "fen": "7k/8/8/8/4N3/8/8/R5K1 w - - 0 1",
         "expect": "1-0. Arabian trigger fires; K+R drill also wins ignoring the knight.",

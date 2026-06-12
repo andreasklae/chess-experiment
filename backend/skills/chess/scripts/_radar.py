@@ -113,6 +113,7 @@ def _mating_material_lines(board: chess.Board, own: bool) -> list[str]:
             f"- You have pawn(s): promotion is the most reliable winning plan — "
             f"read `{_PAGE_KP}`."
         )
+        lines += _drill_excerpt(_PAGE_KP)
     if board.has_insufficient_material(own):
         lines = [
             "- **You cannot checkmate with your remaining material** — "
@@ -145,10 +146,18 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
     my_k = board.king(own)
     kf, kr = chess.square_file(ksq), chess.square_rank(ksq)
 
-    # Target edge: the nearest board edge (rank or file). The fence is the
-    # line between the king and the board centre, one step centre-side.
+    # Target edge: prefer an edge we are ALREADY fencing toward (a major on
+    # the adjacent line centre-side) so the target doesn't thrash as the
+    # king dances; otherwise the nearest edge.
     dists = {"rank-top": 7 - kr, "rank-bottom": kr, "file-h": 7 - kf, "file-a": kf}
-    edge = min(dists, key=dists.get)
+    fenced = {
+        "rank-top": any(chess.square_rank(sq) == kr - 1 for sq in majors),
+        "rank-bottom": any(chess.square_rank(sq) == kr + 1 for sq in majors),
+        "file-h": any(chess.square_file(sq) == kf - 1 for sq in majors),
+        "file-a": any(chess.square_file(sq) == kf + 1 for sq in majors),
+    }
+    existing = [e for e, ok in fenced.items() if ok]
+    edge = min(existing, key=dists.get) if existing else min(dists, key=dists.get)
     if edge.startswith("rank"):
         fence_line = kr - 1 if edge == "rank-top" else kr + 1
         on_fence = [sq for sq in majors if chess.square_rank(sq) == fence_line]
@@ -175,6 +184,36 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
 
     out = []
     pre = "- **Drill state** (vs bare king): "
+    # Lone queen: the K+Q drill is knight's-move shadowing, NOT a fence.
+    if own_mat[chess.QUEEN] == 1 and own_mat[chess.ROOK] == 0:
+        qsq = next(iter(board.pieces(chess.QUEEN, own)))
+        if touchable:
+            return [pre + f"your queen on {chess.square_name(qsq)} is adjacent "
+                    f"to the enemy king and UNPROTECTED — it can simply be "
+                    f"captured. Move it to safety (a knight's-move from the "
+                    f"king) NOW."]
+        on_edge = kf in (0, 7) or kr in (0, 7)
+        knight_dist = chess.square_distance(qsq, ksq) == 2 and (
+            abs(chess.square_file(qsq) - kf), abs(chess.square_rank(qsq) - kr)
+        ) in ((1, 2), (2, 1))
+        if not on_edge:
+            return [pre + f"phase 1 (shrink): keep the queen a KNIGHT'S-MOVE "
+                    f"from the enemy king and mirror its moves — no checks "
+                    f"needed. NEVER place the queen on a square adjacent to "
+                    f"the king unless it is protected (the king just takes "
+                    f"it)." + ("" if knight_dist else
+                    f" The queen on {chess.square_name(qsq)} is not at "
+                    f"knight's-move distance now.")]
+        if chess.square_distance(my_k, ksq) > 2:
+            return [pre + "phase 2 (march): the enemy king is on the edge — "
+                    "STOP moving the queen (one more shadow step risks "
+                    "stalemate); walk YOUR king one square toward the enemy "
+                    "king instead."]
+        return [pre + "phase 3 (mate): your king is close — look for the "
+                "queen check along the edge (protected by your king or from "
+                "distance). Verify `gives checkmate` with imagine_move and "
+                "watch for `stalemate`."]
+
     if touchable:
         out.append(
             pre + f"the enemy king can capture your piece on "
