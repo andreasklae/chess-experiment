@@ -263,7 +263,9 @@ function applyEvent(
 
   if (type === 'context_summary') {
     const content = (event.content as string | undefined) ?? '';
-    if (content.trim()) next.push({ kind: 'context-summary', content });
+    const plan = (event.plan as string | undefined) ?? '';
+    const text = plan ? `${content}\n\n**Standing plan:** ${plan}` : content;
+    if (text.trim()) next.push({ kind: 'context-summary', content: text });
     return next;
   }
 

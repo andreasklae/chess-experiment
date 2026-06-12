@@ -50,6 +50,10 @@ class CreateGameRequest(BaseModel):
     # without playing a full game to reach them. Such games land in
     # experimental.csv like any non-main game; they are never ranked.
     initial_fen: Annotated[str | None, Field(default=None)] = None
+    # Optional forced-draw ply cap override (default 150). Puzzle runs use a
+    # tight cap: a basic mate that takes 100 plies has failed — adjudicate
+    # it quickly instead of grinding to the global cap.
+    max_half_moves: Annotated[int | None, Field(default=None, ge=2, le=150)] = None
 
     @model_validator(mode="after")
     def validate_sides(self) -> "CreateGameRequest":

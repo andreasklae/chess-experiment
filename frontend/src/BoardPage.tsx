@@ -99,7 +99,7 @@ export function BoardPage() {
 
   useEffect(() => {
     if (!game) return undefined;
-    const source = new EventSource(gameEventsUrl());
+    const source = new EventSource(gameEventsUrl(game.game_id));
     source.addEventListener('state', (event) => setGame(JSON.parse((event as MessageEvent).data) as GameState));
     source.addEventListener('error', (event) => {
       const data = (event as MessageEvent).data;
@@ -134,6 +134,8 @@ export function BoardPage() {
   }, [game]);
 
   const hasAgent = game?.white.type === 'agent' || game?.black.type === 'agent';
+  const standardStart = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  const isPuzzle = Boolean(game && game.initial_fen && game.initial_fen !== standardStart);
   const showPauseControls = Boolean(hasAgent && game && game.status === 'active');
 
   return (
@@ -149,6 +151,13 @@ export function BoardPage() {
         </div>
         {message ? <p className="message">{message}</p> : null}
       </section>
+
+      {game && game.aborted_reason ? (
+        <div className="result-banner draw" role="status">
+          <span className="result-headline">Game aborted</span>
+          <span className="result-detail">{game.aborted_reason}</span>
+        </div>
+      ) : null}
 
       {game && game.status === 'finished' && (() => {
         const o = describeOutcome(game);
@@ -187,6 +196,18 @@ export function BoardPage() {
             <span className="status-bar-label">Turn</span>
             <span className="status-bar-value">{game.turn}</span>
           </div>
+          <div className="status-bar-item">
+            <span className="status-bar-label">Plies</span>
+            <span className="status-bar-value mono">
+              {game.uci_moves.length}{game.move_cap ? ` / ${game.move_cap}` : ''}
+            </span>
+          </div>
+          {isPuzzle && (
+            <div className="status-bar-item">
+              <span className="status-bar-label">Mode</span>
+              <span className="status-bar-value">puzzle</span>
+            </div>
+          )}
           <div className="status-bar-item">
             <span className="status-bar-label">Result</span>
             <span className="status-bar-value">

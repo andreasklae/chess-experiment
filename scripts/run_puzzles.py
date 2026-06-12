@@ -28,36 +28,56 @@ import urllib.request
 PUZZLES = [
     {
         "id": "backrank-m1",
+        "max_plies": 8,
         "name": "Back-rank mate in 1",
         "fen": "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1",
         "expect": "1-0 immediately (Ra8#). Tests mate-spotting + radar.",
     },
     {
         "id": "kq-basic",
+        "max_plies": 30,
         "name": "K+Q vs K basic mate",
         "fen": "8/8/4k3/8/8/8/8/3QK3 w - - 0 1",
         "expect": "1-0 in under ~20 plies. Tests king-queen-mate technique.",
     },
     {
         "id": "kr-basic",
+        "max_plies": 40,
         "name": "K+R vs K basic mate",
         "fen": "8/8/4k3/8/8/8/8/R3K3 w - - 0 1",
         "expect": "1-0 in under ~32 plies. Tests king-rook-mate technique.",
     },
     {
         "id": "ladder",
+        "max_plies": 30,
         "name": "Two-rook ladder mate",
         "fen": "8/8/3k4/8/8/8/R7/1R4K1 w - - 0 1",
         "expect": "1-0 in under ~12 plies. Tests ladder-mate page.",
     },
     {
         "id": "promote-convert",
+        "max_plies": 50,
         "name": "K+P escort, promote, then mate",
         "fen": "8/8/5k2/8/5K2/8/4P3/8 w - - 0 1",
         "expect": "1-0. Capablanca Ex.6: king in front, opposition, promote, mate.",
     },
     {
+        "id": "philidor",
+        "max_plies": 14,
+        "name": "Smothered mate setup (Philidor's legacy, forced in 5)",
+        "fen": "5rk1/6pp/8/6N1/8/8/8/4Q1K1 w - - 0 1",
+        "expect": "1-0 in 9 plies: Qe6+ Kh8 Nf7+ Kg8 Nh6+ Kh8 Qg8+ Rxg8 Nf7#. Tests trigger -> page -> forced sequence.",
+    },
+    {
+        "id": "arabian-net",
+        "max_plies": 40,
+        "name": "R+N vs cornered king (Arabian geometry)",
+        "fen": "7k/8/8/8/4N3/8/8/R5K1 w - - 0 1",
+        "expect": "1-0. Arabian trigger fires; K+R drill also wins ignoring the knight.",
+    },
+    {
         "id": "r2b-convert",
+        "max_plies": 40,
         "name": "R+2B conversion (drawn in ranked game 72aa5cfc)",
         "fen": "8/3B4/8/k3B3/8/2R2P2/1P4PK/8 w - - 0 1",
         "expect": "1-0. The exact final position of the 150-ply draw vs chesscom-1000.",
@@ -86,6 +106,7 @@ def run_puzzle(base: str, puzzle: dict, elo: int, poll_s: float, timeout_s: floa
         "white": {"type": "agent"},
         "black": {"type": "maia", "elo": elo},
         "initial_fen": puzzle["fen"],
+        "max_half_moves": puzzle.get("max_plies"),
     })
     game_id = state["game_id"]
     print(f"  game {game_id[:8]} started", flush=True)
@@ -112,10 +133,14 @@ def run_puzzle(base: str, puzzle: dict, elo: int, poll_s: float, timeout_s: floa
 
     import re
     mate = bool(state["san_moves"]) and state["san_moves"][-1].endswith("#")
+    result = state["result"]
+    if result != "1-0":
+        # Within a tight per-puzzle cap, anything but a win is a fail.
+        result = f"FAIL({result})"
     return {
         "id": puzzle["id"],
         "game_id": game_id,
-        "result": state["result"],
+        "result": result,
         "termination": state.get("termination"),
         "plies": len(state["uci_moves"]),
         "mate": mate,

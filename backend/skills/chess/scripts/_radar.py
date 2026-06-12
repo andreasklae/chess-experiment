@@ -21,6 +21,8 @@ Not exposed as a tool (underscore prefix): show_position embeds the output.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import chess
 
 # Wiki pages the radar may point to. Paths relative to references/.
@@ -37,6 +39,28 @@ def _material(board: chess.Board, color: bool) -> dict[int, int]:
         pt: len(board.pieces(pt, color))
         for pt in (chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN)
     }
+
+
+def _drill_excerpt(page_rel: str) -> list[str]:
+    """Inline a technique page's "What to do" rules. Retrieval from the
+    agent's own wiki (the fair path): in a basic-mate endgame the drill must
+    be in front of the model every turn — relying on it to re-read the page
+    under fresh context demonstrably fails (the 2026-06-12 ladder game
+    checked aimlessly for 50 plies with the page one tool call away)."""
+    try:
+        page = Path(__file__).resolve().parent.parent / "references" / page_rel
+        text = page.read_text(encoding="utf-8")
+        start = text.find("## What to do")
+        if start < 0:
+            return []
+        end = text.find("\n## ", start + 5)
+        section = text[start:end if end > 0 else None].strip()
+        lines = section.splitlines()[:28]
+        return ["  The drill, from that page (follow it literally each turn):"] + [
+            f"  > {l}" for l in lines[1:] if l.strip()
+        ]
+    except Exception:
+        return []
 
 
 def _mating_material_lines(board: chess.Board, own: bool) -> list[str]:
@@ -60,15 +84,18 @@ def _mating_material_lines(board: chess.Board, own: bool) -> list[str]:
             f"- You have two or more major pieces: the **ladder mate** is fully "
             f"forced — read `{_PAGE_LADDER}`."
         )
+        lines += _drill_excerpt(_PAGE_LADDER)
     elif own_mat[chess.QUEEN] == 1:
         lines.append(
             f"- King + queen vs king is a forced mate (under ~10 moves) — "
             f"read `{_PAGE_KQ}`."
         )
+        lines += _drill_excerpt(_PAGE_KQ)
     elif own_mat[chess.ROOK] == 1:
         lines.append(
             f"- King + rook vs king is a forced mate — read `{_PAGE_KR}`."
         )
+        lines += _drill_excerpt(_PAGE_KR)
     elif own_mat[chess.BISHOP] >= 2:
         lines.append(
             "- Two bishops + king can force mate, but it is slow technique. "

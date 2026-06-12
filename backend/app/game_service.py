@@ -286,6 +286,7 @@ class GameService:
                 game_id=game_id,
                 board=chess.Board(initial_fen),
                 initial_fen=initial_fen,
+                max_half_moves=request.max_half_moves or 150,
                 white_config=request.white,
                 black_config=request.black,
                 white_player=self._player_factory.create(

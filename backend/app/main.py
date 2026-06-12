@@ -165,7 +165,12 @@ async def player_types() -> list[PlayerTypeInfo]:
 
 
 @app.get("/api/games")
-async def list_games(service: GameServiceDep) -> list[GameSummary]:
+def list_games(service: GameServiceDep) -> list[GameSummary]:
+    # Plain def on purpose: list_summaries does a synchronous recursive scan
+    # of every game JSON on disk. Under iCloud, evicted files can block reads
+    # for seconds; as an async route this wedged the entire event loop (every
+    # endpoint "pending") once the lobby started polling. FastAPI runs sync
+    # routes in a threadpool, so a slow scan can no longer stall the server.
     return service.list_summaries()
 
 

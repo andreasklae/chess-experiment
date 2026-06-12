@@ -5,7 +5,7 @@ triggers: [smothered mate, king in corner behind own pieces, knight near enemy k
 related_pages: [patterns/mating-patterns/arabian-mate, patterns/deflection]
 tags: [mate, knight, corner, forcing-sequence]
 template_pieces: [knight, queen]
-template_king_zone: corner
+template_king_zone: back-rank
 template_min_own_blockers: 2
 status: draft
 updated: 2026-06-11
