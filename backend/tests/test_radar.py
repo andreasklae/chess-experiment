@@ -126,3 +126,46 @@ class TestDrawRules:
 
     def test_quiet_position_renders_nothing(self):
         assert radar(chess.STARTING_FEN) is None
+
+
+class TestDrillCheckIsAlwaysLegalAndSafe:
+    """The drill advisor must never name an illegal or hanging move. Earlier
+    it suggested 'e.g. h6' for a rook on b1 (not a rook move) and forbade the
+    one legal safe check (Ra6+), which made the model thrash (game 81db9189).
+    """
+
+    import re as _re
+    from _radar import _drill_state_lines  # noqa: E402
+
+    # Two-rook ladder positions across the king's travel; the advisor's
+    # named **SAN** move (when it names one) must be legal and not hang.
+    LADDER_FENS = [
+        "8/8/2k5/R7/8/8/8/1R4K1 w - - 2 2",
+        "8/8/3k4/R7/8/8/8/1R4K1 w - - 0 1",
+        "8/8/4k3/R7/8/8/8/1R4K1 w - - 0 1",
+        "8/8/5k2/R7/8/8/8/1R4K1 w - - 0 1",
+        "8/8/3k4/8/8/8/R7/1R4K1 w - - 0 1",
+        "8/2k5/8/1R6/8/8/R7/6K1 w - - 0 1",
+    ]
+
+    def test_named_move_is_legal_and_safe(self):
+        import re
+        from _radar import _drill_state_lines
+        for fen in self.LADDER_FENS:
+            board = chess.Board(fen)
+            lines = _drill_state_lines(board, chess.WHITE)
+            assert lines, fen
+            m = re.search(r"play \*\*([^*]+)\*\*", lines[0])
+            if not m:
+                continue  # advisor chose a prep/fence instruction, not a check
+            san = m.group(1)
+            move = board.parse_san(san)  # raises if illegal
+            after = board.copy()
+            after.push(move)
+            # Not hanging: if the enemy can capture the landing square, we
+            # must defend it.
+            if after.is_attacked_by(chess.BLACK, move.to_square):
+                assert after.is_attacked_by(chess.WHITE, move.to_square), (
+                    f"{san} hangs in {fen}"
+                )
+            assert not after.is_stalemate(), f"{san} stalemates in {fen}"

@@ -175,6 +175,77 @@ def _pawn_escort_lines(board: chess.Board, own: bool, psq: int) -> list[str]:
             "the pawn ONE step (never two) as a waiting move."]
 
 
+def _best_ladder_check(
+    board: chess.Board, own: bool, majors: list[int], kr: int, kf: int, edge: str
+) -> tuple[str, bool] | None:
+    """Return (SAN, drops_fence) for the best legal ladder check, or None.
+
+    A ladder check is a rook move that (a) gives check along the enemy
+    king's CURRENT line (the rank when driving to a rank-edge, the file when
+    driving to a file-edge), (b) is not a capture of nothing / does not hang
+    (no enemy attacker on the landing square, or it is defended), and (c)
+    drives the king toward the target edge rather than away. Among those,
+    prefer the landing square FARTHEST from the king (hardest to harass).
+
+    Pure mechanics: legal-move enumeration + the geometry of "is this a
+    check on the king's line from a safe square". No evaluation, no search.
+    """
+    driving_rank = edge.startswith("rank")
+    candidates: list[tuple[int, str, bool]] = []
+    for mv in board.legal_moves:
+        piece = board.piece_at(mv.from_square)
+        if piece is None or piece.piece_type not in (chess.ROOK, chess.QUEEN):
+            continue
+        tf, tr = chess.square_file(mv.to_square), chess.square_rank(mv.to_square)
+        # The check must land on the king's current line.
+        if driving_rank and tr != kr:
+            continue
+        if not driving_rank and tf != kf:
+            continue
+        after = board.copy()
+        after.push(mv)
+        if not after.is_check():
+            continue
+        # Reject hanging checks: enemy can capture the checker and we don't
+        # defend it.
+        if after.is_attacked_by(not own, mv.to_square) and not after.is_attacked_by(
+            own, mv.to_square
+        ):
+            continue
+        # Must not be stalemate / must leave the king with moves only toward
+        # the edge (the check itself shrinks the box; we only require it is
+        # legal and not stalemate here — the king is forced off its line).
+        if after.is_stalemate():
+            continue
+        # Distance of the landing square from the king (Chebyshev). Farther
+        # is safer.
+        dist = chess.square_distance(mv.to_square, board.king(not own))
+        # Does this move vacate the fence? (the moved rook was the only one
+        # on the fence line)
+        fence_line = (kr - 1 if edge == "rank-top" else kr + 1) if driving_rank else (
+            kf - 1 if edge == "file-h" else kf + 1
+        )
+        was_on_fence = (
+            chess.square_rank(mv.from_square) == fence_line if driving_rank
+            else chess.square_file(mv.from_square) == fence_line
+        )
+        others_on_fence = any(
+            sq != mv.from_square and (
+                chess.square_rank(sq) == fence_line if driving_rank
+                else chess.square_file(sq) == fence_line
+            )
+            for sq in majors
+        )
+        drops_fence = was_on_fence and not others_on_fence
+        candidates.append((dist, board.san(mv), drops_fence))
+    if not candidates:
+        return None
+    # Prefer the farthest-from-king check; tie-break preferring one that
+    # keeps the fence.
+    candidates.sort(key=lambda c: (c[0], not c[2]), reverse=True)
+    return candidates[0][1], candidates[0][2]
+
+
 def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
     """Which numbered rule of the basic-mate drill applies RIGHT NOW.
 
@@ -365,36 +436,47 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
                 f"work from different wings."
             )
         else:
-            # Name the fencing rook and the free rook explicitly. The drill
-            # fails when the agent checks with the FENCE rook itself (game
-            # 43b388f5: Ra5 fence, then Ra6+ abandoning rank 5 — the king
-            # immediately dropped back down). The check must come from the
-            # OTHER rook so the fence stays intact and the king cannot
-            # retreat across it.
-            fence_sq = on_fence[0]
-            free = [sq for sq in majors if sq != fence_sq]
-            free_sq = free[0] if free else None
-            # Far-side file for the check, away from the king, so the king
-            # cannot approach and harass the checking rook.
-            far_file = 0 if kf >= 4 else 7
-            check_target = chess.square_name(chess.square(far_file, kr))
-            if free_sq is not None:
+            # Name a REAL, legal, safe check by enumerating the board — not a
+            # geometric guess. Earlier versions named a far-side target by
+            # formula ('e.g. h6'); for a rook on b1 that is not even a legal
+            # rook move, and the only reachable rank-K check (Rb6+) hung to
+            # the adjacent king. Handing the model an impossible/forbidden
+            # instruction is what made it thrash (game 81db9189). We compute
+            # the move instead: enumerate, keep checks that land on the
+            # king's line, drop the ones that hang, and prefer the one
+            # farthest from the king. Legal-move enumeration + geometry =
+            # mechanics; we still do not score positions or search ahead.
+            best = _best_ladder_check(board, own, majors, kr, kf, edge)
+            if best is not None:
+                check_san, drops_fence = best
+                fence_note = (
+                    " (this is your fence rook advancing to check — its old "
+                    "rank is no longer needed once the king is pushed past "
+                    "it; your other rook becomes the new fence)"
+                    if drops_fence else
+                    " (your fence rook stays put; this is the other rook)"
+                )
                 out.append(
-                    pre + f"fence on {line_word} {line_name} ✓ (your rook on "
-                    f"{chess.square_name(fence_sq)} holds it — do NOT "
-                    f"move it). RULE: check with your OTHER rook, the one on "
-                    f"{chess.square_name(free_sq)}: move it onto "
-                    f"{king_line_name} (the enemy king's rank), far from the "
-                    f"king — e.g. {check_target}. The king is driven one rank "
-                    f"toward the edge; next turn the rook that just checked "
-                    f"becomes the new fence and the old fence rook checks. "
-                    f"NEVER check with the fence rook."
+                    pre + f"fence on {line_word} {line_name} ✓ — RULE: play "
+                    f"**{check_san}**{fence_note}. It checks the king along "
+                    f"{king_line_name} from a safe square and drives it one "
+                    f"rank toward the edge. Then re-fence and repeat."
                 )
             else:
+                # No safe rank-K check exists yet (every check hangs or the
+                # king is too close). Reposition a rook to a far file first.
+                far_file = 0 if kf >= 4 else 7
+                free = [sq for sq in majors if sq not in on_fence] or on_fence
+                mover = free[0]
+                prep = chess.square_name(chess.square(far_file, chess.square_rank(mover)))
                 out.append(
-                    pre + f"fence on {line_word} {line_name} ✓ — RULE: check "
-                    f"with your OTHER major piece on {king_line_name}, far "
-                    f"from the king."
+                    pre + f"fence on {line_word} {line_name} ✓, but no SAFE "
+                    f"check on {king_line_name} yet (the king guards the "
+                    f"squares your rook could check from). RULE: first move "
+                    f"your non-fence rook to a far file on its own rank — "
+                    f"e.g. the rook on {chess.square_name(mover)} to {prep} "
+                    f"— so next turn it can check the king's rank from a "
+                    f"distance the king cannot reach. Keep the fence."
                 )
     elif opposition:
         out.append(
