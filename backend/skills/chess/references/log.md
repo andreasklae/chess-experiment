@@ -50,3 +50,5 @@ what the agent learned and when — keep it faithful.
 ## [2026-06-12] update | patterns/mating-patterns/ladder-mate.md | Rule 2 covers king-touching-defended-rook paralysis; new rule 2b: rooks stacked on one file must split to opposite wings (live ladder game aa1a22ac shuffled checks with both rooks on the h-file). status: draft.
 
 ## [2026-06-13] update | patterns/mating-patterns/ladder-mate.md (advisor) | Two-major ladder now locks the target to the nearest back RANK and never reconsiders; previous nearest-fenced-edge rule thrashed between rank and file targets turn-to-turn (game a971fff9), breaking the drill. One-major K+R/K+Q edge logic unchanged.
+
+## [2026-06-13] update | ladder advisor (_radar.py) | Check rule now names the fence rook and the free rook by square and forbids checking with the fence rook — game 43b388f5 played Ra5 (fence) then Ra6+ (abandoning the fence with the same rook), king dropped straight back down. Names the exact far-side check square too.

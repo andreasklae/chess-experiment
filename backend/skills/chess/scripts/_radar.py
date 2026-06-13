@@ -365,13 +365,37 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
                 f"work from different wings."
             )
         else:
-            out.append(
-                pre + f"fence on {line_word} {line_name} ✓ — RULE: check with "
-                f"your OTHER major piece on {king_line_name} (the enemy "
-                f"king's {line_word}), from far away; the king retreats one "
-                f"line; the old checker becomes the new fence. Repeat to "
-                f"the edge."
-            )
+            # Name the fencing rook and the free rook explicitly. The drill
+            # fails when the agent checks with the FENCE rook itself (game
+            # 43b388f5: Ra5 fence, then Ra6+ abandoning rank 5 — the king
+            # immediately dropped back down). The check must come from the
+            # OTHER rook so the fence stays intact and the king cannot
+            # retreat across it.
+            fence_sq = on_fence[0]
+            free = [sq for sq in majors if sq != fence_sq]
+            free_sq = free[0] if free else None
+            # Far-side file for the check, away from the king, so the king
+            # cannot approach and harass the checking rook.
+            far_file = 0 if kf >= 4 else 7
+            check_target = chess.square_name(chess.square(far_file, kr))
+            if free_sq is not None:
+                out.append(
+                    pre + f"fence on {line_word} {line_name} ✓ (your rook on "
+                    f"{chess.square_name(fence_sq)} holds it — do NOT "
+                    f"move it). RULE: check with your OTHER rook, the one on "
+                    f"{chess.square_name(free_sq)}: move it onto "
+                    f"{king_line_name} (the enemy king's rank), far from the "
+                    f"king — e.g. {check_target}. The king is driven one rank "
+                    f"toward the edge; next turn the rook that just checked "
+                    f"becomes the new fence and the old fence rook checks. "
+                    f"NEVER check with the fence rook."
+                )
+            else:
+                out.append(
+                    pre + f"fence on {line_word} {line_name} ✓ — RULE: check "
+                    f"with your OTHER major piece on {king_line_name}, far "
+                    f"from the king."
+                )
     elif opposition:
         out.append(
             pre + f"fence ✓ and kings in opposition ✓ — RULE: CHECK on "
