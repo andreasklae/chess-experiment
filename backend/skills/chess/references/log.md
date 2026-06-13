@@ -48,3 +48,5 @@ what the agent learned and when — keep it faithful.
 ## [2026-06-12] update | patterns/mating-patterns/king-queen-mate.md | Phase 1 mirror rule made operational after game 185afd0b drew by repetition with the queen oscillating d5/e4: mirror = copy the king's last move DIRECTION; never return the queen to the square she just left — march your own king instead (early phase 2). status: draft.
 
 ## [2026-06-12] update | patterns/mating-patterns/ladder-mate.md | Rule 2 covers king-touching-defended-rook paralysis; new rule 2b: rooks stacked on one file must split to opposite wings (live ladder game aa1a22ac shuffled checks with both rooks on the h-file). status: draft.
+
+## [2026-06-13] update | patterns/mating-patterns/ladder-mate.md (advisor) | Two-major ladder now locks the target to the nearest back RANK and never reconsiders; previous nearest-fenced-edge rule thrashed between rank and file targets turn-to-turn (game a971fff9), breaking the drill. One-major K+R/K+Q edge logic unchanged.

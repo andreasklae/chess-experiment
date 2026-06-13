@@ -204,18 +204,27 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
     my_k = board.king(own)
     kf, kr = chess.square_file(ksq), chess.square_rank(ksq)
 
-    # Target edge: prefer an edge we are ALREADY fencing toward (a major on
-    # the adjacent line centre-side) so the target doesn't thrash as the
-    # king dances; otherwise the nearest edge.
+    # Target edge selection. With TWO majors the ladder is purely
+    # rank-driven (fence a rank, check on the next, leapfrog to rank 1/8 —
+    # no king march, no file fences), so we LOCK to the nearest back rank
+    # and never reconsider: the previous "nearest of any fenced edge" rule
+    # thrashed between rank and file targets turn-to-turn as the rooks moved
+    # (game a971fff9, 2026-06-13), which is what broke the drill. With one
+    # major we keep the original "prefer the edge already fenced toward,
+    # else nearest" rule, since K+R/K+Q genuinely need king support and the
+    # edge can be either a rank or a file.
     dists = {"rank-top": 7 - kr, "rank-bottom": kr, "file-h": 7 - kf, "file-a": kf}
-    fenced = {
-        "rank-top": any(chess.square_rank(sq) == kr - 1 for sq in majors),
-        "rank-bottom": any(chess.square_rank(sq) == kr + 1 for sq in majors),
-        "file-h": any(chess.square_file(sq) == kf - 1 for sq in majors),
-        "file-a": any(chess.square_file(sq) == kf + 1 for sq in majors),
-    }
-    existing = [e for e, ok in fenced.items() if ok]
-    edge = min(existing, key=dists.get) if existing else min(dists, key=dists.get)
+    if len(majors) >= 2:
+        edge = "rank-top" if kr >= 4 else "rank-bottom"
+    else:
+        fenced = {
+            "rank-top": any(chess.square_rank(sq) == kr - 1 for sq in majors),
+            "rank-bottom": any(chess.square_rank(sq) == kr + 1 for sq in majors),
+            "file-h": any(chess.square_file(sq) == kf - 1 for sq in majors),
+            "file-a": any(chess.square_file(sq) == kf + 1 for sq in majors),
+        }
+        existing = [e for e, ok in fenced.items() if ok]
+        edge = min(existing, key=dists.get) if existing else min(dists, key=dists.get)
     if edge.startswith("rank"):
         fence_line = kr - 1 if edge == "rank-top" else kr + 1
         on_fence = [sq for sq in majors if chess.square_rank(sq) == fence_line]
