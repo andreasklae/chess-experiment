@@ -339,7 +339,48 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
                 "distance). Verify `gives checkmate` with imagine_move and "
                 "watch for `stalemate`."]
 
-    if touchable:
+    if len(majors) >= 2:
+        # PRINCIPLES, not a prescribed move. Earlier versions tried to name
+        # the exact rook/square each turn and kept being wrong (the safe
+        # check is sometimes the fence rook, the free rook is sometimes
+        # boxed, the far wing flips) — geometry too position-specific to
+        # state as one rule. Instead we give the model the invariant a
+        # correct ladder move satisfies and the SELF-CHECK it already has:
+        # imagine_move prints "Enemy king mobility: before -> after". The
+        # model reasons out the move and verifies the number went DOWN (or
+        # the move is check). This is the fair, board-independent level.
+        edge_word = "rank" if edge.startswith("rank") else "file"
+        out.append(
+            pre + f"two rooks vs lone king — drive it to the {edge_word} edge "
+            f"by the LADDER. The whole method is two ideas you APPLY by "
+            f"reading the board (use imagine_move to test candidates):\n"
+            f"  1. FENCE: one rook sits on the {edge_word} (or file) just "
+            f"BEHIND the king so it cannot retreat. A fence move is quiet, "
+            f"not a check.\n"
+            f"  2. CHECK with the OTHER rook along the king's {edge_word} to "
+            f"shove it one step toward the edge — keeping BOTH rooks far "
+            f"from the king (opposite wing) so it can never capture one.\n"
+            f"  SELF-CHECK every candidate with imagine_move: a correct "
+            f"driving move makes **Enemy king mobility** go DOWN or gives "
+            f"check; if mobility goes UP you broke the fence — pick another. "
+            f"Avoid `repeats!`/`stalemate`. The fence and checker swap roles "
+            f"as the king is pushed back (leapfrog)."
+        )
+        # One position-independent hazard worth flagging concretely, because
+        # the model reliably misses it: a rook the king is touching is dead
+        # weight (it'll be captured or can't act) — say so, but let the model
+        # choose where to move it.
+        harassed = [sq for sq in majors if chess.square_distance(sq, ksq) <= 1]
+        if harassed:
+            out.append(
+                f"  NOTE: your rook on {chess.square_name(harassed[0])} is "
+                f"right next to the enemy king — move it to safety along its "
+                f"line (far from the king) before anything else, or you lose "
+                f"it."
+            )
+    # ── Single major (K+R / K+Q-as-rook): needs king support, so the rules
+    #    stay position-specific but are still applied by the model. ──
+    elif touchable:
         out.append(
             pre + f"the enemy king can capture your piece on "
             f"{chess.square_name(touchable[0])} — RULE: "
@@ -347,89 +388,10 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
         )
     elif not on_fence:
         out.append(
-            pre + f"no fence — RULE: put a rook/queen on {line_word} "
+            pre + f"no fence — RULE: put your rook on {line_word} "
             f"{line_name} (one line centre-side of the enemy king), far from "
             f"the king. The king must never cross it."
         )
-    elif len(majors) >= 2:
-        # Ladder pathologies before the generic check rule. Both are pure
-        # geometry: a king touching a rook paralyses it even when the rook
-        # is defended (it cannot ladder from there), and two majors stacked
-        # on the same cross-line block each other's leapfrog while letting
-        # the king chase both at once.
-        harassed = [sq for sq in majors if chess.square_distance(sq, ksq) <= 1]
-        if edge.startswith("rank"):
-            stacked = len({chess.square_file(sq) for sq in majors[:2]}) == 1
-            cross_word, own_word = "file", "rank"
-        else:
-            stacked = len({chess.square_rank(sq) for sq in majors[:2]}) == 1
-            cross_word, own_word = "rank", "file"
-        if harassed:
-            out.append(
-                pre + f"the enemy king is touching your piece on "
-                f"{chess.square_name(harassed[0])} — even defended it cannot "
-                f"ladder from there. RULE: "
-                f"{_slide_away_text(harassed[0])}. Nothing else this turn."
-            )
-        elif stacked:
-            out.append(
-                pre + f"both your major pieces stand on the same {cross_word} "
-                f"— they block each other's ladder and the king can chase "
-                f"both. RULE: move one to the OPPOSITE side of the board "
-                f"along its {own_word} (keep the fence line), so the rooks "
-                f"work from different wings."
-            )
-        else:
-            # Recipe step, NOT a computed move. The advisor names WHICH rook
-            # checks and the PRINCIPLE for the square ("the king's rank, on
-            # the far wing so the king can't reach it"); the agent reasons
-            # out the actual square and verifies it with imagine_move. This
-            # is the fair line: a coach's instruction, not the engine's move.
-            # (An earlier version computed the exact check and got it wrong —
-            # naming an illegal/hanging square — which is both unfair AND
-            # buggy. Geometry to identify the fence vs free rook is fine; it
-            # is just reading the board.)
-            fence_sq = on_fence[0]
-            free = [sq for sq in majors if sq != fence_sq]
-            # Far wing = the side away from the king, so the checking rook
-            # sits where the king cannot walk over and attack it.
-            far_wing = "a-file side" if kf >= 4 else "h-file side"
-            if free:
-                free_sq = free[0]
-                free_on_king_line = chess.square_rank(free_sq) == kr
-                if free_on_king_line:
-                    # The free rook already shares the king's rank: it cannot
-                    # check along that rank (it would have to pass through or
-                    # land beside the king). Shift it to the far wing first.
-                    out.append(
-                        pre + f"fence on {line_word} {line_name} ✓ (rook on "
-                        f"{chess.square_name(fence_sq)} — keep it there). Your "
-                        f"other rook on {chess.square_name(free_sq)} is already "
-                        f"on the king's {line_word}, so it cannot check along "
-                        f"it. RULE: slide that rook to the {far_wing} (same "
-                        f"rank, far from the king); next turn it checks the "
-                        f"king's {line_word} from safe distance."
-                    )
-                else:
-                    out.append(
-                        pre + f"fence on {line_word} {line_name} ✓ (rook on "
-                        f"{chess.square_name(fence_sq)} — keep it there, it "
-                        f"stops the king retreating). RULE: check with your "
-                        f"OTHER rook (on {chess.square_name(free_sq)}) by "
-                        f"moving it onto the king's {line_word} "
-                        f"({king_line_name}), on the {far_wing} so the king "
-                        f"cannot reach it. Verify with imagine_move that it is "
-                        f"check and not hanging. The king is forced one "
-                        f"{line_word} toward the edge; then leapfrog — the "
-                        f"checker becomes the new fence and this rook checks "
-                        f"next."
-                    )
-            else:
-                out.append(
-                    pre + f"fence on {line_word} {line_name} ✓ — RULE: check "
-                    f"with your other major piece on the king's {line_word} "
-                    f"({king_line_name}), far from the king."
-                )
     elif opposition:
         out.append(
             pre + f"fence ✓ and kings in opposition ✓ — RULE: CHECK on "
