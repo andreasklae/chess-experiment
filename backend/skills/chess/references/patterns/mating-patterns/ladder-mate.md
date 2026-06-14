@@ -19,44 +19,68 @@ You have two rooks, queen + rook, or two queens against a king in the
 open. **The first mate to look for** — fully forced, needs no help from
 your king, ~5–8 moves from anywhere.
 
+## The two rules that make it work
+
+The whole mate is **two rooks taking turns**: one is always the **fence**
+(it cuts off a whole rank so the king cannot retreat), the other is the
+**checker** (it checks along the king's rank to shove the king one rank
+toward the edge). Two iron rules — break either and the king escapes:
+
+- **RULE A — fence before you check.** A check only drives the king
+  forward if it has nowhere backward to go. So one rook must sit on the
+  rank *behind* the king (between the king and where it came from) BEFORE
+  you check. Placing that fence is not a check — it is a quiet move.
+- **RULE B — check with the OTHER rook, never the fence rook.** The fence
+  rook stays put. The free rook checks along the king's current rank, from
+  **as far from the king as possible** (the opposite wing), so the king
+  can never step over and capture it.
+
 ## What to do — apply the FIRST rule that matches, every turn
 
-1. **Neither piece adjacent (in rank) to the enemy king?** Put piece A on
-   the rank directly below the king's rank — the fence. Done.
-2. **Enemy king attacks or touches either piece?** Slide that piece along
-   its own rank to the far edge (a/h-file). Fence intact. Done. (A rook
-   the king touches is paralysed even if defended — it cannot ladder.)
-2b. **Both pieces on the same file?** They block each other and the king
-   chases both at once. Move one to the OPPOSITE wing along its rank —
-   the ladder needs the rooks on different sides. Done.
-3. **Fence in place (piece A one rank below the king)?** Check with piece
-   B **on the king's rank**, from far away. The king must retreat one
-   rank toward the edge. Done.
-4. After the king retreats: the old checking piece is now the new fence —
-   go back to rule 3 with the other piece. Repeat: check, fence, check,
-   fence — the "ladder".
+1. **King is touching one of your rooks?** It will capture it next move.
+   Slide that rook along its rank to the far wing (a- or h-file), away
+   from the king. (Do this even if the rook is defended — a touched rook
+   can't ladder.) Nothing else this turn.
+2. **No rook on the rank directly behind the king?** Build the fence
+   (RULE A): put a rook on that rank, on the far wing. **This is a quiet
+   move, not a check.** Nothing else this turn.
+3. **Fence is in place?** Check with the OTHER rook (RULE B): move it onto
+   the king's rank, far from the king. The king is forced one rank toward
+   the edge.
+4. **After the king steps forward:** the rook that just checked is now
+   behind the king — it becomes the new fence. Go back to rule 3 and check
+   with the other rook. Check, step, check, step — the "ladder" — until
+   the king reaches the last rank, where the check is mate.
 
-## The finish (the step most often fumbled)
+## The finish
 
-When the king reaches the **last rank**: your fence piece holds the
-second-to-last rank, so the king is trapped on the edge. Make sure the
-checking piece is **far from the king on the last rank's file-line**,
-then check on the last rank — that check is mate. Two-move template:
-fence on rank 7 → slide the other piece far (e.g. to h-file) if the king
-is near it → check on rank 8 = mate. **Do not shuffle: each move must
-either check (rule 3), re-fence (rule 1), or slide away (rule 2).**
+When the king is on the **8th rank** with your fence holding the 7th, the
+king is trapped on the edge. Bring the free rook to the 8th rank far from
+the king — that check is mate. **Never check with the fence rook to do
+it** (that frees the 7th rank and the king runs back down).
 
 ## Watch out for
 
-- A `repeats!`/`draw:repetition` flag = you've broken the drill. Apply
-  rule 1 explicitly that turn.
-- Never let the king touch a piece: rule 2 ALWAYS beats rule 3 in
-  priority.
+- A `repeats!`/`draw:repetition` flag = you broke the rhythm (probably
+  checked with the fence rook, or checked with no fence). Re-read RULE A/B
+  and place a fence this turn.
+- **The single most common mistake: checking with the fence rook.** It
+  feels like progress (it's a check!) but it abandons the cut-off rank and
+  the king walks straight back. Always check with the *other* rook.
+- Keep both rooks on the **opposite wing from the king** so it can never
+  touch them (rule 1). If it does touch one, sliding it away (rule 1)
+  always comes before checking.
 - With queen + rook the queen ladders the same way; confirm the last
   check is `gives checkmate` (not stalemate) with `chess__imagine_move`.
 
-## Examples
+## Example (verified, king flees toward the centre)
 
-`8/8/8/3k4/R7/8/1R6/7K w - - 0 1` — 1.Rb5+ Kc6 (attacks the rook) 2.Rh5!
-(rule 2) Kd6 3.Ra6+ Ke7 4.Rh7+ Kf8 5.Ra8#. Verified.
-Final picture: `R5k1/1R6/8/8/8/8/8/8 b` — fence on 7, mate on 8.
+`8/8/3k4/8/8/8/R7/1R4K1 w - - 0 1` — king d6, rooks a2 and b1.
+
+`1.Rb5 Ke6 2.Ra6+ Ke7 3.Rb7+ Ke8 4.Ra8#`
+
+- **1.Rb5** builds the fence on rank 5 (a quiet move — king can't come
+  down). **2.Ra6+** checks with the *other* rook. **3.Rb7+** leapfrogs:
+  the b-rook checks rank 7 while a6 is now the fence. **4.Ra8#**.
+- The rooks alternate a/b files (opposite wing from the king) and **the
+  fence rook never gives the check**.

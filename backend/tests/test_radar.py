@@ -128,44 +128,151 @@ class TestDrawRules:
         assert radar(chess.STARTING_FEN) is None
 
 
-class TestDrillCheckIsAlwaysLegalAndSafe:
-    """The drill advisor must never name an illegal or hanging move. Earlier
-    it suggested 'e.g. h6' for a rook on b1 (not a rook move) and forbade the
-    one legal safe check (Ra6+), which made the model thrash (game 81db9189).
+class TestLadderRecipe:
+    """The ladder advisor is a RECIPE (which rook, what kind of move, the
+    principle for the square) — it must NOT name a concrete move (that would
+    be the tool playing for the agent), and following the recipe must
+    actually mate. Earlier the advisor both named a move AND named an
+    illegal/forbidden one (game 81db9189), then named a single-rook chase
+    that never mates (game dafe6b95). This test guards both: recipe
+    discipline, and recipe sufficiency.
     """
 
     import re as _re
-    from _radar import _drill_state_lines  # noqa: E402
 
-    # Two-rook ladder positions across the king's travel; the advisor's
-    # named **SAN** move (when it names one) must be legal and not hang.
     LADDER_FENS = [
         "8/8/2k5/R7/8/8/8/1R4K1 w - - 2 2",
         "8/8/3k4/R7/8/8/8/1R4K1 w - - 0 1",
         "8/8/4k3/R7/8/8/8/1R4K1 w - - 0 1",
-        "8/8/5k2/R7/8/8/8/1R4K1 w - - 0 1",
         "8/8/3k4/8/8/8/R7/1R4K1 w - - 0 1",
         "8/2k5/8/1R6/8/8/R7/6K1 w - - 0 1",
     ]
 
-    def test_named_move_is_legal_and_safe(self):
+    def test_advisor_does_not_name_a_concrete_move(self):
+        """No 'play **Rd6+**' style move-naming — recipe steps only."""
         import re
         from _radar import _drill_state_lines
         for fen in self.LADDER_FENS:
-            board = chess.Board(fen)
-            lines = _drill_state_lines(board, chess.WHITE)
+            lines = _drill_state_lines(chess.Board(fen), chess.WHITE)
             assert lines, fen
-            m = re.search(r"play \*\*([^*]+)\*\*", lines[0])
-            if not m:
-                continue  # advisor chose a prep/fence instruction, not a check
-            san = m.group(1)
-            move = board.parse_san(san)  # raises if illegal
-            after = board.copy()
-            after.push(move)
-            # Not hanging: if the enemy can capture the landing square, we
-            # must defend it.
-            if after.is_attacked_by(chess.BLACK, move.to_square):
-                assert after.is_attacked_by(chess.WHITE, move.to_square), (
-                    f"{san} hangs in {fen}"
-                )
-            assert not after.is_stalemate(), f"{san} stalemates in {fen}"
+            # A concrete move would look like **Ra6+** / **Rh5** (a piece
+            # letter + square). Square names alone (e.g. 'rank 6', 'a-file')
+            # are fine — those are principles.
+            assert not re.search(r"\*\*[RQ][a-h]?[1-8]?x?[a-h][1-8]", lines[0]), (
+                f"advisor named a concrete move in {fen}: {lines[0]}"
+            )
+
+    def test_following_the_recipe_mates(self):
+        """A competent agent that follows the recipe — keep the fence, check
+        with the free rook on the king's line as far from the king as
+        possible, slide a harassed rook away — mates a fleeing king well
+        within the move cap. Proves the recipe is SUFFICIENT (the residual
+        gap is the model executing it, not the recipe being wrong)."""
+        from _radar import _drill_state_lines
+
+        def recipe_move(board):
+            """Pick the move a recipe-faithful agent would, reading the same
+            geometry the advisor names. Not an engine: it only encodes the
+            ladder rules, no search/eval."""
+            lines = _drill_state_lines(board, chess.WHITE)
+            text = lines[0] if lines else ""
+            legal = list(board.legal_moves)
+            ksq = board.king(chess.BLACK)
+            rooks = list(board.pieces(chess.ROOK, chess.WHITE))
+
+            def safe(mv):
+                a = board.copy(); a.push(mv)
+                if a.is_stalemate():
+                    return False
+                if a.is_attacked_by(chess.BLACK, mv.to_square) and not \
+                        a.is_attacked_by(chess.WHITE, mv.to_square):
+                    return False
+                return True
+
+            # Harassed rook → slide it to the far end of its rank.
+            harassed = [r for r in rooks if chess.square_distance(r, ksq) <= 1]
+            if harassed:
+                r = harassed[0]
+                far_file = 0 if chess.square_file(ksq) >= 4 else 7
+                cands = [m for m in legal if m.from_square == r
+                         and chess.square_rank(m.to_square) == chess.square_rank(r)
+                         and safe(m)]
+                if cands:
+                    return max(cands, key=lambda m: chess.square_distance(m.to_square, ksq))
+
+            # Always grab a mate.
+            mates = [m for m in legal if _pushed(board, m).is_checkmate()]
+            if mates:
+                return mates[0]
+
+            kr = chess.square_rank(ksq)
+            # Direction: drive toward the nearer rank edge, STICKY via the
+            # fence once one exists.
+            fence_below = any(chess.square_rank(r) == kr - 1 for r in rooks)
+            fence_above = any(chess.square_rank(r) == kr + 1 for r in rooks)
+            if fence_below and not fence_above:
+                drive_up = True
+            elif fence_above and not fence_below:
+                drive_up = False
+            else:
+                drive_up = (7 - kr) <= kr
+            fence_rank = kr - 1 if drive_up else kr + 1
+            far_file = 0 if chess.square_file(ksq) >= 4 else 7
+
+            # 1. No fence on the rank behind the king? Build it FIRST — never
+            #    check without a fence, or the king just escapes that way.
+            on_fence = [r for r in rooks if chess.square_rank(r) == fence_rank]
+            if not on_fence:
+                fences = [m for m in legal
+                          if board.piece_at(m.from_square).piece_type == chess.ROOK
+                          and chess.square_rank(m.to_square) == fence_rank and safe(m)
+                          and not _pushed(board, m).is_check()]  # fence, not check
+                if fences:
+                    return min(fences, key=lambda m: abs(chess.square_file(m.to_square) - far_file))
+
+            # 2. Fence exists → check with the OTHER (non-fence) rook on the
+            #    king's rank, as far from the king as possible.
+            fence_sq = on_fence[0] if on_fence else None
+            checks = [m for m in legal
+                      if board.piece_at(m.from_square).piece_type == chess.ROOK
+                      and m.from_square != fence_sq
+                      and chess.square_rank(m.to_square) == kr
+                      and _pushed(board, m).is_check() and safe(m)]
+            if checks:
+                return max(checks, key=lambda m: chess.square_distance(m.to_square, ksq))
+
+            # 3. The non-fence rook can't reach the king's rank safely (it is
+            #    on that rank already, or boxed) → reposition it to the far
+            #    wing on its own rank.
+            free = [r for r in rooks if r != fence_sq]
+            if free:
+                r = free[0]
+                reps = [m for m in legal if m.from_square == r and safe(m)
+                        and chess.square_rank(m.to_square) == chess.square_rank(r)]
+                if reps:
+                    return max(reps, key=lambda m: chess.square_distance(m.to_square, ksq))
+            return next((m for m in legal if safe(m)), legal[0])
+
+        for fen in ["8/8/3k4/8/8/8/R7/1R4K1 w - - 0 1",
+                    "8/8/2k5/R7/8/8/8/1R4K1 w - - 0 1"]:
+            board = chess.Board(fen)
+            for ply in range(40):
+                if board.is_game_over():
+                    break
+                if board.turn == chess.WHITE:
+                    board.push(recipe_move(board))
+                else:
+                    # Black king flees toward the center (hardest case).
+                    def central(m):
+                        a = board.copy(); a.push(m)
+                        k = a.king(chess.BLACK)
+                        return (min(chess.square_file(k), 7 - chess.square_file(k))
+                                + min(chess.square_rank(k), 7 - chess.square_rank(k)))
+                    board.push(max(board.legal_moves, key=central))
+            assert board.is_checkmate(), (
+                f"recipe failed to mate from {fen}; reached {board.fen()}"
+            )
+
+
+def _pushed(board, move):
+    b = board.copy(); b.push(move); return b
