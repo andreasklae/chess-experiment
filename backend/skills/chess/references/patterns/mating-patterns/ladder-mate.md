@@ -49,12 +49,20 @@ driving move makes that number **go down** or gives check; if it goes
    is mate. *Advancing the fence rook to check is fine **if** a rook still
    sits behind the king afterwards — the mobility number confirms it.*
 
-## The finish
+## The finish (and the trap in it)
 
-When the king is on the **8th rank** with your fence holding the 7th, the
-king is trapped on the edge. Bring the free rook to the 8th rank far from
-the king — that check is mate. **Never check with the fence rook to do
-it** (that frees the 7th rank and the king runs back down).
+When the king is on the **last rank** with your fence holding the
+second-to-last, bring the free rook to the last rank far from the king —
+that check is mate.
+
+**The trap:** if your *fence* rook sits right next to the cornered king
+(e.g. king c8, fence rook b7), the natural edge check lets the king simply
+**capture the fence rook** (Ra8+?? Kxb7). When the king is on the edge and
+a rook is beside it: **first slide that rook far away along its own line**
+(it keeps cutting off the rank, but now out of the king's reach), leaving
+the king trapped on the edge. *Then* the next check on the edge is mate.
+Example `2k5/1R6/R7/8/8/8/8/6K1 w - - 0 1`: `1.Rh7 Kd8 2.Ra8#` (slide the
+fence rook off b7 first, keeping rank 7; then mate).
 
 ## Watch out for
 

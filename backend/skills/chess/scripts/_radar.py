@@ -366,12 +366,30 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
             f"Avoid `repeats!`/`stalemate`. The fence and checker swap roles "
             f"as the king is pushed back (leapfrog)."
         )
-        # One position-independent hazard worth flagging concretely, because
-        # the model reliably misses it: a rook the king is touching is dead
-        # weight (it'll be captured or can't act) — say so, but let the model
-        # choose where to move it.
+        # Exception rules the model reliably misses. Both are general
+        # conditions ("when X, do Y"), not computed moves — the agent still
+        # works out and verifies the actual square.
+        king_on_edge = (
+            chess.square_file(ksq) in (0, 7) or chess.square_rank(ksq) in (0, 7)
+        )
         harassed = [sq for sq in majors if chess.square_distance(sq, ksq) <= 1]
-        if harassed:
+        if king_on_edge and harassed:
+            # The finish trap: king driven to the edge, but a rook sits right
+            # next to it — the natural check on the edge would let the king
+            # CAPTURE that rook (this is exactly how game cc55b0b9 stalled at
+            # Rb7/Kc8). Slide the adjacent rook far along its line FIRST,
+            # keeping the cut-off; the very next check is then mate.
+            out.append(
+                f"  FINISH EXCEPTION: the king is on the edge and your rook on "
+                f"{chess.square_name(harassed[0])} is right beside it — a check "
+                f"now would just be captured by the king. FIRST slide that "
+                f"rook far away ALONG ITS CURRENT LINE (keep cutting off that "
+                f"line), so the king stays trapped on the edge but can no "
+                f"longer reach the rook. Then your next check on the edge is "
+                f"checkmate. Verify the slide keeps **Enemy king mobility** "
+                f"low and check the follow-up with imagine_move."
+            )
+        elif harassed:
             out.append(
                 f"  NOTE: your rook on {chess.square_name(harassed[0])} is "
                 f"right next to the enemy king — move it to safety along its "
