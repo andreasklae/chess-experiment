@@ -59,19 +59,27 @@ from _eval import MATERIAL, PIECE_NAMES, parse_move  # noqa: E402
 from _live import board_with_history, fetch_state  # noqa: E402
 
 
-def _blunder_gate(board: chess.Board, move: chess.Move) -> str | None:
+def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | None:
     """One-ply mechanical safety check at the commit boundary.
 
-    Returns a warning string when the move (a) lets the opponent capture a
+    Returns ``(warning, hard)`` when the move (a) lets the opponent capture a
     piece that has zero defenders (a free capture — the single pattern behind
     every lost mating exercise on 2026-06-12: Kd6?? abandoning the rook,
     Qd4+?? adjacent to the king), (b) delivers stalemate, or (c) instantly
     draws by repetition/50-move while the mover is ahead on raw material.
 
+    ``hard`` marks losses that ``confirm=true`` must NOT override, because no
+    intention can justify them: a move that drops to insufficient material
+    (throws away the win outright), or hangs a ROOK-or-better to the bare /
+    nearly-bare enemy king in a basic-mate position (there is no sacrifice
+    when the opponent has no army — game ab02f31d, 2026-06-13: the agent
+    reflexively confirm=true'd Rb6+?? Kxb6 on move 2 of a ladder). Ordinary
+    free captures stay soft (``hard=False``) — a real sacrifice is one extra
+    call.
+
     This is the same geometry chess__imagine_move reports, enforced where it
-    cannot be skipped. It makes no judgement calls: legal replies, defender
-    counts, and the draw rules of chess only. The agent can always override
-    with confirm=true (a real sacrifice is one extra call).
+    cannot be skipped. It makes no strategic judgement: legal replies,
+    defender counts, material counts, and the draw rules of chess only.
     """
     after = board.copy()
     after.push(move)
@@ -83,8 +91,16 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> str | None:
     if after.is_stalemate():
         return (
             "this move delivers STALEMATE — the game instantly ends in a "
-            "draw. If you are winning, this throws away the win."
+            "draw. If you are winning, this throws away the win.", True
         )
+
+    # Is the opponent reduced to a bare (or pawns-only) king? Then any free
+    # gift of a rook-or-better is never a real sacrifice — it is a basic-mate
+    # blunder, and confirm must not wave it through.
+    opp_has_no_pieces = not any(
+        p.color != mover and p.piece_type not in (chess.KING, chess.PAWN)
+        for p in board.piece_map().values()
+    )
 
     # The backend ends non-chesscom games with claim_draw=True, so the
     # moment a draw is CLAIMABLE it is a draw — can_claim_* (not the stricter
@@ -106,7 +122,8 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> str | None:
             )
             return (
                 f"this move instantly DRAWS the game by {rule} while you are "
-                f"ahead on material. Pick a move that makes progress instead."
+                f"ahead on material. Pick a move that makes progress instead.",
+                True,
             )
 
     # Free captures: an opponent reply that takes a piece nobody recaptures.
@@ -116,7 +133,7 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> str | None:
     if board.is_capture(move):
         taken = board.piece_at(move.to_square)
         my_gain = MATERIAL.get(taken.piece_type, 0) if taken else MATERIAL[chess.PAWN]
-    worst: tuple[int, str] | None = None
+    worst: tuple[int, str, int] | None = None
     for reply in after.legal_moves:
         if not after.is_capture(reply):
             continue
@@ -152,9 +169,15 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> str | None:
                     ". Losing it leaves you with INSUFFICIENT MATERIAL TO "
                     "WIN — the game would be dead drawn"
                 )
-            worst = (value, desc)
+            worst = (value, desc, victim.piece_type)
     if worst is not None and worst[0] >= 300:  # minor piece or better
-        return worst[1]
+        # Hard (unconfirmable) when it throws the win away outright, or hands
+        # a rook/queen to a king with no army to support a sacrifice.
+        hard = (
+            worst[0] >= 10_000
+            or (opp_has_no_pieces and worst[2] in (chess.ROOK, chess.QUEEN))
+        )
+        return worst[1], hard
     return None
 
 
@@ -192,10 +215,12 @@ def main() -> None:
         "--confirm",
         action="store_true",
         help=(
-            "Override the mechanical safety check. Required when your move "
-            "gives away a piece for free, stalemates, or instantly draws "
-            "while ahead — pass confirm=true only when that is intentional "
-            "(e.g. a genuine sacrifice)."
+            "Override a SOFT safety warning (an ordinary free capture that "
+            "may be a genuine sacrifice). Pass confirm=true only when the "
+            "sacrifice is intentional. It does NOT override a HARD warning — "
+            "a move that loses the game outright (stalemate, draw-while-"
+            "winning, or hanging a major piece to a king with no army) is "
+            "refused regardless."
         ),
     )
     parser.add_argument("move", nargs="?", default="")
@@ -243,19 +268,33 @@ def main() -> None:
     # Strip trailing check/mate notation — descriptive, not part of move identity.
     move_str = args.move.strip().rstrip("+#")
 
-    # Mechanical safety gate (skipped with confirm=true). Best-effort: if the
-    # live state cannot be fetched or the move does not parse, fall through —
-    # the endpoint is the authoritative validator and reports those errors.
-    if not args.confirm:
-        warning = None
-        try:
-            board = board_with_history(fetch_state())
-            candidate = parse_move(board, move_str)
-            if candidate in board.legal_moves:
-                warning = _blunder_gate(board, candidate)
-        except (SystemExit, Exception):
-            warning = None  # endpoint is the authoritative validator
-        if warning is not None:
+    # Mechanical safety gate. Runs ALWAYS (even with confirm=true) so a HARD
+    # warning — throwing the win away outright, or hanging a major to a king
+    # with no army — cannot be waved through; soft warnings are overridable
+    # with confirm. Best-effort: if the live state cannot be fetched or the
+    # move does not parse, fall through — the endpoint is the authoritative
+    # validator and reports those errors.
+    gate = None
+    try:
+        board = board_with_history(fetch_state())
+        candidate = parse_move(board, move_str)
+        if candidate in board.legal_moves:
+            gate = _blunder_gate(board, candidate)
+    except (SystemExit, Exception):
+        gate = None  # endpoint is the authoritative validator
+    if gate is not None:
+        warning, hard = gate
+        if hard:
+            print(json.dumps({
+                "ok": False,
+                "error": (
+                    f"SAFETY CHECK (cannot override) — move NOT committed: "
+                    f"{warning} This loses the game outright, so confirm=true "
+                    f"will not force it. Pick a move that keeps the win."
+                ),
+            }))
+            sys.exit(1)
+        if not args.confirm:
             print(json.dumps({
                 "ok": False,
                 "error": (

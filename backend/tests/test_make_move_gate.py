@@ -26,6 +26,13 @@ def mm():
 
 
 def _gate(mm, fen: str, uci: str) -> str | None:
+    """Warning text only (or None) — keeps the existing string-based tests."""
+    res = _gate_full(mm, fen, uci)
+    return res[0] if res is not None else None
+
+
+def _gate_full(mm, fen: str, uci: str):
+    """Full (warning, hard) tuple, or None."""
     board = chess.Board(fen)
     move = chess.Move.from_uci(uci)
     assert move in board.legal_moves, f"test setup: {uci} illegal in {fen}"
@@ -80,5 +87,32 @@ class TestGameEndingTraps:
         # The next a2a1 creates the position's third occurrence — instant draw.
         move = chess.Move.from_uci("a2a1")
         assert board.is_legal(move)
-        w = mm._blunder_gate(board, move)
-        assert w is not None and "repetition" in w.lower()
+        res = mm._blunder_gate(board, move)
+        assert res is not None and "repetition" in res[0].lower()
+
+
+class TestHardVsSoft:
+    """Catastrophic losses are HARD (confirm cannot override); ordinary free
+    gifts are soft. Game ab02f31d: agent reflexively confirm=true'd Rb6+??
+    Kxb6 hanging a rook to the bare king on move 2 of a ladder."""
+
+    def test_hang_rook_to_bare_king_is_hard(self, mm):
+        # Bare black king on c6; Rb6+?? Kxb6 hangs the rook with no army to
+        # justify any sacrifice.
+        res = _gate_full(mm, "8/8/2k5/R7/8/8/8/1R4K1 w - - 2 2", "b1b6")
+        assert res is not None and res[1] is True
+
+    def test_draw_while_ahead_is_hard(self, mm):
+        board = chess.Board("k7/8/2K5/8/8/8/8/R7 w - - 0 1")
+        for uci in ("a1a2", "a8b8", "a2a1", "b8a8", "a1a2", "a8b8",
+                    "a2a1", "b8a8", "a1a2", "a8b8"):
+            board.push(chess.Move.from_uci(uci))
+        res = mm._blunder_gate(board, chess.Move.from_uci("a2a1"))
+        assert res is not None and res[1] is True
+
+    def test_ordinary_free_gift_is_soft(self, mm):
+        # Same rook-hang geometry as the hard case, but the opponent still has
+        # a piece (a knight) — so a gift COULD be a real sacrifice; the gate
+        # flags it but leaves it overridable with confirm.
+        res = _gate_full(mm, "8/8/2k5/R7/8/8/8/1R5n w - - 2 2", "b1b6")
+        assert res is not None and res[1] is False

@@ -441,10 +441,17 @@ The move accepts UCI or SAN; trailing `+` or `#` is stripped.
   opponent has a capture nobody recaptures), delivers stalemate, or
   instantly draws by rule while you are ahead on material. This is the
   same geometry `chess__imagine_move` reports; it means you skipped
-  verification. **Default response: pick a better move.** Only if the
-  loss is genuinely intentional (a real sacrifice you have calculated)
-  repeat the call with `confirm=true`. Never pass `confirm=true` as a
-  routine habit — it disables the only net under you.
+  verification. **Default response: pick a better move** — almost always
+  the warning is right and you simply missed the hanging piece.
+  - A **soft** warning can be overridden by repeating the call with
+    `confirm=true`, but only when the sacrifice is genuinely intentional
+    and you have calculated the follow-up. Reflexively confirming is how
+    games are lost — do not do it.
+  - A **SAFETY CHECK (cannot override)** error is **hard**: the move loses
+    the game outright (stalemate, a draw while you are winning, or hanging
+    a rook/queen to a king that has no army). `confirm=true` will not
+    force it. There is no such thing as sacrificing your rook to a lone
+    king — find the move that keeps the win.
 
 ## Move format
 
