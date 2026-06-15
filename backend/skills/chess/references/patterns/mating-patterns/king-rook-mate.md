@@ -5,7 +5,7 @@ triggers: [king and rook versus king, rook mate, bare king, basic mate, K+R]
 related_pages: [patterns/mating-patterns/ladder-mate, patterns/mating-patterns/king-queen-mate, endgames/king-pawn-endings]
 tags: [mate, endgame, rook, technique, opposition, recipe]
 status: draft
-updated: 2026-06-11
+updated: 2026-06-13
 ---
 
 # King + Rook vs King — the drill
@@ -20,6 +20,12 @@ drill. Freestyle checking does NOT work (it walks into the 50-move rule).
 The rook is a fence the king may never cross; your king does the pushing.
 The enemy king only retreats a rank when checked **while the kings face
 each other** — every other check is a wasted move.
+
+**Your compass:** `chess__imagine_move` prints **Enemy king mobility:
+before → after**. Real progress shrinks the king's box, so a good move
+holds or lowers that number (a check drops it sharply); a move that raises
+it is drifting — pick another. Watch for `stalemate` whenever the king has
+few squares left.
 
 ## What to do — apply the FIRST rule that matches, every turn
 
