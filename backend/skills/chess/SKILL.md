@@ -349,9 +349,18 @@ position plus a tactical report:
   doesn't from the new one. Watch the "no longer defending" line —
   that's where you spot abandoning a defender.
 - **Newly hanging own pieces** — pieces that became unsafe as a
-  side-effect of this move (attackers ≥ defenders after, but the
-  piece was safe before). The classic blunder pattern; this is the
-  single most important section.
+  side-effect of this move (more attackers than defenders, OR a square
+  you would lose material on in the exchange even though it is defended).
+  The classic blunder pattern; this is the single most important section.
+- **Losing exchange warning (⚠)** — a value-based check on the moved
+  piece's square. A square can be "defended" by *count* (one pawn guards
+  it) yet still lose you material: if the defender is a pawn and the piece
+  standing there is a knight, the opponent captures and you only win the
+  pawn back — a knight for a pawn. **"Defended" is not the same as "safe".**
+  When you see this warning (or a "lose N pawns in the exchange" note in
+  Newly hanging), you are about to give up material in a trade — only do it
+  if it is a sacrifice you have calculated. This is the single most common
+  way winnable games are thrown away: trust the value, not the count.
 - **En passant available** — appears only when the move grants the
   opponent an en-passant capture in reply.
 - **Opponent legal replies** — full annotated table with UCI, SAN,

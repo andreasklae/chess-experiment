@@ -185,14 +185,29 @@ def _newly_hanging_own_pieces(board_before: chess.Board, board_after: chess.Boar
         defenders_after = [s for s in board_after.attackers(mover_color, sq) if s != sq]
 
         was_safe_before = not attackers_before or len(defenders_before) >= len(attackers_before)
-        is_unsafe_now = not defenders_after or len(attackers_after) > len(defenders_after)
+        # Unsafe now = either outnumbered (count) OR a losing exchange on the
+        # square even when defended by count (value). The value test catches
+        # leaving a knight defended only by a pawn — game 9b0d7590 9.Nd2??
+        # left the c3 knight to bxc3 bxc3, net -2, which the count test misses.
+        see_loss = _static_exchange_eval(board_after, sq, enemy_color)
+        is_unsafe_now = (
+            (not defenders_after or len(attackers_after) > len(defenders_after))
+            or see_loss >= 150
+        )
         if not (was_safe_before and is_unsafe_now):
             continue
         atk_str = ", ".join(describe_piece(board_after, a) for a in sorted(attackers_after))
         def_str = (", ".join(describe_piece(board_after, d) for d in sorted(defenders_after))
                    if defenders_after else "nothing")
+        loss_note = (
+            f" — you would lose ~{see_loss // 100} pawn(s) of material in the "
+            f"exchange here"
+            if see_loss >= 150
+            else ""
+        )
         new_hanging.append(
-            f"{describe_piece(board_after, sq)} — attacked by {atk_str}; defended by {def_str}"
+            f"{describe_piece(board_after, sq)} — attacked by {atk_str}; "
+            f"defended by {def_str}{loss_note}"
         )
     return new_hanging
 
@@ -208,6 +223,86 @@ def _en_passant_offered(board_after: chess.Board) -> str | None:
         return None
     capturers = ", ".join(chess.square_name(s) for s in sorted(pawn_squares))
     return f"yes — {color_name(board_after.turn)} pawn on {capturers} may capture en passant on {chess.square_name(ep_sq)}"
+
+
+def _static_exchange_eval(board: chess.Board, square: int, side_to_capture: bool) -> int:
+    """Material the side initiating captures on `square` nets, in centipawns,
+    assuming both sides recapture with their least valuable piece each time
+    (standard static-exchange evaluation, SEE).
+
+    `side_to_capture` is the colour that moves first (the opponent of the
+    piece sitting on `square`). Returns the net gain for that side: positive
+    means the capturing side wins material. Pure rules arithmetic — it plays
+    out the legal recapture sequence on one square, no search or judgement.
+    """
+    target = board.piece_at(square)
+    if target is None:
+        return 0
+
+    def least_valuable_attacker(bd: chess.Board, color: bool, sq: int) -> int | None:
+        attackers = bd.attackers(color, sq)
+        if not attackers:
+            return None
+        return min(attackers, key=lambda a: MATERIAL.get(bd.piece_at(a).piece_type, 0))
+
+    # Iterative SEE via a swap-off list of captured-piece values.
+    gains: list[int] = []
+    work = board.copy(stack=False)
+    on_square_value = MATERIAL.get(target.piece_type, 0)
+    color = side_to_capture
+    while True:
+        frm = least_valuable_attacker(work, color, square)
+        if frm is None:
+            break
+        gains.append(on_square_value)
+        # the capturing piece now sits on the square and may itself be taken
+        on_square_value = MATERIAL.get(work.piece_at(frm).piece_type, 0)
+        work.remove_piece_at(square)
+        work.set_piece_at(square, work.piece_at(frm))
+        work.remove_piece_at(frm)
+        color = not color
+    # Standard SEE negamax fold: each side will stop capturing if continuing
+    # loses material.
+    net = 0
+    for g in reversed(gains):
+        net = max(0, g - net)
+    return net
+
+
+def _bad_trade_warning(
+    board_before: chess.Board, board_after: chess.Board, move: chess.Move
+) -> str | None:
+    """Warn when the moved piece sits on a square it will LOSE material on
+    after the full capture sequence — even if the square is 'defended' by
+    count. Counts say balanced (1 pawn defends vs 1 pawn attacks); values say
+    you gave a knight for a pawn. The hanging-warning only catches
+    defenders<attackers; this catches the defended-but-losing trade that
+    decided both 1000-rated games (16.Ne5?? fxe5 dxe5, 9.Nd2?? bxc3 bxc3)."""
+    moved_piece = board_after.piece_at(move.to_square)
+    if moved_piece is None or moved_piece.piece_type == chess.KING:
+        return None
+    enemy = not board_before.turn
+    # Net for the opponent if they start capturing on the moved piece's square.
+    opp_gain = _static_exchange_eval(board_after, move.to_square, enemy)
+    # Credit anything THIS move just captured (a capture that gets recaptured
+    # is a trade, not a fresh loss).
+    my_gain = 0
+    if board_before.is_capture(move):
+        victim = board_before.piece_at(move.to_square)
+        if victim is not None:
+            my_gain = MATERIAL.get(victim.piece_type, 0)
+        else:  # en passant
+            my_gain = MATERIAL[chess.PAWN]
+    net_loss = opp_gain - my_gain
+    if net_loss < 150:
+        return None
+    return (
+        f"⚠ **Losing exchange on {chess.square_name(move.to_square)}** — if "
+        f"the opponent captures here and you recapture, you come out about "
+        f"{net_loss} centipawns DOWN (roughly {net_loss // 100} pawn(s) of "
+        f"material). The square is defended by count, but you lose material "
+        f"in the trade — verify this is a sacrifice you intend."
+    )
 
 
 def _moved_piece_hanging_warning(
@@ -285,6 +380,13 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
     hanging_warning = _moved_piece_hanging_warning(
         board_after, move, attacker_chain, defender_chain
     )
+    # Only show the value-based bad-trade warning when the count-based hanging
+    # warning did NOT already fire (the hanging case is the obvious one; the
+    # bad-trade case is the subtle defended-but-losing one). Skip if this move
+    # gives checkmate (nothing after mate matters).
+    bad_trade_warning = None
+    if hanging_warning is None and not board_after.is_checkmate():
+        bad_trade_warning = _bad_trade_warning(board_before, board_after, move)
 
     king_before = enemy_king_mobility(board_before)
     king_after = sum(
@@ -323,6 +425,9 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
     out.append("")
     if hanging_warning:
         out.append(hanging_warning)
+        out.append("")
+    if bad_trade_warning:
+        out.append(bad_trade_warning)
         out.append("")
     out.append(f"**{render_eval_delta_line(board_before, board_after)}**")
     out.append(EVAL_WARNING)
