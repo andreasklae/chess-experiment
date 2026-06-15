@@ -230,7 +230,6 @@ function ActiveBatch({
 }
 
 export function BatchPage() {
-  const navigate = useNavigate();
   const [batches, setBatches] = useState<Batch[]>([]);
   const [active, setActive] = useState<Batch | null>(null);
   const [elo, setElo] = useState<AgentElo | null>(null);
@@ -255,15 +254,13 @@ export function BatchPage() {
     return () => clearInterval(id);
   }, []);
 
-  // Auto-navigate to the live game whenever the active batch advances to a
-  // new game. Avoids the user having to click "View current game →" every
-  // round. We compare against `active.current_game_id` rather than the URL
-  // because we're on /batch, not on /games/<id>.
-  useEffect(() => {
-    if (active?.current_game_id && active.status === 'running') {
-      navigate(`/games/${active.current_game_id}`);
-    }
-  }, [active?.current_game_id, active?.status, navigate]);
+  // NOTE: the batch page deliberately does NOT auto-navigate into the live
+  // game. It used to (to save a click each round), but that made the batch
+  // controls — pause/stop — unreachable: opening /batch during a running
+  // batch instantly redirected to /games/<id>, so the only way to stop a
+  // batch was to kill the backend. Staying here keeps the controls usable;
+  // the board page (BoardPage) already auto-follows game-to-game for anyone
+  // who clicks "View current game →".
 
   async function handleResetElo() {
     if (!window.confirm('Reset agent ELO to 1200? This does not affect past batches.')) return;
