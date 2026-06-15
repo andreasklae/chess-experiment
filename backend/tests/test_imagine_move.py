@@ -198,6 +198,27 @@ def test_no_bad_trade_warning_on_equal_or_winning_move(im):
     assert "Losing exchange" not in out
 
 
+def test_hallucinated_fen_returns_actionable_error():
+    """A malformed FEN (model hallucination — e.g. a 9-column rank) must NOT
+    crash with a bare 'Invalid fen'; it returns an actionable error telling
+    the agent to drop fen= and use the live board. Run as a subprocess, the
+    way the harness invokes the script (the error path exits before any
+    network fetch, so no backend is needed)."""
+    import json
+    import subprocess
+
+    bad = "1rb1k1nr/pp1p2pp/4qp2/2b1P3/8/2N1PN3/PP1K2PP/R1B2B1R w k - 0 14"
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPT_PATH), "--fen", bad, "e4"],
+        capture_output=True, text=True, timeout=30,
+    )
+    assert proc.returncode == 1
+    payload = json.loads(proc.stdout)
+    assert payload["ok"] is False
+    assert "WITHOUT a fen" in payload["error"]
+    assert "not a legal position" in payload["error"]
+
+
 # ── Attack/defense deltas (no longer attacking / defending) ────────────────
 
 

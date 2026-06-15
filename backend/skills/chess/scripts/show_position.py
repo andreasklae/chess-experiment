@@ -287,8 +287,19 @@ def main() -> None:
         try:
             board = chess.Board(args.fen)
         except ValueError as exc:
-            print(f"error: invalid FEN {args.fen!r}: {exc}", file=sys.stderr)
-            sys.exit(1)
+            # A hallucinated/malformed FEN must NOT block the turn. Fall back
+            # to the LIVE position with a clear note so the agent stops
+            # reasoning about an imagined board. (Models routinely fabricate
+            # FENs — e.g. a rank with 9 columns; never error out on it.)
+            data = fetch_state()
+            board = board_with_history(data)
+            print(
+                f"⚠ The FEN you passed (`{args.fen}`) is not a legal position "
+                f"({exc}). Showing the LIVE game position instead — do not "
+                f"analyse a board you typed by hand; trust this one.\n"
+            )
+            print(render_position(board, move_cap=data.get("move_cap")))
+            return
         # Hypothetical boards have no history or move cap — the radar's
         # repetition/cap lines simply stay silent.
         print(render_position(board))

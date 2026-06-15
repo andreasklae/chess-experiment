@@ -554,7 +554,20 @@ def main() -> None:
         try:
             board = chess.Board(args.fen)
         except ValueError as exc:
-            print(json.dumps({"ok": False, "error": f"Invalid fen: {exc}"}))
+            # Hallucinated FEN. Unlike show_position we can't silently fall
+            # back to the live board (the move must match the position the
+            # agent intended), so return an actionable error: drop fen= and
+            # imagine on the live board, or fix the FEN.
+            print(json.dumps({
+                "ok": False,
+                "error": (
+                    f"The FEN you passed is not a legal position ({exc}). "
+                    f"Do NOT type FENs by hand — they are easy to get wrong. "
+                    f"To analyse the CURRENT game, call this tool WITHOUT a "
+                    f"fen argument (e.g. chess__imagine_move(move=\"{args.move or 'e2e4'}\")). "
+                    f"Only pass fen= with a string a previous tool returned."
+                ),
+            }))
             sys.exit(1)
     else:
         data = fetch_state()
