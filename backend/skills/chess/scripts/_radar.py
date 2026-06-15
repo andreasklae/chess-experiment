@@ -513,6 +513,59 @@ def _back_rank_lines(board: chess.Board, own: bool) -> list[str]:
     ]
 
 
+def _own_back_rank_lines(board: chess.Board, own: bool) -> list[str]:
+    """Defensive mirror of _back_rank_lines: warn when OUR king is the one
+    walled in on its back rank with an enemy major able to reach it. Pure
+    geometry (same checks, our side). Strictly gated to avoid noise — fires
+    only when the enemy actually has a rook/queen and an open file to use,
+    so it stays quiet in normal middlegames. Added after game 9b0d7590,
+    where the agent was mated on its own back rank (Kh1 behind g2/h2) having
+    never made luft."""
+    ksq = board.king(own)
+    if ksq is None:
+        return []
+    back = 0 if own == chess.WHITE else 7
+    if chess.square_rank(ksq) != back:
+        return []
+    forward = 8 if own == chess.WHITE else -8
+    f = chess.square_file(ksq)
+    front_files = [x for x in (f - 1, f, f + 1) if 0 <= x <= 7]
+    front_squares = [chess.square(x, back) + forward for x in front_files]
+    walled = all(
+        (p := board.piece_at(sq)) is not None and p.color == own and p.piece_type == chess.PAWN
+        for sq in front_squares
+    )
+    if not walled:
+        return []  # the king has at least one luft square already
+    opp = not own
+    enemy_majors = board.pieces(chess.ROOK, opp) | board.pieces(chess.QUEEN, opp)
+    if not enemy_majors:
+        return []
+    pawns = board.pieces(chess.PAWN, chess.WHITE) | board.pieces(chess.PAWN, chess.BLACK)
+    open_file = any(
+        all(chess.square(x, r) not in pawns for r in range(8)) for x in range(8)
+    )
+    if not open_file:
+        return []
+    # Do our own majors defend the back rank? If none do, the threat is real.
+    own_defenders = [
+        sq for sq in board.pieces(chess.ROOK, own) | board.pieces(chess.QUEEN, own)
+        if chess.square_rank(sq) == back
+    ]
+    defence = (
+        f"your rook/queen on {', '.join(chess.square_name(s) for s in own_defenders)} "
+        f"guards it for now — keep it there or make luft"
+        if own_defenders
+        else "NOTHING of yours guards that rank"
+    )
+    return [
+        f"- **Your OWN king is walled on its back rank** behind its pawns, "
+        f"and the opponent has a major piece plus an open file to reach it; "
+        f"{defence}. Consider making luft (a pawn step) before it becomes a "
+        f"mate threat — read `{_PAGE_BACK_RANK}`."
+    ]
+
+
 def _passed_pawn_lines(board: chess.Board, own: bool) -> list[str]:
     """List passed pawns for both sides with distance to promotion."""
     def passed(sq: int, color: bool) -> bool:
@@ -586,6 +639,7 @@ def render_radar(board: chess.Board, move_cap: int | None = None) -> str | None:
     lines += _drill_state_lines(board, own)
     lines += _king_geometry_lines(board, own)
     lines += _back_rank_lines(board, own)
+    lines += _own_back_rank_lines(board, own)
     # Wiki-driven pattern triggers: geometry-present hints, each tracing to
     # a page the agent owns. See _patterns.py for the fairness contract.
     try:

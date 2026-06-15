@@ -62,3 +62,5 @@ what the agent learned and when — keep it faithful.
 ## [2026-06-13] add | ladder-mate.md + advisor (_radar.py) | FINISH EXCEPTION: when the king is on the edge and a rook sits beside it, the natural edge check hangs that rook (Ra8+?? Kxb7, the exact stall in game cc55b0b9). Rule: slide the adjacent rook far along its line first (keep the cut-off), then the next check is mate. General condition, not a computed move. Verified line 2k5/1R6/R7/.../ 1.Rh7 Kd8 2.Ra8#.
 
 ## [2026-06-13] update | king-rook-mate.md + king-queen-mate.md | Added the imagine_move "Enemy king mobility" compass to both basic-mate drills: a good move holds/lowers the number, a check drops it, a quiet drop to 0 = stalemate. Same self-check principle as the ladder page — propagated to the drills where the shuffle-without-progress failure mode actually occurs.
+
+## [2026-06-15] update | _radar.py | Added _own_back_rank_lines: defensive mirror of the back-rank check — warns when OUR king is walled on its back rank with an enemy major + open file to reach it (and no luft). Strictly gated to stay quiet in normal middlegames. From game 9b0d7590 (agent mated on its own back rank, never made luft).

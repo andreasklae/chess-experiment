@@ -561,6 +561,21 @@ class AgentPlayer(Player):
             f"{self._memory.goal}"
             if self._memory.goal else ""
         )
+        # After turn 1 the chess skill is already loaded and its chess__*
+        # tools are live. The SDK's own system prompt says "always use_skill
+        # before a skill's work", which the model obeys ritually every turn —
+        # wasting a tool call and a round-trip (34 of 35 turns in game
+        # 9b0d7590). Reassert here, at the point of action, that it is loaded
+        # and must NOT be called again.
+        skill_line = (
+            ""
+            if last_san is None
+            else (
+                "\n\nThe `chess` skill is ALREADY loaded and its chess__ tools "
+                "are live — do NOT call use_skill again. Go straight to "
+                "chess__show_position."
+            )
+        )
         base_prompt = (
             (f"Opponent played {last_san}." if last_san else "Game start.")
             + f"\n\nCurrent position (FEN):\n{board.fen()}"
@@ -568,6 +583,7 @@ class AgentPlayer(Player):
             + plan_line
             + goal_line
             + _drill_state_for_prompt(board)
+            + skill_line
         )
 
         max_turns_cfg = getattr(self._agent._config, "max_turns", None) or 16

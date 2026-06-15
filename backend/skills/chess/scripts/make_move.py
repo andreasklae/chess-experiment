@@ -170,7 +170,16 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | No
                     "WIN — the game would be dead drawn"
                 )
             worst = (value, desc, victim.piece_type)
-    if worst is not None and worst[0] >= 300:  # minor piece or better
+    # Threshold 150: catches dropping a MINOR PIECE for a pawn into an
+    # undefended square (net 300-100 = 200), which slipped under the old 300
+    # bar — game 9b0d7590 move 16 Nxd6+?? Bxd6 gave a safe knight for one
+    # pawn, and imagine_move's hanging warning was ignored. Still pure
+    # single-ply mechanics: the gate only ever inspects UNDEFENDED target
+    # squares (it skips any reply whose square we defend), so it never flags
+    # an equal trade — only a genuine net loss of ~2+ points. No SEE, no
+    # lookahead, no positional judgement (2026-06-15 fairness call: keep it
+    # at minor-for-pawn, do not extend to full exchange evaluation).
+    if worst is not None and worst[0] >= 150:
         # Hard (unconfirmable) when it throws the win away outright, or hands
         # a rook/queen to a king with no army to support a sacrifice.
         hard = (

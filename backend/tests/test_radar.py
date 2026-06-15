@@ -83,6 +83,17 @@ class TestBackRank:
         out = radar("6k1/5pp1/7p/8/8/8/8/R5K1 w - - 0 1") or ""
         assert "trapped on its back rank" not in out
 
+    def test_own_back_rank_warned_when_threatened(self):
+        # White to move, own king h1 walled by g2/h2, black rook on open
+        # d-file → defensive luft warning (game 9b0d7590 mate pattern).
+        out = radar("3r4/6p1/8/8/8/8/6PP/3R3K w - - 0 1") or ""
+        assert "Your OWN king is walled on its back rank" in out
+
+    def test_own_back_rank_silent_with_luft(self):
+        # g-pawn advanced → king has luft → no defensive warning.
+        out = radar("3r4/8/8/8/8/6P1/7P/3R2K1 w - - 0 1") or ""
+        assert "Your OWN king is walled" not in out
+
 
 class TestPassedPawns:
     def test_own_passer_reported_with_distance(self):

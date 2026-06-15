@@ -45,6 +45,17 @@ class TestFreeCaptures:
         w = _gate(mm, "k7/1R6/2K5/8/8/8/8/8 w - - 0 1", "c6d6")
         assert w is not None and "FOR FREE" in w and "rook" in w
 
+    def test_minor_for_pawn_into_undefended_flagged(self, mm):
+        # Game 9b0d7590 move 16: Nxd6+?? Bxd6 gave a safe knight for one pawn.
+        # Net -200, below the old 300 bar; the lowered 150 threshold catches
+        # it. imagine_move's hanging warning had been ignored.
+        w = _gate(
+            mm,
+            "r3kbnr/1q1b1pp1/p1pp4/3Pp2p/2N1P3/2P2P2/P1P3PP/R1BQ1R1K w kq - 1 16",
+            "c4d6",
+        )
+        assert w is not None and "FOR FREE" in w and "knight" in w
+
     def test_queen_adjacent_to_king_flagged(self, mm):
         # Game ba6cd737: 3.Qd4+?? Kxd4 — K+Q vs K thrown away on move 3.
         w = _gate(mm, "8/8/8/4k3/8/3Q4/8/4K3 w - - 0 1", "d3d4")
