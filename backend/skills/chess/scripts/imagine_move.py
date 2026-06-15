@@ -9,9 +9,13 @@ Reads CHESS_API_BASE and CHESS_GAME_ID from environment (injected by
 AgentPlayer). The live board state is **not** mutated; everything is computed
 on a copy.
 
-Argument (positional, exactly one):
+Argument (one, required):
   move    The move to imagine, in UCI (e2e4, g1f3, e7e8q) or SAN (e4, Nf3,
           O-O, e8=Q). Trailing + or # is ignored.
+
+Exposed as the tool chess__imagine_move after use_skill('chess'). Example:
+  chess__imagine_move(move="e2e4")
+  chess__imagine_move(move="Nf3")
 
 If the move is illegal, the script exits nonzero with a categorised error
 (no piece, blocked, pinned, etc.).
@@ -46,6 +50,7 @@ from _eval import (  # noqa: E402
     render_eval_delta_line,
     render_moves_table,
 )
+from _live import board_with_history, fetch_state  # noqa: E402
 from show_position import (  # noqa: E402
     compute_attack_chain,
     format_chain,
@@ -180,14 +185,29 @@ def _newly_hanging_own_pieces(board_before: chess.Board, board_after: chess.Boar
         defenders_after = [s for s in board_after.attackers(mover_color, sq) if s != sq]
 
         was_safe_before = not attackers_before or len(defenders_before) >= len(attackers_before)
-        is_unsafe_now = not defenders_after or len(attackers_after) > len(defenders_after)
+        # Unsafe now = either outnumbered (count) OR a losing exchange on the
+        # square even when defended by count (value). The value test catches
+        # leaving a knight defended only by a pawn — game 9b0d7590 9.Nd2??
+        # left the c3 knight to bxc3 bxc3, net -2, which the count test misses.
+        see_loss = _static_exchange_eval(board_after, sq, enemy_color)
+        is_unsafe_now = (
+            (not defenders_after or len(attackers_after) > len(defenders_after))
+            or see_loss >= 150
+        )
         if not (was_safe_before and is_unsafe_now):
             continue
         atk_str = ", ".join(describe_piece(board_after, a) for a in sorted(attackers_after))
         def_str = (", ".join(describe_piece(board_after, d) for d in sorted(defenders_after))
                    if defenders_after else "nothing")
+        loss_note = (
+            f" — you would lose ~{see_loss // 100} pawn(s) of material in the "
+            f"exchange here"
+            if see_loss >= 150
+            else ""
+        )
         new_hanging.append(
-            f"{describe_piece(board_after, sq)} — attacked by {atk_str}; defended by {def_str}"
+            f"{describe_piece(board_after, sq)} — attacked by {atk_str}; "
+            f"defended by {def_str}{loss_note}"
         )
     return new_hanging
 
@@ -203,6 +223,86 @@ def _en_passant_offered(board_after: chess.Board) -> str | None:
         return None
     capturers = ", ".join(chess.square_name(s) for s in sorted(pawn_squares))
     return f"yes — {color_name(board_after.turn)} pawn on {capturers} may capture en passant on {chess.square_name(ep_sq)}"
+
+
+def _static_exchange_eval(board: chess.Board, square: int, side_to_capture: bool) -> int:
+    """Material the side initiating captures on `square` nets, in centipawns,
+    assuming both sides recapture with their least valuable piece each time
+    (standard static-exchange evaluation, SEE).
+
+    `side_to_capture` is the colour that moves first (the opponent of the
+    piece sitting on `square`). Returns the net gain for that side: positive
+    means the capturing side wins material. Pure rules arithmetic — it plays
+    out the legal recapture sequence on one square, no search or judgement.
+    """
+    target = board.piece_at(square)
+    if target is None:
+        return 0
+
+    def least_valuable_attacker(bd: chess.Board, color: bool, sq: int) -> int | None:
+        attackers = bd.attackers(color, sq)
+        if not attackers:
+            return None
+        return min(attackers, key=lambda a: MATERIAL.get(bd.piece_at(a).piece_type, 0))
+
+    # Iterative SEE via a swap-off list of captured-piece values.
+    gains: list[int] = []
+    work = board.copy(stack=False)
+    on_square_value = MATERIAL.get(target.piece_type, 0)
+    color = side_to_capture
+    while True:
+        frm = least_valuable_attacker(work, color, square)
+        if frm is None:
+            break
+        gains.append(on_square_value)
+        # the capturing piece now sits on the square and may itself be taken
+        on_square_value = MATERIAL.get(work.piece_at(frm).piece_type, 0)
+        work.remove_piece_at(square)
+        work.set_piece_at(square, work.piece_at(frm))
+        work.remove_piece_at(frm)
+        color = not color
+    # Standard SEE negamax fold: each side will stop capturing if continuing
+    # loses material.
+    net = 0
+    for g in reversed(gains):
+        net = max(0, g - net)
+    return net
+
+
+def _bad_trade_warning(
+    board_before: chess.Board, board_after: chess.Board, move: chess.Move
+) -> str | None:
+    """Warn when the moved piece sits on a square it will LOSE material on
+    after the full capture sequence — even if the square is 'defended' by
+    count. Counts say balanced (1 pawn defends vs 1 pawn attacks); values say
+    you gave a knight for a pawn. The hanging-warning only catches
+    defenders<attackers; this catches the defended-but-losing trade that
+    decided both 1000-rated games (16.Ne5?? fxe5 dxe5, 9.Nd2?? bxc3 bxc3)."""
+    moved_piece = board_after.piece_at(move.to_square)
+    if moved_piece is None or moved_piece.piece_type == chess.KING:
+        return None
+    enemy = not board_before.turn
+    # Net for the opponent if they start capturing on the moved piece's square.
+    opp_gain = _static_exchange_eval(board_after, move.to_square, enemy)
+    # Credit anything THIS move just captured (a capture that gets recaptured
+    # is a trade, not a fresh loss).
+    my_gain = 0
+    if board_before.is_capture(move):
+        victim = board_before.piece_at(move.to_square)
+        if victim is not None:
+            my_gain = MATERIAL.get(victim.piece_type, 0)
+        else:  # en passant
+            my_gain = MATERIAL[chess.PAWN]
+    net_loss = opp_gain - my_gain
+    if net_loss < 150:
+        return None
+    return (
+        f"⚠ **Losing exchange on {chess.square_name(move.to_square)}** — if "
+        f"the opponent captures here and you recapture, you come out about "
+        f"{net_loss} centipawns DOWN (roughly {net_loss // 100} pawn(s) of "
+        f"material). The square is defended by count, but you lose material "
+        f"in the trade — verify this is a sacrifice you intend."
+    )
 
 
 def _moved_piece_hanging_warning(
@@ -280,6 +380,13 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
     hanging_warning = _moved_piece_hanging_warning(
         board_after, move, attacker_chain, defender_chain
     )
+    # Only show the value-based bad-trade warning when the count-based hanging
+    # warning did NOT already fire (the hanging case is the obvious one; the
+    # bad-trade case is the subtle defended-but-losing one). Skip if this move
+    # gives checkmate (nothing after mate matters).
+    bad_trade_warning = None
+    if hanging_warning is None and not board_after.is_checkmate():
+        bad_trade_warning = _bad_trade_warning(board_before, board_after, move)
 
     king_before = enemy_king_mobility(board_before)
     king_after = sum(
@@ -298,10 +405,29 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
     out.append(f"## Move: {_move_summary(board_before, move)}")
     out.append("")
     out.append(f"**Check:** {check_text}")
+    if board_before.move_stack and not board_after.is_checkmate():
+        if board_after.can_claim_threefold_repetition():
+            out.append(
+                "**Draw warning:** this move immediately draws by threefold "
+                "repetition. Pick a move that makes progress instead."
+            )
+        elif board_after.can_claim_fifty_moves():
+            out.append(
+                "**Draw warning:** this move triggers the 50-move rule "
+                "(50 moves without a capture or pawn move) — instant draw."
+            )
+        elif board_after.is_repetition(2):
+            out.append(
+                "**Draw warning:** this move recreates a position that has "
+                "already occurred — one more repetition is an automatic draw."
+            )
     out.append(king_mobility_line)
     out.append("")
     if hanging_warning:
         out.append(hanging_warning)
+        out.append("")
+    if bad_trade_warning:
+        out.append(bad_trade_warning)
         out.append("")
     out.append(f"**{render_eval_delta_line(board_before, board_after)}**")
     out.append(EVAL_WARNING)
@@ -365,9 +491,46 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
     return "\n".join(out)
 
 
+def render_pass(board: chess.Board) -> str:
+    """Hypothetical: the side to move passes. Lists the other side's
+    follow-up moves (the standard way to see what a position *threatens*).
+    Pure rules mechanics — the agent decides which threats matter."""
+    if board.is_check():
+        return (
+            "_Cannot imagine a pass here: the side to move is in check and "
+            "must respond. Imagine the actual checks/replies instead._"
+        )
+    after = board.copy()
+    after.push(chess.Move.null())
+    mover = color_name(after.turn)
+    out = [
+        f"## Hypothetical: {color_name(board.turn)} passes (null move)",
+        "",
+        f"If {color_name(board.turn)} did nothing, **{mover}** could play "
+        f"(scan the Flag column — `checkmate` here means the position "
+        f"threatens mate in one):",
+        "",
+        render_moves_table(after, list(after.legal_moves)),
+        "",
+        "_A real opponent moves — threats they cannot parry are the "
+        "valuable ones. Use this to check what YOUR last imagined move "
+        "threatens (pass on its FEN), or what the opponent threatens "
+        "against you (pass on the live board)._",
+    ]
+    return "\n".join(out)
+
+
 def main() -> None:
-    # One positional: the move (UCI or SAN). No flags.
     parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument(
+        "--fen",
+        default=None,
+        help=(
+            "Imagine the move on this position instead of the live game — "
+            "chain hypotheticals by passing the FEN a previous "
+            "chess__imagine_move returned."
+        ),
+    )
     parser.add_argument("move", nargs="?", default="")
     parser.add_argument("-h", "--help", action="store_true")
     args = parser.parse_args()
@@ -380,42 +543,46 @@ def main() -> None:
         print(json.dumps({
             "ok": False,
             "error": (
-                "Missing move argument. Call with the move as a single positional "
-                "arg in UCI or SAN form. Example: "
-                "run_script(\"chess\", \"imagine_move.py\", [\"e2e4\"]) "
-                "or run_script(\"chess\", \"imagine_move.py\", [\"Nf3\"])."
+                "Missing move argument. Call with the move in UCI or SAN form. "
+                "Example: chess__imagine_move(move=\"e2e4\") "
+                "or chess__imagine_move(move=\"Nf3\")."
             ),
         }))
         sys.exit(1)
 
-    api_base = os.environ.get("CHESS_API_BASE", "http://localhost:8000").rstrip("/")
-    game_id = os.environ.get("CHESS_GAME_ID", "")
-    if not game_id:
-        print("error: CHESS_GAME_ID not set", file=sys.stderr)
-        sys.exit(1)
+    if args.fen:
+        try:
+            board = chess.Board(args.fen)
+        except ValueError as exc:
+            print(json.dumps({"ok": False, "error": f"Invalid fen: {exc}"}))
+            sys.exit(1)
+    else:
+        data = fetch_state()
+        # Board carries the move stack when possible so the report can flag
+        # repetition/50-move draws.
+        board = board_with_history(data)
 
-    url = f"{api_base}/api/games/{game_id}"
-    try:
-        with urllib.request.urlopen(url, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
-    except Exception as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    fen = data.get("fen")
-    if not fen:
-        print("error: backend response missing 'fen'", file=sys.stderr)
-        sys.exit(1)
-
-    board = chess.Board(fen)
+    # "pass": the null move — see what the side to move could do NEXT if
+    # the opponent did nothing. The agent composes threat detection from
+    # this primitive: imagine a candidate, then imagine "pass" on the
+    # resulting FEN and read its own follow-ups (checkmate flags included).
+    if args.move.strip().lower() in ("pass", "null", "--"):
+        print(render_pass(board))
+        return
 
     try:
         move = parse_move(board, args.move)
     except ValueError:
         cleaned = args.move.strip().rstrip("+#")
+        legal = [board.san(m) for m in board.legal_moves]
         print(json.dumps({
             "ok": False,
-            "error": f"Illegal or unrecognised move '{args.move}': {classify_illegal_move(board, cleaned)}",
+            "error": (
+                f"'{args.move}' is not a legal move in the CURRENT position "
+                f"({classify_illegal_move(board, cleaned)}). Do not retry the "
+                f"same string — pick a move from legal_moves below."
+            ),
+            "legal_moves": legal[:90],
         }))
         sys.exit(1)
     if move not in board.legal_moves:

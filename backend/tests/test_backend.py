@@ -69,10 +69,17 @@ def test_player_types(tmp_path) -> None:
         response = test_client.get("/api/player-types")
 
     assert response.status_code == 200
-    assert response.json() == [
-        {"type": "human", "elo_required": False, "allowed_elos": []},
-        {"type": "maia", "elo_required": True, "allowed_elos": [1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900]},
-    ]
+    types = {entry["type"]: entry for entry in response.json()}
+    assert set(types) == {"human", "maia", "agent", "chesscom"}
+    assert types["human"] == {"type": "human", "elo_required": False, "allowed_elos": []}
+    assert types["maia"] == {
+        "type": "maia",
+        "elo_required": True,
+        "allowed_elos": [1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900],
+    }
+    assert types["agent"]["elo_required"] is False
+    assert types["chesscom"]["elo_required"] is True
+    assert len(types["chesscom"]["allowed_elos"]) > 0
 
 
 def test_create_human_vs_human_game(tmp_path) -> None:
@@ -160,7 +167,7 @@ def test_finished_game_rejects_more_moves(tmp_path) -> None:
 
 async def test_sse_subscription_emits_initial_state(tmp_path) -> None:
     service = build_test_service(tmp_path)
-    created = service.create_game(CreateGameRequest(white=PlayerConfig(type="human"), black=PlayerConfig(type="human")))
+    created = await service.create_game(CreateGameRequest(white=PlayerConfig(type="human"), black=PlayerConfig(type="human")))
     queue = await service.subscribe(created.game_id)
 
     payload = await queue.get()
@@ -199,3 +206,59 @@ def test_load_game_makes_it_current(tmp_path) -> None:
 
     assert load_response.status_code == 200
     assert current["game_id"] == first["game_id"]
+
+
+# ── Puzzle mode (initial_fen) ─────────────────────────────────────────────
+
+
+def test_create_game_from_custom_fen(tmp_path) -> None:
+    """Puzzle mode: a game can start from any legal position; moves are
+    validated against it; the FEN round-trips through persistence/load."""
+    fen = "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1"  # back-rank mate in 1
+    with client(tmp_path) as test_client:
+        created = test_client.post("/api/games", json={
+            "white": {"type": "human"},
+            "black": {"type": "human"},
+            "initial_fen": fen,
+        })
+        assert created.status_code == 200
+        state = created.json()
+        assert state["fen"] == fen
+        game_id = state["game_id"]
+
+        # e2e4 is not legal here; Ra8# is.
+        bad = test_client.post(f"/api/games/{game_id}/moves", json={"move": "e2e4"})
+        assert bad.status_code == 400
+        good = test_client.post(f"/api/games/{game_id}/moves", json={"move": "a1a8"})
+        assert good.status_code == 200
+        assert good.json()["status"] == "finished"
+        assert good.json()["result"] == "1-0"
+        assert good.json()["san_moves"] == ["Ra8#"]
+
+        # Reload from disk: board must replay from the custom FEN.
+        loaded = test_client.post(f"/api/games/{game_id}/load")
+        assert loaded.status_code == 200
+        assert loaded.json()["result"] == "1-0"
+
+
+def test_create_game_rejects_bad_fen(tmp_path) -> None:
+    with client(tmp_path) as test_client:
+        for fen in ["not a fen", "8/8/8/8/8/8/8/8 w - - 0 1",  # no kings
+                    "4k3/8/8/8/8/8/8/4K3 b - - 0 1"[:-1] + "x"]:
+            resp = test_client.post("/api/games", json={
+                "white": {"type": "human"},
+                "black": {"type": "human"},
+                "initial_fen": fen,
+            })
+            assert resp.status_code == 422, fen
+
+
+def test_create_game_rejects_finished_fen(tmp_path) -> None:
+    mated = "R5k1/5ppp/8/8/8/8/8/6K1 b - - 0 1"  # black already mated
+    with client(tmp_path) as test_client:
+        resp = test_client.post("/api/games", json={
+            "white": {"type": "human"},
+            "black": {"type": "human"},
+            "initial_fen": mated,
+        })
+        assert resp.status_code == 422

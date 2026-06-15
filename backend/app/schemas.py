@@ -1,5 +1,6 @@
 from typing import Annotated, Literal
 
+import chess
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -44,6 +45,15 @@ class PlayerConfig(BaseModel):
 class CreateGameRequest(BaseModel):
     white: PlayerConfig
     black: PlayerConfig
+    # Optional custom starting position ("puzzle mode"). Used to drop the
+    # agent into specific positions (mating exercises, conversion endgames)
+    # without playing a full game to reach them. Such games land in
+    # experimental.csv like any non-main game; they are never ranked.
+    initial_fen: Annotated[str | None, Field(default=None)] = None
+    # Optional forced-draw ply cap override (default 150). Puzzle runs use a
+    # tight cap: a basic mate that takes 100 plies has failed — adjudicate
+    # it quickly instead of grinding to the global cap.
+    max_half_moves: Annotated[int | None, Field(default=None, ge=2, le=150)] = None
 
     @model_validator(mode="after")
     def validate_sides(self) -> "CreateGameRequest":
@@ -51,6 +61,24 @@ class CreateGameRequest(BaseModel):
             raise ValueError("chess.com bots can only play as black.")
         if self.black.type == "agent":
             raise ValueError("Agent players can only play as white.")
+        if self.initial_fen is not None:
+            if self.white.type == "chesscom" or self.black.type == "chesscom":
+                raise ValueError(
+                    "chess.com games cannot start from a custom position — "
+                    "the browser board always begins at the standard setup."
+                )
+            import chess
+            try:
+                board = chess.Board(self.initial_fen)
+            except ValueError as exc:
+                raise ValueError(f"Invalid initial_fen: {exc}") from exc
+            if not board.is_valid():
+                raise ValueError(
+                    f"Invalid initial_fen: position fails validity check "
+                    f"({board.status()!r})."
+                )
+            if board.is_game_over():
+                raise ValueError("Invalid initial_fen: position is already game over.")
         return self
 
 
@@ -111,6 +139,16 @@ class GameState(BaseModel):
     # Paused state — see GameService.set_paused. Pause is honoured between
     # turns: an in-flight bot turn finishes, then the loop stops.
     paused: bool = False
+    # Forced-draw ply cap (Game.max_half_moves). Exposed so the chess skill's
+    # radar can warn the agent when the budget to convert a win is running out.
+    move_cap: int = 150
+    # Starting position of the game (puzzle mode may differ from standard).
+    # Consumers replaying uci_moves MUST start from this FEN.
+    initial_fen: str = chess.STARTING_FEN
+    # Non-empty when a player exception aborted the game (infrastructure
+    # failure — no chess result, no ELO change). Lets API consumers
+    # distinguish "agent is thinking" from "game is dead".
+    aborted_reason: str = ""
 
 
 class GameSummary(BaseModel):

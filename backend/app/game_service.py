@@ -117,6 +117,9 @@ class Game:
     # is declared a draw (1/2-1/2) regardless of position. Prevents infinite
     # endgames where neither bot can deliver mate. Default 150 = 75 full moves.
     max_half_moves: int = 150
+    # Custom starting position (puzzle mode). chess.STARTING_FEN for normal
+    # games; persisted so replays/loads reconstruct the right board.
+    initial_fen: str = chess.STARTING_FEN
     # Subfolder under ``games_dir`` where this game's JSON lives. Resolved
     # once at game creation by ``folder_resolver.resolve_target_folder`` so
     # every write during the game lands in the same place even if git state
@@ -169,8 +172,20 @@ class Game:
 
     def state(self) -> GameState:
         outcome = self.outcome()
-        result = outcome.result() if outcome else None
-        termination = outcome.termination.name if outcome else None
+        # result() (not board.outcome()) is the authority: it also covers the
+        # move-cap draw and result overrides, where outcome is None. Computing
+        # status from outcome alone left cap-ended games "active" forever
+        # (game aa1a22ac, 2026-06-12): the bot loop had finished and recorded
+        # the game while every API consumer kept polling an immortal ghost.
+        result = self.result()
+        if outcome is not None:
+            termination = outcome.termination.name
+        elif result is not None:
+            termination = (
+                "RESULT_OVERRIDE" if self.result_override is not None else "MOVE_CAP"
+            )
+        else:
+            termination = None
         return GameState(
             game_id=self.game_id,
             fen=self.board.fen(),
@@ -186,6 +201,9 @@ class Game:
             eval_cp=self.eval_cp,
             eval_mate=self.eval_mate,
             paused=self.paused,
+            move_cap=self.max_half_moves,
+            initial_fen=self.initial_fen,
+            aborted_reason=self.aborted_reason,
         )
 
     def summary(self) -> GameSummary:
@@ -237,6 +255,20 @@ class GameService:
         if game is None:
             return
         logger.info("cancel_current_game · %s", game.game_id[:8])
+        await self._teardown(game)
+        self._game = None
+        logger.info("cancel_current_game · cleared")
+
+    async def _teardown(self, game: Game) -> None:
+        """Stop a game's bot loop and release its players.
+
+        Cancelling the task BEFORE closing players matters: the loop may be
+        mid-agent-turn, and an agent left running while a new game is built
+        commits moves against the wrong game — the skill scripts read the
+        process-global CHESS_GAME_ID, which the newest AgentPlayer owns.
+        Observed 2026-06-12 as illegal b1b5 pushes crashing two bot loops
+        when a stale game was re-loaded over a fresh puzzle game.
+        """
         if game.task is not None and not game.task.done():
             game.task.cancel()
             try:
@@ -244,8 +276,6 @@ class GameService:
             except (asyncio.CancelledError, Exception):
                 pass
         await game.close_players()
-        self._game = None
-        logger.info("cancel_current_game · cleared")
 
     def set_paused(self, paused: bool) -> bool:
         """Pause/resume the active game. Returns the new state."""
@@ -266,8 +296,8 @@ class GameService:
                     request.black.type,
                     f" (elo {request.black.elo})" if request.black.elo is not None else "")
         if self._game is not None:
-            logger.info("create_game · closing prior game %s", self._game.game_id[:8])
-            await self._game.close_players()
+            logger.info("create_game · tearing down prior game %s", self._game.game_id[:8])
+            await self._teardown(self._game)
         try:
             self._player_factory.validate_config(request.white)
             self._player_factory.validate_config(request.black)
@@ -275,9 +305,12 @@ class GameService:
             game_id = uuid.uuid4().hex
             from app.folder_resolver import resolve_target_folder
             subfolder = resolve_target_folder().folder
+            initial_fen = request.initial_fen or chess.STARTING_FEN
             game = Game(
                 game_id=game_id,
-                board=chess.Board(),
+                board=chess.Board(initial_fen),
+                initial_fen=initial_fen,
+                max_half_moves=request.max_half_moves or 150,
                 white_config=request.white,
                 black_config=request.black,
                 white_player=self._player_factory.create(
@@ -315,7 +348,8 @@ class GameService:
             data = load_game_file(self._games_dir, game_id)
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail="Game not found.")
-        board = chess.Board()
+        initial_fen = data.get("initial_fen") or chess.STARTING_FEN
+        board = chess.Board(initial_fen)
         for uci in data["uci_moves"]:
             board.push(chess.Move.from_uci(uci))
         white_config = PlayerConfig(**data["white"])
@@ -330,7 +364,7 @@ class GameService:
             )
 
         if self._game is not None:
-            await self._game.close_players()
+            await self._teardown(self._game)
 
         try:
             white_player = self._player_factory.create(
@@ -348,6 +382,7 @@ class GameService:
         game = Game(
             game_id=data["game_id"],
             board=board,
+            initial_fen=initial_fen,
             white_config=white_config,
             black_config=black_config,
             white_player=white_player,
@@ -357,9 +392,18 @@ class GameService:
             san_moves=list(data["san_moves"]),
             subfolder=existing_subfolder(self._games_dir, data["game_id"]),
         )
+        # A recorded final result is authoritative: cap-ended and overridden
+        # games are NOT board-game-over, and resuming them replays a finished
+        # game. Worse, BoardPage auto-loads on a 404 — so an open browser tab
+        # on a finished game silently evicted the live puzzle game and
+        # resumed the old one (observed twice on 2026-06-13).
+        recorded_result = (data.get("result") or "").strip()
+        if recorded_result and recorded_result != "*":
+            game.result_override = recorded_result
+
         self._game = game
         asyncio.create_task(self._update_eval(game))
-        if not game_over:
+        if not game_over and not game.is_over():
             self._schedule_bot_turns(game)
         return game.state()
 
@@ -367,10 +411,16 @@ class GameService:
         summaries = []
         for data in list_game_files(self._games_dir):
             try:
-                board = chess.Board()
+                board = chess.Board(data.get("initial_fen") or chess.STARTING_FEN)
                 for uci in data["uci_moves"]:
                     board.push(chess.Move.from_uci(uci))
-                result = board.result(claim_draw=True) if board.is_game_over(claim_draw=True) else None
+                # Recorded result first: cap-ended/overridden games are not
+                # board-game-over and would otherwise list as "active".
+                recorded = (data.get("result") or "").strip()
+                if recorded and recorded != "*":
+                    result = recorded
+                else:
+                    result = board.result(claim_draw=True) if board.is_game_over(claim_draw=True) else None
                 san_moves = data["san_moves"]
                 summaries.append(GameSummary(
                     game_id=data["game_id"],
@@ -786,6 +836,9 @@ class GameService:
         save_game(
             self._games_dir,
             game_id=game.game_id,
+            initial_fen=(
+                game.initial_fen if game.initial_fen != chess.STARTING_FEN else None
+            ),
             white=game.white_config.model_dump(),
             black=game.black_config.model_dump(),
             uci_moves=list(game.uci_moves),

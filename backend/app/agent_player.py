@@ -1,31 +1,24 @@
 """AgentPlayer: skillful-agent backed chess player for the white side.
 
-A turn proceeds as a sequence of ``run_stream`` calls (attempts). On the very
-first turn of a game the conversation is empty. On subsequent turns, the
-conversation carries the agent's own reasoning from the previous turn as the
-sole prior context ("turn memory").
+Memory model (blocklist, since 2026-06-12): the conversation PERSISTS across
+turns within a game — the skill stays loaded, wiki pages the agent read stay
+in context, the system prompt is always present. A pydantic-ai history
+processor prunes what is provably stale before every model request: old
+perception-tool dumps are collapsed to a marker, old thinking text is
+truncated. See ``_make_pruning_processor`` for the exact keep/drop sets.
 
-Turn memory is agent-authored: ``make_move.py`` requires a ``--reasoning``
-argument. The agent writes whatever it wants there — intent, rejected
-candidates, threats to watch, ongoing plans. On success the script echoes the
-reasoning back in the response JSON; the harness stores it in ``_pending_summary``
-without any further LLM processing.
-
-Injection is done via a pydantic-ai ``HistoryProcessor`` registered on the game
-agent at construction time. The processor reads from ``_pending_summary``: if a
-note is waiting, it replaces the incoming message history with a minimal
-two-message exchange (prior-turn prompt → agent's reasoning) and clears the
-slot. This fires before every ``run_stream_events`` call — including retries
-within a turn — so failed attempts see the correct prior-turn context with no
-manual reset needed.
+The agent still authors two explicit memory channels on ``make_move``:
+``reasoning`` (its note, kept in history naturally) and ``plan`` (the
+standing plan, tracked in ``TurnMemory`` and re-stated in every turn prompt
+together with the legal-move list).
 
 ``clear_conversation()`` is only called between games, not between turns.
 
-See ``decisions/2026-05-24-per-turn-fresh-context.md`` for the original
-per-turn fresh-context baseline, ``2026-05-25-agent-resigns-when-stuck.md``
-for the resignation policy, ``2026-05-26-stabilization.md`` for the
-budget-warning mechanism, and ``2026-05-26-agent-turn-memory.md`` for the
-agent-authored turn memory decision.
+Decision trail: 2026-05-24-per-turn-fresh-context (baseline) →
+2026-05-26-agent-turn-memory (single note) → 2026-06-10-structured-turn-memory
+(plan channel + system-prompt-loss fix) → this blocklist model (persistent
+pruned context; motivated by repetitions/phantom pieces/illegal moves traced
+to per-turn re-derivation of the position).
 """
 
 from __future__ import annotations
@@ -34,6 +27,7 @@ import json
 import os
 import re
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 import chess
@@ -66,13 +60,15 @@ _BUDGET_WARN_FRACTION = 0.7
 # Built-in SDK tools the chess agent doesn't need. Narrowing the surface is
 # the single biggest factor in keeping turns from looping — manage_todos
 # alone accounted for roughly half of a 169-tool-call runaway turn during
-# stabilization testing. Only ``use_skill`` and ``run_script`` remain.
+# stabilization testing. After use_skill, the chess agent's surface is the
+# skill's own scripts (exposed as typed tools chess__show_position,
+# chess__make_move, …) plus read_reference for the knowledge wiki.
 _DISABLED_TOOLS = [
     "manage_todos",          # no plan/todo workflow needed for chess
     "register_skill",
     "scaffold_skill",
     "write_skill_file",
-    "read_reference",        # chess skill has no references/ dir
+    "list_skill_files",      # wiki is navigated via its index pages, not a flat file list
     "call_client_function",
     "compress_message",      # compaction is harness-driven, not agent-driven
     "retrieve_message",
@@ -82,12 +78,21 @@ _DISABLED_TOOLS = [
     "archive_thread",
     "spawn_agent",
 ]
+# read_reference is intentionally NOT disabled: it is how the agent reads
+# wiki pages (path-based since skillful-agent @435fa8d). search_wiki.py
+# (a skill script, exposed as chess__search_wiki) finds pages by keyword;
+# read_reference reads the page body.
 
 _SYSTEM_PROMPT_EXTRA = (
     "You are playing chess as white. "
-    "Your FIRST action every turn must be to call use_skill('chess') — "
-    "it contains the scripts and all instructions for how to play. "
-    "Do not call run_script before you have called use_skill."
+    "On your FIRST turn of the game, call use_skill('chess') — it contains "
+    "all instructions for how to play and reveals the chess tools "
+    "(chess__show_position, chess__imagine_move, chess__make_move, and "
+    "others). The skill and its instructions STAY LOADED for the whole "
+    "game — do not reload it on later turns unless the chess__ tools are "
+    "missing from your tool list. Earlier turns of this game remain in your "
+    "context; stale tool outputs from previous turns are pruned and marked "
+    "as such — re-run a tool if you need fresh eyes on the position."
 )
 
 
@@ -138,8 +143,17 @@ def _build_agent(game_id: str, history_processor=None):
 
     if ex3_base_url:
         from pydantic_ai.providers.openai import OpenAIProvider
+        from pydantic_ai.models.openai import OpenAIModelProfile
         provider = OpenAIProvider(base_url=ex3_base_url, api_key="dummy")
         model_name = os.getenv("SKILL_AGENT_OPENAI_MODEL", "google/gemma-4-31B-it")
+        # vLLM / Gemma 4: disable strict tool definitions and tool_choice=required.
+        # The default OpenAI profile sends both; vLLM does not support strict, and
+        # tool_choice=required behaviour is undefined for Gemma. These cause
+        # intermittent HTTP 400 errors with malformed JSON messages.
+        model_profile = OpenAIModelProfile(
+            openai_supports_strict_tool_definition=False,
+            openai_supports_tool_choice_required=False,
+        )
     elif azure_endpoint:
         from pydantic_ai.providers.azure import AzureProvider
         provider = AzureProvider(
@@ -148,10 +162,12 @@ def _build_agent(game_id: str, history_processor=None):
             api_key=os.environ["SKILL_AGENT_AZURE_API_KEY"],
         )
         model_name = os.getenv("SKILL_AGENT_OPENAI_MODEL", "gpt-4o-mini")
+        model_profile = None
     else:
         from pydantic_ai.providers.openai import OpenAIProvider
         provider = OpenAIProvider(api_key=os.environ["OPENAI_API_KEY"])
         model_name = os.getenv("SKILL_AGENT_OPENAI_MODEL", "gpt-4o-mini")
+        model_profile = None
 
     cfg = AgentConfig(
         disabled_tools=_DISABLED_TOOLS,
@@ -166,22 +182,32 @@ def _build_agent(game_id: str, history_processor=None):
         # show_position + 1–3 imagine_move + make_move, with reasoning text
         # between). 16 leaves headroom for one or two illegal-move retries
         # inside a single run_stream before the harness-level retry kicks in.
-        max_turns=16,
+        max_turns=24,
         history_processors=[history_processor] if history_processor is not None else [],
     )
     model = OpenAIChatModel(model_name, provider=provider)
     return Agent(model=model, skills_dir=SKILLS_DIR, config=cfg)
 
 
-def _committed_move_from_result(
-    tool_name: str, args: dict, result: Any
-) -> tuple[str, str] | None:
-    """Return ``(uci, reasoning)`` from a successful ``make_move.py`` result, or None.
+# The make_move script is exposed as this typed tool after use_skill.
+# (skillful-agent registers each scripts/<name>.py as ``<skill>__<name>``.)
+_MAKE_MOVE_TOOL = "chess__make_move"
 
-    ``make_move.py`` prints ``{"ok": true, "move": "...", "reasoning": "...", ...}``
-    on success; the SDK wraps it as ``{"ok": ..., "stdout": "...", ...}``.
+
+def _committed_move_from_result(
+    tool_name: str, result: Any
+) -> dict[str, Any] | None:
+    """Return the inner payload dict from a successful ``chess__make_move``
+    result, or None. Carries ``move``, ``reasoning``, and the optional memory
+    channels ``plan``, ``goal``, and ``dismissed_references``.
+
+    ``make_move.py`` prints ``{"ok": true, "move": "...", "reasoning": "...",
+    "plan": ..., ...}`` on success; the script-tool handler wraps it as
+    ``{"ok": ..., "stdout": "...", ...}``. Detection keys on the tool name and
+    the result payload — not on call args — because typed script tools do not
+    record their input to ``tool_log``.
     """
-    if tool_name != "run_script" or args.get("filename") != "make_move.py":
+    if tool_name != _MAKE_MOVE_TOOL:
         return None
     if not isinstance(result, str):
         return None
@@ -191,8 +217,18 @@ def _committed_move_from_result(
     except (json.JSONDecodeError, TypeError, AttributeError):
         return None
     if inner.get("ok") and inner.get("move"):
-        return inner["move"], inner.get("reasoning", "")
+        return inner
     return None
+
+
+def _result_says_game_vanished(result: Any) -> bool:
+    """True when a chess tool result indicates the backend no longer has the
+    game (deleted, superseded, or finished out from under the agent). Without
+    this check the turn loop burns all its attempts re-asking a dead game for
+    state — observed as a 10-attempt 404 cascade in game 291e7938 (2026-06-12)."""
+    if not isinstance(result, str):
+        return False
+    return "Game not found" in result or "HTTP Error 404" in result
 
 
 def _looks_like_provider_400(exc: Exception) -> bool:
@@ -202,6 +238,52 @@ def _looks_like_provider_400(exc: Exception) -> bool:
     bad_request = "400" in msg or "BadRequest" in msg or "status_code: 400" in msg
     json_parse = ("Expecting" in msg and "delimiter" in msg) or "JSONDecodeError" in msg
     return bad_request or json_parse
+
+
+def _looks_like_transient_network(exc: Exception) -> bool:
+    """True for network blips between laptop and eX3 (the SSH tunnel
+    stalling or dropping mid-stream). These deserve a retry attempt, not a
+    game abort: the position is unchanged and the next attempt opens a
+    fresh connection. Persistent outages still abort once the per-turn
+    attempt budget is exhausted."""
+    name = type(exc).__name__
+    msg = str(exc)
+    return (
+        "ReadTimeout" in name or "ReadTimeout" in msg
+        or "ConnectTimeout" in name
+        or "APIConnectionError" in name
+        or "Connection error" in msg
+        or "ConnectionResetError" in name
+    )
+
+
+def _drill_state_for_prompt(board: chess.Board) -> str:
+    """Drill-state advisor line(s) for the turn prompt, or ''.
+
+    The advisor lives in the skill's _radar.py (it is also embedded in
+    chess__show_position output), but transcripts show the model skips
+    show_position on half its turns and then freestyles out of the drill
+    (game 3a787edc: 8 of 15 turns never saw the drill line). The turn
+    prompt already carries mechanical board facts (FEN, legal moves);
+    the drill state is the same class of fact, so deliver it the same way.
+    Best-effort: any import or compute failure returns ''.
+    """
+    try:
+        import importlib.util
+        global _RADAR_MODULE
+        if "_RADAR_MODULE" not in globals() or _RADAR_MODULE is None:
+            radar_path = SKILLS_DIR / "chess" / "scripts" / "_radar.py"
+            spec = importlib.util.spec_from_file_location("_chess_radar", radar_path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            _RADAR_MODULE = module
+        lines = _RADAR_MODULE._drill_state_lines(board, board.turn)
+        return "\n" + "\n".join(lines) if lines else ""
+    except Exception:
+        return ""
+
+
+_RADAR_MODULE = None
 
 
 _BUDGET_REMINDER_TEMPLATE = (
@@ -220,46 +302,213 @@ _NO_MOVE_REMINDER_TEMPLATE = (
 
 # ── Turn memory ───────────────────────────────────────────────────────────
 #
-# Turn memory is agent-authored. make_move.py requires a --reasoning argument;
-# the agent writes its own note there (intent, rejected candidates, threats,
-# ongoing plans). On success the script echoes reasoning back in the response
-# JSON; the harness stores it in ``_pending_summary`` without any further LLM
-# processing.
+# Turn memory is agent-authored and structured. make_move.py requires
+# --reasoning (the note about this move) and accepts an optional --plan (the
+# standing multi-move plan). The harness stores both in a TurnMemory without
+# any further LLM processing, and renders them back as the agent's own prior
+# message at the start of every subsequent attempt.
 #
-# A HistoryProcessor registered on the game agent reads ``_pending_summary``
-# before every model request: if a note is waiting, it replaces the incoming
-# message history with a minimal two-message exchange (prior-turn prompt →
-# agent's reasoning) and clears the slot. This fires automatically on every
-# run_stream_events call, including retries, so no manual history reset is
-# needed between attempts.
+# Retention policy (deliberately aggressive — the reader is a weak model):
+#   kept      : standing plan (until replaced/cleared), last move + note,
+#               previous turn's prompt (opponent move + FEN).
+#   forgotten : everything else — older notes, tool transcripts, failed
+#               attempts. The FEN is the complete game state; the radar in
+#               show_position covers repetition/draw-rule history.
 
 
-def _make_turn_memory_processor(pending: list):
-    """Return a HistoryProcessor that injects the pending turn memory.
+@dataclass
+class TurnMemory:
+    """Curated cross-turn memory for one game."""
 
-    ``pending`` is a one-element list used as a mutable container:
-      - Empty    → no prior turn; pass history through unchanged.
-      - [(p, r)] → ``p`` is the original prompt, ``r`` is the agent's
-                   reasoning from --reasoning; replace the entire incoming
-                   message history with the minimal two-message exchange and
-                   clear the slot.
+    plan: str | None = None
+    plan_move: int | None = None        # fullmove number when the plan was set
+    goal: str | None = None             # short-term objective (next 1-3 moves)
+    goal_move: int | None = None        # fullmove number when the goal was set
+    last_prompt: str | None = None      # previous turn's user prompt
+    last_reasoning: str | None = None   # agent's note at last commit
+    last_move_uci: str | None = None
+    last_move_number: int | None = None
+    # Wiki pages the agent has dismissed as no-longer-relevant. The pruning
+    # processor collapses their read_reference results from the next model
+    # request onward. "all" (the literal string) wipes every page read so far.
+    dismissed_refs: set[str] | None = None
+    # Set by get_move before each run_stream attempt; consumed by the history
+    # processor on the attempt's first model request. Within-attempt requests
+    # (tool-call loops) pass through so the in-flight conversation survives.
+    armed: bool = False
 
-    Fires before every ``run_stream_events`` call (including retries within a
-    turn), so the correct prior-turn context is always in place.
+    _CLEAR_WORDS = frozenset({"none", "no plan", "no goal", "clear", "-", ""})
+
+    def record_commit(
+        self, *, prompt: str, uci: str, reasoning: str,
+        plan: str | None, move_number: int,
+        goal: str | None = None, dismissed: list[str] | None = None,
+    ) -> None:
+        self.last_prompt = prompt
+        self.last_reasoning = reasoning
+        self.last_move_uci = uci
+        self.last_move_number = move_number
+        if plan is not None:
+            cleaned = plan.strip()
+            if cleaned.lower() in self._CLEAR_WORDS:
+                self.plan = None
+                self.plan_move = None
+            else:
+                self.plan = cleaned
+                self.plan_move = move_number
+        if goal is not None:
+            cleaned = goal.strip()
+            if cleaned.lower() in self._CLEAR_WORDS:
+                self.goal = None
+                self.goal_move = None
+            else:
+                self.goal = cleaned
+                self.goal_move = move_number
+        if dismissed:
+            if self.dismissed_refs is None:
+                self.dismissed_refs = set()
+            for path in dismissed:
+                cleaned = path.strip().lstrip("/")
+                if cleaned.startswith("references/"):
+                    cleaned = cleaned[len("references/"):]
+                if cleaned:
+                    self.dismissed_refs.add(cleaned)
+
+    def has_memory(self) -> bool:
+        return self.last_prompt is not None
+
+    def render_note(self) -> str:
+        """The synthetic assistant message: the agent's memory in its own
+        voice. Kept short by construction — one note plus one plan."""
+        parts: list[str] = []
+        if self.last_reasoning:
+            parts.append(
+                f"My note on the move I just played ({self.last_move_uci}): "
+                f"{self.last_reasoning}"
+            )
+        if self.plan:
+            age = ""
+            if (
+                self.last_move_number is not None
+                and self.plan_move is not None
+                and self.last_move_number - self.plan_move >= 10
+            ):
+                age = (
+                    f", {self.last_move_number - self.plan_move} moves ago — "
+                    f"I should check it still fits the position"
+                )
+            parts.append(
+                f"My standing plan (set on move {self.plan_move}{age}): {self.plan}"
+            )
+        else:
+            parts.append(
+                "I have no standing plan. Unless a tactic decides this move, "
+                "I should form one and record it via the plan argument of "
+                "chess__make_move."
+            )
+        return "\n\n".join(parts)
+
+
+def _make_pruning_processor(memory: TurnMemory):
+    """Blocklist memory: the conversation persists across turns; this
+    processor only PRUNES what is provably stale, before every model
+    request.
+
+    Kept in full: the system prompt, every user prompt, tool calls
+    (names+args), make_move results, use_skill output (the skill stays
+    loaded), and read_reference results (theory the agent chose to read
+    stays available). Pruned: perception-tool outputs from earlier turns
+    (show_position / imagine_move / list_legal_moves dumps describe stale
+    positions and dominate token count), and old thinking text is truncated
+    to its head. The current turn (everything after the last user prompt)
+    is never touched.
+
+    Rationale (2026-06-12 session review): the previous allowlist memory
+    forced the model to re-derive the position every turn, producing
+    repetitions, phantom pieces, and illegal moves. Persistent-but-pruned
+    context keeps theory and intentions while preventing overflow.
     """
-    from pydantic_ai.messages import ModelRequest, ModelResponse, UserPromptPart, TextPart
+    from pydantic_ai.messages import (
+        ModelRequest, ModelResponse, TextPart, ToolCallPart, ToolReturnPart,
+        UserPromptPart,
+    )
+    import dataclasses
+
+    KEEP_TOOLS = ("use_skill", "read_reference", "chess__make_move", "chess__search_wiki")
+    PRUNED_NOTE = "[stale output from an earlier turn pruned - re-run the tool for the current position]"
+    DISMISSED_NOTE = "[wiki page dismissed by you as no longer relevant - re-read it with read_reference if it becomes relevant again]"
+    # Old thinking text is kept up to this length; the head usually carries
+    # the conclusion ("I will play X because..."), the tail the rambling.
+    THINKING_KEEP = 600
+
+    def _ref_path_of_call(pt) -> str | None:
+        """Wiki path from a read_reference ToolCallPart, normalised the same
+        way TurnMemory.record_commit normalises dismissals."""
+        args = pt.args
+        if isinstance(args, str):
+            try:
+                args = json.loads(args)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        if not isinstance(args, dict):
+            return None
+        path = str(args.get("path") or "").strip().lstrip("/")
+        if path.startswith("references/"):
+            path = path[len("references/"):]
+        return path or None
 
     def processor(messages):
-        if not pending:
-            return messages
-        current_request = messages[-1]
-        original_prompt, reasoning = pending[0]
-        pending.clear()
-        return [
-            ModelRequest(parts=[UserPromptPart(content=original_prompt)]),
-            ModelResponse(parts=[TextPart(content=reasoning)]),
-            current_request,
-        ]
+        # Find the start of the current turn: the last ModelRequest that
+        # carries a UserPromptPart.
+        last_user_idx = 0
+        for i, m in enumerate(messages):
+            if isinstance(m, ModelRequest) and any(
+                isinstance(pt, UserPromptPart) for pt in m.parts
+            ):
+                last_user_idx = i
+
+        # Map read_reference tool_call_ids to wiki paths so dismissals (which
+        # name paths) can find the results to collapse.
+        dismissed = memory.dismissed_refs or set()
+        dismissed_call_ids: set[str] = set()
+        if dismissed:
+            wipe_all = "all" in dismissed
+            for m in messages:
+                if not isinstance(m, ModelResponse):
+                    continue
+                for pt in m.parts:
+                    if isinstance(pt, ToolCallPart) and pt.tool_name == "read_reference":
+                        path = _ref_path_of_call(pt)
+                        if wipe_all or (path is not None and path in dismissed):
+                            dismissed_call_ids.add(pt.tool_call_id)
+
+        out = []
+        for i, m in enumerate(messages):
+            if i >= last_user_idx:
+                out.append(m)
+                continue
+            if isinstance(m, ModelRequest):
+                parts = []
+                for pt in m.parts:
+                    if isinstance(pt, ToolReturnPart) and isinstance(pt.content, str):
+                        if pt.tool_call_id in dismissed_call_ids:
+                            pt = dataclasses.replace(pt, content=DISMISSED_NOTE)
+                        elif pt.tool_name not in KEEP_TOOLS and len(pt.content) > 400:
+                            pt = dataclasses.replace(pt, content=PRUNED_NOTE)
+                    parts.append(pt)
+                out.append(dataclasses.replace(m, parts=parts))
+            elif isinstance(m, ModelResponse):
+                parts = []
+                for pt in m.parts:
+                    if isinstance(pt, TextPart) and len(pt.content) > THINKING_KEEP:
+                        pt = dataclasses.replace(
+                            pt, content=pt.content[:THINKING_KEEP - 20] + " [truncated]"
+                        )
+                    parts.append(pt)
+                out.append(dataclasses.replace(m, parts=parts))
+            else:
+                out.append(m)
+        return out
 
     return processor
 
@@ -281,21 +530,60 @@ class AgentPlayer(Player):
     def __init__(self, game_id: str, event_sink: Callable[[dict[str, Any]], None]) -> None:
         self._game_id = game_id
         self._event_sink = event_sink
-        # Shared mutable slot used to pass the prior-turn summary to the
-        # HistoryProcessor. Empty at game start and after the processor
-        # consumes it. Set by _compact_turn after each committed move.
-        self._pending_summary: list = []
-        processor = _make_turn_memory_processor(self._pending_summary)
+        # Structured cross-turn memory (standing plan + last note). Updated
+        # at each successful commit; rendered into the synthetic prior
+        # exchange by the history processor at the start of each attempt.
+        self._memory = TurnMemory()
+        processor = _make_pruning_processor(self._memory)
         self._agent = _build_agent(game_id, history_processor=processor)
 
     async def get_move(self, board: chess.Board, last_san: str | None = None) -> chess.Move:
         from skill_agent import AgentContextOverflowError, TextDeltaEvent, ToolCallEvent, ToolResultEvent
         from pydantic_ai.exceptions import UsageLimitExceeded
 
+        # Re-assert ownership of the process-global script env every turn.
+        # Skill scripts read CHESS_GAME_ID from os.environ at exec time; if
+        # another AgentPlayer was built since (game replaced mid-turn), the
+        # var points at the wrong game and commits cross games. Belt to the
+        # GameService._teardown braces.
+        os.environ["CHESS_GAME_ID"] = self._game_id
+        os.environ["CHESS_API_BASE"] = API_BASE
+
+        legal_sans = [board.san(m) for m in board.legal_moves]
+        legal_line = ", ".join(legal_sans[:90])
+        plan_line = (
+            f"\nYour standing plan (long-term, set on move {self._memory.plan_move}): "
+            f"{self._memory.plan}"
+            if self._memory.plan else ""
+        )
+        goal_line = (
+            f"\nYour current goal (short-term, set on move {self._memory.goal_move}): "
+            f"{self._memory.goal}"
+            if self._memory.goal else ""
+        )
+        # After turn 1 the chess skill is already loaded and its chess__*
+        # tools are live. The SDK's own system prompt says "always use_skill
+        # before a skill's work", which the model obeys ritually every turn —
+        # wasting a tool call and a round-trip (34 of 35 turns in game
+        # 9b0d7590). Reassert here, at the point of action, that it is loaded
+        # and must NOT be called again.
+        skill_line = (
+            ""
+            if last_san is None
+            else (
+                "\n\nThe `chess` skill is ALREADY loaded and its chess__ tools "
+                "are live — do NOT call use_skill again. Go straight to "
+                "chess__show_position."
+            )
+        )
         base_prompt = (
-            f"Opponent played {last_san}.\n\nCurrent position (FEN):\n{board.fen()}"
-            if last_san else
-            f"Game start.\n\nCurrent position (FEN):\n{board.fen()}"
+            (f"Opponent played {last_san}." if last_san else "Game start.")
+            + f"\n\nCurrent position (FEN):\n{board.fen()}"
+            + f"\nLegal moves: {legal_line}"
+            + plan_line
+            + goal_line
+            + _drill_state_for_prompt(board)
+            + skill_line
         )
 
         max_turns_cfg = getattr(self._agent._config, "max_turns", None) or 16
@@ -381,25 +669,48 @@ class AgentPlayer(Player):
                     elif isinstance(event, ToolResultEvent):
                         flush_thinking()
                         emit({"type": "tool_result", "tool": event.name, "result": event.result})
+                        # A dead game means no number of retries can produce
+                        # a move — abort the game instead of looping through
+                        # the attempt budget against 404s.
+                        if (
+                            event.name.startswith("chess__")
+                            and _result_says_game_vanished(event.result)
+                        ):
+                            raise PlayerError(
+                                "game_vanished: backend no longer has this game "
+                                "(404/Game not found from a chess tool)."
+                            )
                         # Check directly against the result we just received,
                         # rather than scanning the SDK's tool_log. This works
                         # because the most recent tool_call's args are the
                         # ones that produced this result (the model is
                         # serially driven; no parallel tool calls).
-                        if event.name == "run_script":
-                            tool_log = self._agent._deps.tool_log
-                            last_args = tool_log[-1].input if tool_log else {}
-                            result = _committed_move_from_result(event.name, last_args, event.result)
-                            if result is not None:
-                                committed_uci, reasoning = result
+                        if event.name == _MAKE_MOVE_TOOL:
+                            inner = _committed_move_from_result(event.name, event.result)
+                            if inner is not None:
+                                committed_uci = inner["move"]
+                                reasoning = inner.get("reasoning", "")
                                 flush_thinking()
-                                # Compaction fires only on a successful commit.
-                                # Store the agent's own reasoning as the
-                                # turn memory; the HistoryProcessor will
-                                # inject it as prior-turn context before the
-                                # next get_move call.
-                                self._pending_summary[:] = [(base_prompt, reasoning)]
-                                emit({"type": "context_summary", "content": reasoning})
+                                # Memory update fires only on a successful
+                                # commit: the note replaces last turn's; the
+                                # plan/goal persist unless the agent wrote new
+                                # ones. The processor renders both at the
+                                # start of the next turn's first attempt.
+                                self._memory.record_commit(
+                                    prompt=base_prompt,
+                                    uci=committed_uci,
+                                    reasoning=reasoning,
+                                    plan=inner.get("plan") or None,
+                                    goal=inner.get("goal") or None,
+                                    dismissed=inner.get("dismissed_references") or None,
+                                    move_number=board.fullmove_number,
+                                )
+                                emit({
+                                    "type": "context_summary",
+                                    "content": reasoning,
+                                    "plan": self._memory.plan,
+                                    "goal": self._memory.goal,
+                                })
                                 # ``committed_uci`` here is the canonical UCI
                                 # returned by ``/agent-commit`` — already
                                 # validated against the live board, so a bare
@@ -423,8 +734,11 @@ class AgentPlayer(Player):
                 warn_next_attempt = True
                 continue
 
+            except PlayerError:
+                raise  # game_vanished and friends — never retried as transient
+
             except Exception as exc:
-                if _looks_like_provider_400(exc):
+                if _looks_like_provider_400(exc) or _looks_like_transient_network(exc):
                     flush_thinking()
                     emit({"type": "provider_error_recovered", "message": str(exc)[:300]})
                     continue

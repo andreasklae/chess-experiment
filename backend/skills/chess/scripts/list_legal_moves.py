@@ -31,29 +31,14 @@ _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 from _eval import render_moves_table  # noqa: E402
+from _live import board_with_history, fetch_state  # noqa: E402
 
 
 def main() -> None:
-    api_base = os.environ.get("CHESS_API_BASE", "http://localhost:8000").rstrip("/")
-    game_id = os.environ.get("CHESS_GAME_ID", "")
-    if not game_id:
-        print("error: CHESS_GAME_ID not set", file=sys.stderr)
-        sys.exit(1)
-
-    url = f"{api_base}/api/games/{game_id}"
-    try:
-        with urllib.request.urlopen(url, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
-    except Exception as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    fen = data.get("fen")
-    if not fen:
-        print("error: backend response missing 'fen'", file=sys.stderr)
-        sys.exit(1)
-
-    board = chess.Board(fen)
+    data = fetch_state()
+    # Board carries the move stack when possible, so the table can flag
+    # repetition/50-move draws in the Flag column.
+    board = board_with_history(data)
     legal = list(board.legal_moves)
     if not legal:
         print(f"_(no legal moves — {'checkmate' if board.is_checkmate() else 'stalemate'})_")

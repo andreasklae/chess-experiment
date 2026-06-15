@@ -168,6 +168,36 @@ def test_moved_piece_itself_not_in_newly_hanging(im):
     assert "on e2" not in hanging_section
 
 
+# ── Value-based (SEE) bad-trade detection ──────────────────────────────────
+
+
+def test_bad_trade_moved_piece_defended_but_losing(im):
+    """Game f2d158d4 move 16: Ne5?? — the knight lands on a square defended by
+    count (d4 pawn) but fxe5/dxe5 nets a knight for a pawn. The count-based
+    hanging warning stays silent; the value-based exchange warning must fire."""
+    board = chess.Board("rn2k2r/pp6/4ppp1/1b1p4/3P4/P1q2N2/R1P2PPP/2BQ1RK1 w kq - 4 16")
+    out = im.render_imagine(board, chess.Move.from_uci("f3e5"))
+    assert "Losing exchange on e5" in out
+
+
+def test_bad_trade_leaves_other_piece_defended_but_losing(im):
+    """Game 9b0d7590 move 9: Nd2?? leaves the c3 knight defended only by the
+    b2 pawn — bxc3 bxc3 nets a knight for a pawn. The newly-hanging section
+    must flag c3 with the value loss even though it is 'defended' by count."""
+    board = chess.Board("r1bqkbnr/2p2pp1/p2p4/n2Pp2p/1p2P3/1BN2N2/PPP2PPP/R1BQK2R w KQkq - 0 9")
+    out = im.render_imagine(board, chess.Move.from_uci("f3d2"))
+    hanging_section = out.split("## Newly hanging own pieces")[1].split("##")[0]
+    assert "knight on c3" in hanging_section
+    assert "lose" in hanging_section and "material" in hanging_section
+
+
+def test_no_bad_trade_warning_on_equal_or_winning_move(im):
+    """A normal developing move (Nf3) and a clean pawn grab must not trigger
+    the losing-exchange warning."""
+    out = im.render_imagine(chess.Board(), chess.Move.from_uci("g1f3"))
+    assert "Losing exchange" not in out
+
+
 # ── Attack/defense deltas (no longer attacking / defending) ────────────────
 
 

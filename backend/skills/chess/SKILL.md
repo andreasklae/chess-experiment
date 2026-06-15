@@ -1,19 +1,21 @@
 ---
 name: chess
 description: >
-  Chess-playing skill for the white side of a live game. Provides scripts to
+  Chess-playing skill for the white side of a live game. Provides tools to
   inspect the current position (with material balance baked in), imagine a
   candidate move and see its consequences, list legal moves with SAN and
-  short descriptions, and commit a chosen move. Read on every turn before
-  playing.
+  short descriptions, and commit a chosen move. Bundles a knowledge wiki
+  (openings, principles, strategy, patterns, endgames) you can consult for
+  plans and tactics. Load once at the start of the game — the skill and
+  these instructions stay loaded for all later turns.
 ---
 # Chess Player
 
-You are the white player in a live chess game. **Your only job this turn is to call `make_move.py`.** Everything else — reading the position, imagining candidates, reasoning about tactics — is preparation for that call. A turn that ends without calling `make_move.py` is a forfeit.
+You are the white player in a live chess game. **Your only job this turn is to call `chess__make_move`.** Everything else — reading the position, imagining candidates, reasoning about tactics — is preparation for that call. A turn that ends without calling `chess__make_move` is a forfeit.
 
 **This is not a chess analysis task. You are not writing a report. You are making a move.**
 
-The skill name is `chess`. Always use that exact name when calling `use_skill` or `run_script`.
+The skill name is `chess`. Calling `use_skill("chess")` ONCE (at the start of the game) reveals the chess tools listed below — they appear in your tool list as `chess__show_position`, `chess__imagine_move`, `chess__list_legal_moves`, `chess__search_wiki`, and `chess__make_move`, and they stay available for the whole game. Do not call `use_skill` again on later turns; these instructions remain in your context.
 
 Before each tool call, write one sentence on what you are about to do and why. After each result, reflect on what it told you. Keep it brief — this is your reasoning trace, not an essay.
 
@@ -22,43 +24,58 @@ Before each tool call, write one sentence on what you are about to do and why. A
 **Every turn must end with:**
 
 ```
-run_script("chess", "make_move.py", ["<move>", "<your reasoning>"])
+chess__make_move(move="<move>", reasoning="<your reasoning>")
 ```
 
 This is non-negotiable. Writing "I will play Nf3" in text does nothing. Only the tool call commits the move. Do not stop before you have made this call.
 
-`args` is a list of exactly two strings: the move first, the reasoning second. No flags, no quoting, no escaping — each list element goes straight to the script's `sys.argv`. The move accepts either **UCI** (`e2e4`, `g1f3`, `e1g1`, `e7e8q`) or **SAN** (`e4`, `Nf3`, `O-O`, `e8=Q`); trailing `+` or `#` is ignored. The reasoning is a single element regardless of length — punctuation, apostrophes, and quotes inside the text are all fine.
+`move` and `reasoning` are required; `plan` is optional. The `move` accepts either **UCI** (`e2e4`, `g1f3`, `e1g1`, `e7e8q`) or **SAN** (`e4`, `Nf3`, `O-O`, `e8=Q`); trailing `+` or `#` is ignored. `reasoning` and `plan` are strings of any length — punctuation, apostrophes, and quotes are all fine.
 
-**Reasoning is required.** The move will not commit without it. Write whatever you want — a sentence, a few lines, anything. This text is injected verbatim as the first message on your *next* turn, so it is the only context you will have about what you just did.
+## Your memory between turns
 
-Useful things to include:
+Earlier turns of this game stay in your context, but pruned: old board
+printouts and imagined-move reports are collapsed (they describe stale
+positions — re-run the tool for fresh eyes), while your own reasoning
+notes, committed moves, and every wiki page you have read remain. On top
+of that, three channels you author via `chess__make_move` are shown back
+to you at the start of each turn:
 
-- What you played and why (one phrase)
-- What you considered but decided against (move + one-word reason)
-- One concrete threat the opponent now has that you need to watch
-- Any multi-move plan you are executing, or "none"
+1. **Your note** (`reasoning`, required every move) — what you just played and why. Shown back to you once, on the next turn, then replaced by your next note. Good notes name: the move's purpose, one rejected alternative, one opponent threat to watch.
+2. **Your standing plan** (`plan`, optional) — your LONG-TERM plan, **goal + method in 1–2 sentences** (e.g. "trade down to the K+R endgame, then drill-mate"). It does NOT reset: it is shown back to you every turn, with its age, until you pass a new one. Omit `plan` to keep your current plan. Pass a new `plan` when you form, change, or complete one; pass `plan="none"` to clear it.
+3. **Your current goal** (`goal`, optional) — your SHORT-TERM objective: what the next 1–3 moves must achieve (e.g. "drive the king from e6 to the 8th rank", "get my king to f5"). Same persistence as `plan`. Keep it concrete and checkable — when the board shows it achieved, set the next goal with your move.
+
+Keep the two horizons in sync: the plan says where the game is going, the
+goal says what you are doing about it right now. Update the goal often
+(every few moves); update the plan when the position's character changes.
+
+**When your strategy changes**, wiki pages you read for the old strategy
+are dead weight. Pass `dismiss_references="<path>[,<path>...]"` (or
+`"all"`) with your move to drop their text from your context from the
+next turn on — you can always `read_reference` them again later.
+
+The FEN in each turn's message is the complete game state, and `chess__show_position`'s radar tracks repetition/draw rules — so the plan is the one thing only *you* can carry forward. **A plan you do not write down is lost at the end of the turn.** **When you start a forced sequence from a wiki page (e.g. the smothered-mate sequence), write the REMAINING moves into `plan` verbatim** (e.g. plan="Forced: now Nf7+, then Nh6+ double check, then Qg8+!! sacrifice, then Nf7#") and on each following turn play the next move of the plan after confirming the opponent replied as forced — order is everything in a forced line. When your memory says "no standing plan" and no tactic decides the move, form one (read `strategic-thinking/make-a-plan.md`) and record it with your move.
 
 Examples:
 
 ```
-run_script("chess", "make_move.py", ["g1f3", "Developed knight to f3 controlling center. Rejected e2e4 (too passive). Watch: opponent may push c5. Sequence: none."])
+chess__make_move(move="g1f3", reasoning="Developed knight to f3 controlling center. Rejected e2e4 (too passive). Watch: opponent may push c5.")
 
-run_script("chess", "make_move.py", ["Nf3", "Same move in SAN — both forms work."])
+chess__make_move(move="a5a6", reasoning="Pushed the passer. Queen on b7 guards a7. Watch: perpetual check tries on e-file.", plan="Promote the a-pawn: escort with queen, block checks, then king-queen mate.")
 ```
 
-This page tells you what scripts exist and how to use them well.
+This page tells you what tools exist and how to use them well.
 
 ## Trust your tools over your intuition
 
 Your chess intuition is unreliable — you will misread tactics, miscount
-attackers, miss pins, and overlook hanging pieces. The scripts below
+attackers, miss pins, and overlook hanging pieces. The tools below
 were built precisely because that intuition cannot be trusted. They are
 deterministic: they compute geometry, material, and legality directly
 from the board, and they do not make mistakes.
 
 So: **when a tool's output disagrees with your read of the position,
-trust the tool.** If `show_position` says your bishop is attacked by
-two pieces and you only "see" one, there are two. If `imagine_move`
+trust the tool.** If `chess__show_position` says your bishop is attacked by
+two pieces and you only "see" one, there are two. If `chess__imagine_move`
 flags a piece as newly hanging, it is hanging — even if your intuition
 says the move feels safe.
 
@@ -79,8 +96,8 @@ enough information is to play. Concretely:
 - **If you see an obviously good move, play it.** A free capture (an
   enemy piece undefended), a forced mate, a winning tactical sequence
   with no real downside — these do not need more verification. Calling
-  `imagine_move` to confirm a free queen capture is wasted work. Play
-  the move. A `checkmate` flag in `list_legal_moves` is the ultimate
+  `chess__imagine_move` to confirm a free queen capture is wasted work. Play
+  the move. A `checkmate` flag in `chess__list_legal_moves` is the ultimate
   obviously good move — commit it immediately.
 - **After imagining 2–3 serious candidates, pick the best and commit.**
   The tools cannot tell you more than you already know once you've seen
@@ -94,6 +111,49 @@ enough information is to play. Concretely:
   tool budget** — when you see that warning, commit the best
   candidate immediately rather than starting another investigation.
 
+## Your knowledge wiki
+
+You have a bundled wiki of chess knowledge — openings, principles,
+strategy, pawn structures, tactical patterns, mating patterns, endgames.
+It is *your own accumulated knowledge*, and it grows over time. Use it
+when you need a **plan** or want to **recognise a tactic**, not on every
+turn.
+
+Two tools reach the wiki:
+
+```
+read_reference(skill_name="chess", path="index.md")          # read one page (start here)
+chess__search_wiki(args=["back rank mate"])                  # find pages by keyword
+```
+
+- **`read_reference(skill_name="chess", path="<path>")`** returns a page's
+  full text. Paths are relative to the wiki root: `index.md`,
+  `patterns/index.md`, `patterns/mating-patterns/back-rank-mate.md`.
+  **Always start at `index.md`** — it is a routing decision-tree that sends
+  you to the right folder by what the position needs; each folder's
+  `index.md` routes one level deeper.
+- **`chess__search_wiki(args=["<keywords>"])`** returns matching pages'
+  paths and frontmatter (description, triggers, tags) — *not* their bodies.
+  Each result includes the exact `read_reference` call to read it. Use
+  search when you know a concept but not where it lives, then read the page
+  it points to.
+
+**When to consult the wiki (not every turn):**
+
+- The position is quiet or unclear and you need a *plan* → start at
+  `index.md`, route to `strategic-thinking/`.
+- You sense a tactic (loose enemy piece, exposed king, pieces on a line)
+  but can't name or calculate it → `patterns/` (or search).
+- The enemy king looks matable → `patterns/mating-patterns/`.
+- Few pieces left and you're unsure of technique → `endgames/`.
+
+**When NOT to:** if the move is obvious (free capture, flagged
+`checkmate`, only-move), just play it. Reading the wiki costs tokens from
+this turn's budget — route deliberately, read one or two pages, then get
+back to choosing a move. The wiki tells you *what to look for*; the
+perception tools (`chess__imagine_move`, `chess__list_legal_moves`)
+*verify* it.
+
 ## Turn workflow
 
 A turn proceeds roughly like this. Skip steps when the move is obvious;
@@ -102,29 +162,43 @@ well under ten tool calls. Between each tool call/step, do some reasoning, think
 
 0. **Always check for checkmate first.** Before anything else, ask
    yourself: can I deliver checkmate this turn? In endgame positions
-   (few pieces, king close to the edge), run `list_legal_moves` and
-   scan the Flag column for `checkmate`. If any move is flagged
+   (few pieces, king close to the edge), call `chess__list_legal_moves`
+   and scan the Flag column for `checkmate`. If any move is flagged
    `checkmate`, play it immediately — there is nothing to verify.
    **Do not skip this step in any position where you have a material
    advantage** — the goal is to win, not just to maintain an edge.
-1. **See the position.** Run `show_position` to get the ASCII board,
-   the material balance (with verdict and caveat), and the
+0b. **Consult your memory.** Your prior note, standing plan, and current
+   goal are shown at the top of the turn. If they still fit the position,
+   prefer candidate moves that advance the goal; deviate only for tactics
+   (a free capture, a mate, a threat that must be answered). If the goal
+   is achieved or stale — or you have none — write a new one when you
+   commit. A turn that neither advances the goal nor reacts to a threat
+   is shuffling; do not shuffle.
+1. **See the position.** Call `chess__show_position` to get the ASCII
+   board, the material balance (with verdict and caveat), and the
    attack/defense map. The turn message gives you the FEN, but reading
    the position with explicit "your bishop on c4 is attacked by knight
    on c6, defended by pawn on d3" lines is far more reliable than
    parsing FEN.
+1b. **Consult the wiki if the position calls for it.** If the plan
+   isn't clear, or you sense a tactic/mate but can't pin it down, or the
+   game has entered a new phase, `read_reference(skill_name="chess",
+   path="index.md")` and follow it to one relevant page (see "Your
+   knowledge wiki" above). Skip this step entirely when the move is
+   obvious — it is not a per-turn ritual.
 2. **Pick candidate moves.** Generate two or three you'd consider,
    including any moves that check or corner the opponent king. Prefer
    aggressive moves that shrink the opponent king's escape squares —
-   the **King mvt** column in `list_legal_moves` and the **Enemy king
-   mobility** line in `imagine_move` tell you exactly how many squares
-   the enemy king can legally move to before and after your move. A
-   negative delta means you restricted the king; zero after means check
+   the **King mvt** column in `chess__list_legal_moves` and the **Enemy
+   king mobility** line in `chess__imagine_move` tell you exactly how many
+   squares the enemy king can legally move to before and after your move.
+   A negative delta means you restricted the king; zero after means check
    or stalemate. Use this to hunt for forcing sequences: if you can
    cut the king from 4 squares to 1, the next move may be checkmate.
-   `list_legal_moves` is available if you want the full annotated
+   `chess__list_legal_moves` is available if you want the full annotated
    list, but usually you'll pick candidates from the position itself.
-3. **Imagine each serious candidate.** Run `imagine_move` with the move as a single positional arg, e.g. `args=["e2e4"]` or `args=["Nf3"]` (UCI or SAN, your choice).
+3. **Imagine each serious candidate.** Call `chess__imagine_move(move="e2e4")`
+   or `chess__imagine_move(move="Nf3")` (UCI or SAN, your choice).
    It plays the move on a copy of the board and reports:
 
    - Whether the move gives check or mate.
@@ -149,25 +223,39 @@ well under ten tool calls. Between each tool call/step, do some reasoning, think
    defender, or feels tactical, imagine it before you commit** —
    unless the move is obviously good per the rule above. Cheap
    calculation prevents expensive blunders.
-4. **Commit.** Call `make_move.py` with `args=["<move>", "<your reasoning>"]`. The board
-   advances the moment it returns `ok=true`. If it returns `ok=false`, pick
-   a different move from the `legal_moves` list and call again. Never commit
-   a move before you have imagined it — do not hang a piece unless you are
-   certain it is a good sacrifice or trade. The reasoning text is your
-   memory for next turn; write something useful.
+4. **Commit.** Call `chess__make_move(move="<move>", reasoning="<your reasoning>")`.
+   The board advances the moment it returns `ok=true`. If it returns
+   `ok=false`, pick a different move from the `legal_moves` list and call
+   again. Never commit a move before you have imagined it — do not hang a
+   piece unless you are certain it is a good sacrifice or trade. The
+   reasoning text is your memory for next turn; write something useful.
 
-## Scripts
+## Tools
 
 Game context (API base and game ID) is injected via environment
-variables — you don't pass them. The scripts read live board state
+variables — you don't pass them. The position tools read live board state
 from the backend; they don't take a FEN as input. All output is
 markdown.
 
-### `show_position.py`
+Most chess tools are exposed by `use_skill` as `chess__<name>` and take
+their arguments as named fields shown below. Tools that take no chess
+arguments (`chess__list_legal_moves`, `chess__search_wiki`) accept a
+generic `args` list of strings; pass `args=[]` when there is nothing to
+send. `chess__show_position` and `chess__imagine_move` take an optional
+`fen` to analyse hypothetical positions. The wiki reader is the built-in
+`read_reference` tool, not a `chess__` tool.
+
+### `chess__show_position`
 
 ```
-run_script("chess", "show_position.py", [])
+chess__show_position()
+chess__show_position(fen="<fen>")   # analyse a hypothetical position
 ```
+
+With no arguments it reads the live game. With `fen=` it analyses **any
+position you give it** — typically the FEN that `chess__imagine_move` just
+returned, so you can run the full attack/defence map and radar on an
+imagined position before committing. The live game is never touched.
 
 Returns, top to bottom:
 
@@ -187,6 +275,15 @@ Returns, top to bottom:
    least one opponent attacker: who attacks it, and which of your
    pieces defend it.
 6. **Opponent pieces you are attacking** — same, from the other side.
+7. **Mate & draw radar** (only when it has something to say) — mechanical
+   facts that deserve your attention: the opponent is down to a bare king
+   and your material gives a known forced mate (with the exact wiki page to
+   read), the enemy king is on the edge/in a corner with few legal moves,
+   back-rank mate geometry exists, passed pawns and their distance from
+   promotion, and draw-rule warnings (repetition, 50-move rule, and the
+   game's move cap). **Treat radar lines as priorities: if it names a wiki
+   page, read that page before picking candidates; if it warns about
+   repetition or the move cap, pick a forcing move that makes progress.**
 
 Attacker and defender lists expand x-ray batteries. If a sliding
 piece sits behind an immediate attacker on the same line to the
@@ -199,30 +296,47 @@ Pinned pieces are annotated `(pinned)`. A pinned attacker or
 defender may not actually be able to capture or recapture without
 losing the pinned-to piece, so weigh that when reading the chain.
 
-The script surfaces geometry; it does not score exchanges. Decide
+The tool surfaces geometry; it does not score exchanges. Decide
 whether a capture sequence wins or loses material yourself based on
 piece values and the order of recaptures.
 
-### `imagine_move.py`
+### `chess__imagine_move`
 
 ```
-run_script("chess", "imagine_move.py", ["e2e4"])
-run_script("chess", "imagine_move.py", ["Nf3"])
+chess__imagine_move(move="e2e4")
+chess__imagine_move(move="Nf3")
+chess__imagine_move(fen="<fen>", move="Qh5")   # imagine on a hypothetical board
+chess__imagine_move(move="pass")               # what does this position threaten?
 ```
 
-Pass the move as a single positional arg in `args` — UCI (`e2e4`,
-`g1f3`, `e1g1`, `e7e8q`) or SAN (`e4`, `Nf3`, `O-O`, `e8=Q`) both work.
-Trailing `+` or `#` is ignored.
+Pass the move in `move` — UCI (`e2e4`, `g1f3`, `e1g1`, `e7e8q`) or SAN
+(`e4`, `Nf3`, `O-O`, `e8=Q`) both work. Trailing `+` or `#` is ignored.
+
+Two composable extras:
+
+- **`fen=`** imagines the move on any position instead of the live board —
+  chain look-aheads by feeding back the FEN a previous call returned.
+- **`move="pass"`** answers "what does this position *threaten*?": the side
+  to move does nothing and you get the other side's full move table, mate
+  flags included. **Finding your own threats:** imagine your candidate,
+  then call `chess__imagine_move(fen="<resulting fen>", move="pass")` — a
+  `checkmate` flag in that table means your candidate threatens mate in
+  one. Quiet moves that create unstoppable threats are how mating nets are
+  built. (Threats the opponent can easily parry are worth little — check
+  their replies before celebrating.)
 
 Plays the move on a copy of the board (the live board is **not**
-changed — only `make_move` commits) and returns the resulting
+changed — only `chess__make_move` commits) and returns the resulting
 position plus a tactical report:
 
 - **Move** — UCI + SAN, capture details with material value in
   centipawns, castle / en passant / promotion notes.
 - **Check** — `gives check`, `gives checkmate`, `stalemate`, or `none`.
+- **Draw warning** (when applicable) — the move would draw by threefold
+  repetition or the 50-move rule, or recreates an earlier position. When
+  you are winning, treat these moves as losing half a point.
 - **Material balance: before → after (Δ delta)** with the same
-  verdict band and warning as `show_position`.
+  verdict band and warning as `chess__show_position`.
 - **ASCII board** of the resulting position.
 - **Discovered attacks** — your *other* pieces that gain a new
   attack on an enemy piece because the moved piece cleared its line.
@@ -235,9 +349,18 @@ position plus a tactical report:
   doesn't from the new one. Watch the "no longer defending" line —
   that's where you spot abandoning a defender.
 - **Newly hanging own pieces** — pieces that became unsafe as a
-  side-effect of this move (attackers ≥ defenders after, but the
-  piece was safe before). The classic blunder pattern; this is the
-  single most important section.
+  side-effect of this move (more attackers than defenders, OR a square
+  you would lose material on in the exchange even though it is defended).
+  The classic blunder pattern; this is the single most important section.
+- **Losing exchange warning (⚠)** — a value-based check on the moved
+  piece's square. A square can be "defended" by *count* (one pawn guards
+  it) yet still lose you material: if the defender is a pawn and the piece
+  standing there is a knight, the opponent captures and you only win the
+  pawn back — a knight for a pawn. **"Defended" is not the same as "safe".**
+  When you see this warning (or a "lose N pawns in the exchange" note in
+  Newly hanging), you are about to give up material in a trade — only do it
+  if it is a sacrifice you have calculated. This is the single most common
+  way winnable games are thrown away: trust the value, not the count.
 - **En passant available** — appears only when the move grants the
   opponent an en-passant capture in reply.
 - **Opponent legal replies** — full annotated table with UCI, SAN,
@@ -247,42 +370,97 @@ An illegal or unparseable move exits nonzero with a categorised error
 (no piece on that square, path blocked, piece pinned, in check, illegal
 castle, missing/extra promotion piece, etc.), so revise and retry.
 
-### `list_legal_moves.py`
+### `chess__list_legal_moves`
 
 ```
-run_script("chess", "list_legal_moves.py", [])
+chess__list_legal_moves(args=[])
 ```
 
 Returns a markdown table of all legal moves in the current position
 with columns:
 
-- **UCI** — the exact string to pass to `make_move` or `imagine_move`
-  (either UCI or SAN from the next column is accepted).
+- **UCI** — the exact string to pass to `chess__make_move` or
+  `chess__imagine_move` (either UCI or SAN from the next column is accepted).
 - **SAN** — standard algebraic notation (e.g. `Nf3`, `Bxc4`, `O-O`,
   `e8=Q+`).
 - **Description** — short prose (`pawn to e4`, `bishop takes knight on c4`, `kingside castle`).
-- **Flag** — `check` / `checkmate` / `stalemate` / blank.
+- **Flag** — `check` / `checkmate` / `stalemate` / blank, plus draw-rule
+  warnings: `draw:repetition` and `draw:50-move` mean **playing this move
+  instantly draws the game** (never play these while winning);
+  `repeats!` means the move recreates an earlier position — one more
+  repeat is a draw, so prefer a move that makes progress.
 - **King mvt** — enemy king mobility before → after (Δ). Shows how
   many squares the enemy king can legally move to before and after this
   move. Negative delta means the move restricts the king; `0` after
   means check or stalemate. Scan this column to find forcing moves and
   king-cornering sequences.
 
-### `make_move.py`
+### `chess__search_wiki`
 
 ```
-run_script("chess", "make_move.py", ["<move>", "<your reasoning>"])
+chess__search_wiki(args=["isolated pawn"])
+chess__search_wiki(args=["back rank mate", "--limit", "5"])
 ```
 
-Commits the move for the current turn. **Both positional args are required.**
+Searches the wiki by keyword and returns matching pages' **paths and
+frontmatter only** (description, status, triggers, tags, related_pages) —
+never page bodies. Each result includes the exact `read_reference` call to
+open it. Matching is over frontmatter and path, not page text, so search by
+concept name, not by a phrase you hope appears in the prose. `--limit N`
+caps results (default 8). Read a hit with `read_reference` (see "Your
+knowledge wiki").
+
+### `read_reference` (the wiki reader)
+
+```
+read_reference(skill_name="chess", path="index.md")
+read_reference(skill_name="chess", path="patterns/mating-patterns/back-rank-mate.md")
+```
+
+Reads one wiki page and returns its markdown. `path` is relative to the
+wiki root (a leading `references/` is tolerated). **Start at `index.md`**
+and follow the folder indexes. A missing page or a path outside the wiki
+comes back with guidance — fall back to `index.md` or `chess__search_wiki`.
+This is a built-in tool (available without `use_skill`), but it reads the
+chess wiki when you pass `skill_name="chess"`.
+
+### `chess__make_move`
+
+```
+chess__make_move(move="<move>", reasoning="<your reasoning>")
+chess__make_move(move="<move>", reasoning="<your reasoning>",
+                 plan="<long-term plan>", goal="<short-term objective>",
+                 dismiss_references="<path>,<path>")
+```
+
+Commits the move for the current turn. **`move` and `reasoning` are
+required**; `plan`, `goal`, and `dismiss_references` are optional (see
+"Your memory between turns" — pass `plan`/`goal` only when they change,
+`dismiss_references` when pages you read no longer serve your strategy).
 The move accepts UCI or SAN; trailing `+` or `#` is stripped.
 
-- On success: `{"ok": true, "move": "e2e4", "reasoning": "...", "message": "Move committed. Your turn is over."}`.
+- On success: `{"ok": true, "move": "e2e4", "reasoning": "...", "plan": ..., "message": "Move committed. Your turn is over."}`.
   Your turn is over — do not call any more tools on this turn, just stop.
 - On failure (illegal move): `{"ok": false, "error": "...", "legal_moves": [...]}`.
   Pick a different move from `legal_moves` and call again in the same turn.
 - On missing reasoning: `{"ok": false, "error": "Missing reasoning ..."}`.
   Add your reasoning and retry.
+- **On a SAFETY CHECK error** — the move was NOT committed because a
+  one-ply mechanical check found it gives away a piece for free (the
+  opponent has a capture nobody recaptures), delivers stalemate, or
+  instantly draws by rule while you are ahead on material. This is the
+  same geometry `chess__imagine_move` reports; it means you skipped
+  verification. **Default response: pick a better move** — almost always
+  the warning is right and you simply missed the hanging piece.
+  - A **soft** warning can be overridden by repeating the call with
+    `confirm=true`, but only when the sacrifice is genuinely intentional
+    and you have calculated the follow-up. Reflexively confirming is how
+    games are lost — do not do it.
+  - A **SAFETY CHECK (cannot override)** error is **hard**: the move loses
+    the game outright (stalemate, a draw while you are winning, or hanging
+    a rook/queen to a king that has no army). `confirm=true` will not
+    force it. There is no such thing as sacrificing your rook to a lone
+    king — find the move that keeps the win.
 
 ## Move format
 
@@ -294,4 +472,4 @@ Accepts either:
   algebraic notation. Captures, checks, promotions all supported.
 
 Only moves that are legal in the current position will succeed. The
-`list_legal_moves` table shows both forms for every legal move.
+`chess__list_legal_moves` table shows both forms for every legal move.

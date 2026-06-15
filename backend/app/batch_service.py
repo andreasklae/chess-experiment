@@ -176,7 +176,8 @@ class BatchService:
 
         Opponent selection uses the agent's persistent `streak` counter
         (signed; positive = wins, negative = losses), not just the most
-        recent result. See `app.elo.step_from_streak` for the doubling rule.
+        recent result. The step is one pool notch in the streak's direction —
+        see `app.elo.step_from_streak`.
         """
         opp_elo = pick_opponent_elo(agent_elo, streak, batch.pool)
         opp_config = PlayerConfig(type=batch.pool, elo=opp_elo)

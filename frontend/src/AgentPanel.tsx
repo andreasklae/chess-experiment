@@ -64,6 +64,11 @@ function argsDisplay(rawArgs: unknown): string {
 
 function friendlyToolCall(tool: string, args: Record<string, unknown>): string {
   if (tool === 'use_skill') return `use_skill(${args.skill_name ?? ''})`;
+  if (tool === 'read_reference') return `read_reference(${(args.path as string) ?? ''})`;
+  if (tool.startsWith('chess__')) {
+    const arg = (args.move as string) ?? (args.fen ? 'fen=…' : extractMove(args.args));
+    return `${tool.slice(7)}(${arg || ''})`;
+  }
   if (tool !== 'run_script') return tool;
 
   const file = args.filename as string | undefined;
@@ -263,7 +268,12 @@ function applyEvent(
 
   if (type === 'context_summary') {
     const content = (event.content as string | undefined) ?? '';
-    if (content.trim()) next.push({ kind: 'context-summary', content });
+    const plan = (event.plan as string | undefined) ?? '';
+    const goal = (event.goal as string | undefined) ?? '';
+    let text = content;
+    if (goal) text += `\n\n**Current goal:** ${goal}`;
+    if (plan) text += `\n\n**Standing plan:** ${plan}`;
+    if (text.trim()) next.push({ kind: 'context-summary', content: text });
     return next;
   }
 

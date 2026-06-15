@@ -125,6 +125,10 @@ export function LobbyPage() {
       setGames(g);
       setTypes(t);
     }).catch((e: Error) => setMessage(e.message));
+    // Keep the list live: games started outside the UI (puzzle runs,
+    // batches, scripts) appear and update without a manual reload.
+    const id = setInterval(() => { void fetchGames(); }, 3000);
+    return () => clearInterval(id);
   }, []);
 
   async function handleCreate() {
@@ -185,17 +189,28 @@ export function LobbyPage() {
 
       {message ? <p className="message">{message}</p> : null}
 
+      {games.some((g) => g.status === 'active') && (
+        <div className="result-banner win" role="status">
+          <span className="result-headline">Game in progress</span>
+          <button type="button" onClick={() => handleOpen(games.find((g) => g.status === 'active')!.game_id)}>
+            ▶ Watch live
+          </button>
+        </div>
+      )}
+
       {games.length === 0 ? (
         <p className="lobby-empty">No games yet. Start a new one above.</p>
       ) : (
         <ul className="game-list">
-          {games.map((g) => (
+          {[...games].sort((a, b) => (a.status === b.status ? 0 : a.status === 'active' ? -1 : 1)).map((g) => (
             <li key={g.game_id} className="game-row">
               <div className="game-row-info">
                 <span className="game-row-players">
                   {formatPlayer(g.white)} <span className="vs">vs</span> {formatPlayer(g.black)}
                 </span>
-                <span className={`game-row-status ${g.status}`}>{formatStatus(g)}</span>
+                <span className={`game-row-status ${g.status}`}>
+                  {g.status === 'active' ? '● LIVE — ' : ''}{formatStatus(g)}
+                </span>
                 <span className="game-row-meta">
                   {g.move_count} move{g.move_count !== 1 ? 's' : ''}
                   {g.last_move_san ? ` · last: ${g.last_move_san}` : ''}

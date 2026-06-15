@@ -27,6 +27,9 @@ export interface GameState {
   eval_cp: number | null;
   eval_mate: number | null;
   paused: boolean;
+  move_cap: number;
+  initial_fen: string;
+  aborted_reason: string;
 }
 
 export interface GameSummary {

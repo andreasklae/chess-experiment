@@ -1,18 +1,31 @@
 #!/usr/bin/env python3
 """Commit your chosen move for this turn. This is the mandatory closing action.
 
-Positional args (exactly two):
-  move       The move in UCI (e2e4, g1f3, e7e8q) or SAN (e4, Nf3, O-O, e8=Q).
-             Trailing + or # is ignored.
-  reasoning  Your note to yourself about this move. Required. Free text —
-             punctuation, apostrophes, quotes are all fine because the harness
-             passes each list element straight to sys.argv. The text is
-             injected verbatim as the first message on your NEXT turn so you
-             remember what you did and why.
+Arguments:
+  move       Required. The move in UCI (e2e4, g1f3, e7e8q) or SAN (e4, Nf3,
+             O-O, e8=Q). Trailing + or # is ignored.
+  reasoning  Required. Your note to yourself about THIS move. Free text —
+             punctuation, apostrophes, quotes are all fine. Shown back to you
+             on your next turn, then replaced by the next note.
+  plan       Optional. Your LONG-TERM standing plan (goal + method, 1-2
+             sentences). It persists across turns until you pass a new plan,
+             and is shown back to you every turn. Omit it to keep your
+             current plan; pass it when you form, change, or complete a plan;
+             pass plan="none" to clear it.
+  goal       Optional. Your SHORT-TERM objective — what the next 1-3 moves
+             must achieve (e.g. "drive the king from e6 to the 8th rank").
+             Same persistence rules as plan; pass goal="none" to clear it.
+  dismiss_references  Optional. Comma-separated wiki paths whose content is
+             no longer relevant to your strategy (e.g. after switching from
+             a promotion plan to a mating plan). Their text is dropped from
+             your context next turn; you can always re-read them. Pass "all"
+             to drop every page you have read.
 
-Example:
-  run_script("chess", "make_move.py", ["e2e4", "Pushed pawn to control the center."])
-  run_script("chess", "make_move.py", ["Nf3", "Developed knight; pressures e5."])
+Exposed as the tool chess__make_move after use_skill('chess'). Examples:
+  chess__make_move(move="Nf3", reasoning="Developed knight; pressures e5.")
+  chess__make_move(move="a6", reasoning="Pushed the passer; b7 guards a7.",
+                   plan="Promote the a-pawn: escort with the queen, then ladder mate.",
+                   goal="Get the pawn to a8 in the next two moves.")
 
 Reads CHESS_API_BASE and CHESS_GAME_ID from environment (injected by AgentPlayer).
 
@@ -24,7 +37,7 @@ move under its own lock. That keeps every player (agent, chesscom, maia,
 human) on the same contract — players return moves, the bot loop pushes them.
 
 Prints on success:
-  {"ok": true, "move": "<canonical-uci>", "reasoning": "...", "message": "Move committed. Your turn is over."}
+  {"ok": true, "move": "<canonical-uci>", "reasoning": "...", "plan": "..."|null, "message": "Move committed. Your turn is over."}
 
 Prints on failure (illegal move, wrong turn, parse error):
   {"ok": false, "error": "...", "legal_moves": [...]}
@@ -35,10 +48,190 @@ import json
 import os
 import sys
 import urllib.request
+from pathlib import Path
+
+import chess
+
+_HERE = Path(__file__).resolve().parent
+if str(_HERE) not in sys.path:
+    sys.path.insert(0, str(_HERE))
+from _eval import MATERIAL, PIECE_NAMES, parse_move  # noqa: E402
+from _live import board_with_history, fetch_state  # noqa: E402
+
+
+def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | None:
+    """One-ply mechanical safety check at the commit boundary.
+
+    Returns ``(warning, hard)`` when the move (a) lets the opponent capture a
+    piece that has zero defenders (a free capture — the single pattern behind
+    every lost mating exercise on 2026-06-12: Kd6?? abandoning the rook,
+    Qd4+?? adjacent to the king), (b) delivers stalemate, or (c) instantly
+    draws by repetition/50-move while the mover is ahead on raw material.
+
+    ``hard`` marks losses that ``confirm=true`` must NOT override, because no
+    intention can justify them: a move that drops to insufficient material
+    (throws away the win outright), or hangs a ROOK-or-better to the bare /
+    nearly-bare enemy king in a basic-mate position (there is no sacrifice
+    when the opponent has no army — game ab02f31d, 2026-06-13: the agent
+    reflexively confirm=true'd Rb6+?? Kxb6 on move 2 of a ladder). Ordinary
+    free captures stay soft (``hard=False``) — a real sacrifice is one extra
+    call.
+
+    This is the same geometry chess__imagine_move reports, enforced where it
+    cannot be skipped. It makes no strategic judgement: legal replies,
+    defender counts, material counts, and the draw rules of chess only.
+    """
+    after = board.copy()
+    after.push(move)
+    mover = board.turn
+
+    if after.is_checkmate():
+        return None  # nothing after mate matters
+
+    if after.is_stalemate():
+        return (
+            "this move delivers STALEMATE — the game instantly ends in a "
+            "draw. If you are winning, this throws away the win.", True
+        )
+
+    # Is the opponent reduced to a bare (or pawns-only) king? Then any free
+    # gift of a rook-or-better is never a real sacrifice — it is a basic-mate
+    # blunder, and confirm must not wave it through.
+    opp_has_no_pieces = not any(
+        p.color != mover and p.piece_type not in (chess.KING, chess.PAWN)
+        for p in board.piece_map().values()
+    )
+
+    # The backend ends non-chesscom games with claim_draw=True, so the
+    # moment a draw is CLAIMABLE it is a draw — can_claim_* (not the stricter
+    # is_repetition(3)/is_fifty_moves) is the rule that actually ends games.
+    # Observed: game 185afd0b drew on a Qd5 where is_repetition(3) was False
+    # but can_claim_threefold_repetition() was True.
+    if board.move_stack and (
+        after.can_claim_threefold_repetition() or after.can_claim_fifty_moves()
+    ):
+        my_mat = sum(MATERIAL[p.piece_type] for p in board.piece_map().values()
+                     if p.color == mover and p.piece_type != chess.KING)
+        their_mat = sum(MATERIAL[p.piece_type] for p in board.piece_map().values()
+                        if p.color != mover and p.piece_type != chess.KING)
+        if my_mat > their_mat:
+            rule = (
+                "threefold repetition"
+                if after.can_claim_threefold_repetition()
+                else "the 50-move rule"
+            )
+            return (
+                f"this move instantly DRAWS the game by {rule} while you are "
+                f"ahead on material. Pick a move that makes progress instead.",
+                True,
+            )
+
+    # Free captures: an opponent reply that takes a piece nobody recaptures.
+    # Netted against what THIS move just captured — taking a pawn and being
+    # recaptured pawn-for-pawn is a trade, not a giveaway.
+    my_gain = 0
+    if board.is_capture(move):
+        taken = board.piece_at(move.to_square)
+        my_gain = MATERIAL.get(taken.piece_type, 0) if taken else MATERIAL[chess.PAWN]
+    worst: tuple[int, str, int] | None = None
+    for reply in after.legal_moves:
+        if not after.is_capture(reply):
+            continue
+        victim = after.piece_at(reply.to_square)
+        if victim is None:  # en passant — pawn-for-pawn, never free
+            continue
+        defenders = after.attackers(mover, reply.to_square)
+        if defenders:
+            continue
+        value = MATERIAL.get(victim.piece_type, 0) - my_gain
+        if value <= 0:
+            continue  # compensated — a trade, not a giveaway
+        # An uncompensated loss that leaves us unable to EVER win outranks
+        # raw value: losing the last pawn in K+P vs K (100cp) is a draw on
+        # the spot (game 9d2e1e58: Kc7?? Kxe7). Rules-of-chess fact.
+        b2 = after.copy(stack=False)
+        b2.push(reply)
+        if b2.has_insufficient_material(mover):
+            value = 10_000
+        if worst is None or value > worst[0]:
+            taker = after.piece_at(reply.from_square)
+            desc = (
+                f"after this move the opponent can play "
+                f"{after.san(reply)} and take your "
+                f"{PIECE_NAMES[victim.piece_type]} on "
+                f"{chess.square_name(reply.to_square)} FOR FREE — no piece "
+                f"of yours defends that square (capturer: "
+                f"{PIECE_NAMES[taker.piece_type]} from "
+                f"{chess.square_name(reply.from_square)})"
+            )
+            if value >= 10_000:
+                desc += (
+                    ". Losing it leaves you with INSUFFICIENT MATERIAL TO "
+                    "WIN — the game would be dead drawn"
+                )
+            worst = (value, desc, victim.piece_type)
+    # Threshold 150: catches dropping a MINOR PIECE for a pawn into an
+    # undefended square (net 300-100 = 200), which slipped under the old 300
+    # bar — game 9b0d7590 move 16 Nxd6+?? Bxd6 gave a safe knight for one
+    # pawn, and imagine_move's hanging warning was ignored. Still pure
+    # single-ply mechanics: the gate only ever inspects UNDEFENDED target
+    # squares (it skips any reply whose square we defend), so it never flags
+    # an equal trade — only a genuine net loss of ~2+ points. No SEE, no
+    # lookahead, no positional judgement (2026-06-15 fairness call: keep it
+    # at minor-for-pawn, do not extend to full exchange evaluation).
+    if worst is not None and worst[0] >= 150:
+        # Hard (unconfirmable) when it throws the win away outright, or hands
+        # a rook/queen to a king with no army to support a sacrifice.
+        hard = (
+            worst[0] >= 10_000
+            or (opp_has_no_pieces and worst[2] in (chess.ROOK, chess.QUEEN))
+        )
+        return worst[1], hard
+    return None
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(add_help=False)
+    # --plan must be declared before the REMAINDER positional: the harness's
+    # build_argv emits flags first, and argparse stops option parsing once
+    # REMAINDER starts consuming.
+    parser.add_argument(
+        "--plan",
+        default=None,
+        help=(
+            "Your long-term standing plan (goal + method). Persists across "
+            "turns until you pass a new one; omit to keep the current plan; "
+            "pass 'none' to clear it."
+        ),
+    )
+    parser.add_argument(
+        "--goal",
+        default=None,
+        help=(
+            "Your short-term objective: what the next 1-3 moves must achieve. "
+            "Persists like plan; pass 'none' to clear it."
+        ),
+    )
+    parser.add_argument(
+        "--dismiss_references",
+        default=None,
+        help=(
+            "Comma-separated wiki paths to drop from your context next turn "
+            "(no longer relevant to your strategy), or 'all'."
+        ),
+    )
+    parser.add_argument(
+        "--confirm",
+        action="store_true",
+        help=(
+            "Override a SOFT safety warning (an ordinary free capture that "
+            "may be a genuine sacrifice). Pass confirm=true only when the "
+            "sacrifice is intentional. It does NOT override a HARD warning — "
+            "a move that loses the game outright (stalemate, draw-while-"
+            "winning, or hanging a major piece to a king with no army) is "
+            "refused regardless."
+        ),
+    )
     parser.add_argument("move", nargs="?", default="")
     # Capture everything after the move as reasoning. argparse.REMAINDER
     # joins the tail without splitting punctuation; whitespace tokens are
@@ -55,9 +248,9 @@ def main() -> None:
         print(json.dumps({
             "ok": False,
             "error": (
-                "Missing move. Call with two positional args: the move (UCI or SAN) "
+                "Missing move. Call with both arguments: the move (UCI or SAN) "
                 "and a reasoning note. Example: "
-                "run_script(\"chess\", \"make_move.py\", [\"e2e4\", \"Pushed pawn to control center.\"])."
+                "chess__make_move(move=\"e2e4\", reasoning=\"Pushed pawn to control center.\")."
             ),
         }))
         sys.exit(1)
@@ -68,9 +261,9 @@ def main() -> None:
             "ok": False,
             "error": (
                 "Missing reasoning. You must explain your move — this text is your memory "
-                "for the next turn. Pass it as the second positional arg. Example: "
-                "run_script(\"chess\", \"make_move.py\", [\"e2e4\", \"I played e4 to control the center. "
-                "Rejected d2d4 (slower). Watch: opponent may push c5.\"])."
+                "for the next turn. Pass it in the reasoning argument. Example: "
+                "chess__make_move(move=\"e2e4\", reasoning=\"I played e4 to control the center. "
+                "Rejected d2d4 (slower). Watch: opponent may push c5.\")."
             ),
         }))
         sys.exit(1)
@@ -83,6 +276,51 @@ def main() -> None:
 
     # Strip trailing check/mate notation — descriptive, not part of move identity.
     move_str = args.move.strip().rstrip("+#")
+
+    # Mechanical safety gate. Runs ALWAYS (even with confirm=true) so a HARD
+    # warning — throwing the win away outright, or hanging a major to a king
+    # with no army — cannot be waved through; soft warnings are overridable
+    # with confirm. Best-effort: if the live state cannot be fetched or the
+    # move does not parse, fall through — the endpoint is the authoritative
+    # validator and reports those errors.
+    gate = None
+    try:
+        board = board_with_history(fetch_state())
+        candidate = parse_move(board, move_str)
+        if candidate in board.legal_moves:
+            gate = _blunder_gate(board, candidate)
+    except (SystemExit, Exception):
+        gate = None  # endpoint is the authoritative validator
+    if gate is not None:
+        warning, hard = gate
+        if hard:
+            print(json.dumps({
+                "ok": False,
+                "error": (
+                    f"SAFETY CHECK (cannot override) — move NOT committed: "
+                    f"{warning} This loses the game outright, so confirm=true "
+                    f"will not force it. Pick a move that keeps the win."
+                ),
+            }))
+            sys.exit(1)
+        if not args.confirm:
+            print(json.dumps({
+                "ok": False,
+                "error": (
+                    f"SAFETY CHECK — move NOT committed: {warning} "
+                    f"If this is intentional (a real sacrifice), call "
+                    f"chess__make_move again with the same move and "
+                    f"confirm=true. Otherwise pick a different move."
+                ),
+            }))
+            sys.exit(1)
+
+    # The endpoint caps reasoning at 4000 chars (schemas.AgentCommitRequest).
+    # Truncate rather than let the whole commit be rejected for verbosity —
+    # observed in game bf129584: a LEGAL winning move bounced because the
+    # note was too long, costing the turn.
+    if len(reasoning) > 3900:
+        reasoning = reasoning[:3880] + " [trimmed]"
 
     url = f"{api_base}/api/games/{game_id}/agent-commit"
     payload = json.dumps({"move": move_str, "reasoning": reasoning}).encode()
@@ -99,10 +337,20 @@ def main() -> None:
             # back so AgentPlayer.get_move's tool-result parser sees a string
             # that chess.Move.from_uci can consume without ambiguity.
             canonical = body.get("move", move_str)
+            plan = args.plan.strip() if isinstance(args.plan, str) else None
+            goal = args.goal.strip() if isinstance(args.goal, str) else None
+            dismissed = None
+            if isinstance(args.dismiss_references, str) and args.dismiss_references.strip():
+                dismissed = [
+                    p.strip() for p in args.dismiss_references.split(",") if p.strip()
+                ]
             print(json.dumps({
                 "ok": True,
                 "move": canonical,
                 "reasoning": reasoning,
+                "plan": plan if plan else None,
+                "goal": goal if goal else None,
+                "dismissed_references": dismissed,
                 "message": "Move committed. Your turn is over.",
             }))
     except urllib.error.HTTPError as exc:

@@ -42,8 +42,11 @@ export function submitMove(move: string): Promise<GameState> {
   });
 }
 
-export function gameEventsUrl(): string {
-  return `${API_BASE}/api/game/events`;
+export function gameEventsUrl(gameId?: string): string {
+  // Per-game stream when an id is given — watching an old game must not be
+  // hijacked by state pushes from a different live game (e.g. a background
+  // puzzle run).
+  return gameId ? `${API_BASE}/api/games/${gameId}/events` : `${API_BASE}/api/game/events`;
 }
 
 export function agentEventsUrl(gameId: string): string {

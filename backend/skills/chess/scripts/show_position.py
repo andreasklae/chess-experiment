@@ -49,6 +49,8 @@ from _eval import (  # noqa: E402 — sys.path adjusted above
     phase_score,
     render_eval_line,
 )
+from _live import board_with_history, fetch_state  # noqa: E402
+from _radar import render_radar  # noqa: E402
 
 # Re-export phase_score so tests and external callers that previously imported
 # it from show_position keep working. `detect_phase` is already imported above.
@@ -205,10 +207,27 @@ def attack_defense_section(
     return "\n".join(lines)
 
 
-def render_position(board: chess.Board) -> str:
+def _piece_list(board: chess.Board, color: bool) -> str:
+    """Compact square-level inventory ("Kg1, Ra4, Rb1") — grounds the
+    model's reasoning in the actual squares; FEN alone gets misread."""
+    order = {chess.KING: 0, chess.QUEEN: 1, chess.ROOK: 2, chess.BISHOP: 3,
+             chess.KNIGHT: 4, chess.PAWN: 5}
+    pieces = sorted(
+        ((order[board.piece_type_at(sq)], board.piece_at(sq).symbol().upper(), sq)
+         for sq in chess.SQUARES if (pc := board.piece_at(sq)) and pc.color == color),
+        key=lambda t: (t[0], t[2]),
+    )
+    return ", ".join(f"{sym}{chess.square_name(sq)}" for _, sym, sq in pieces) or "(none)"
+
+
+def render_position(board: chess.Board, move_cap: int | None = None) -> str:
     """Markdown-formatted position report. Each section is a small heading
     so the agent (and the UI) can scan; the ASCII board sits in a fenced
-    code block to preserve monospace alignment in markdown renderers."""
+    code block to preserve monospace alignment in markdown renderers.
+
+    Pass a board carrying the real move stack when available — the radar's
+    repetition and move-cap checks need it (a bare-FEN board still works,
+    those checks just stay silent)."""
     own_color = board.turn
     opp_color = not own_color
     phase, score, move = detect_phase(board)
@@ -223,6 +242,8 @@ def render_position(board: chess.Board) -> str:
         render_ascii(board),
         "```",
         "",
+        f"**Pieces:** white: {_piece_list(board, chess.WHITE)} · "
+        f"black: {_piece_list(board, chess.BLACK)}",
         f"**FEN:** `{board.fen()}`",
         f"**Side to move:** {color_name(own_color)}",
         "",
@@ -242,30 +263,44 @@ def render_position(board: chess.Board) -> str:
             action="attacked by your",
         ).lstrip("\n"),
     ]
+    radar = render_radar(board, move_cap=move_cap)
+    if radar:
+        out += ["", radar]
     return "\n".join(out)
 
 
 def main() -> None:
-    api_base = os.environ.get("CHESS_API_BASE", "http://localhost:8000").rstrip("/")
-    game_id = os.environ.get("CHESS_GAME_ID", "")
-    if not game_id:
-        print("error: CHESS_GAME_ID not set", file=sys.stderr)
-        sys.exit(1)
+    import argparse
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument(
+        "--fen",
+        default=None,
+        help=(
+            "Analyse this position instead of the live game — a hypothetical "
+            "board, e.g. the FEN that chess__imagine_move returned. The live "
+            "game is not touched."
+        ),
+    )
+    args = parser.parse_args()
 
-    url = f"{api_base}/api/games/{game_id}"
-    try:
-        with urllib.request.urlopen(url, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
-    except Exception as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        sys.exit(1)
+    if args.fen:
+        try:
+            board = chess.Board(args.fen)
+        except ValueError as exc:
+            print(f"error: invalid FEN {args.fen!r}: {exc}", file=sys.stderr)
+            sys.exit(1)
+        # Hypothetical boards have no history or move cap — the radar's
+        # repetition/cap lines simply stay silent.
+        print(render_position(board))
+        return
 
-    fen = data.get("fen")
-    if not fen:
-        print("error: backend response missing 'fen'", file=sys.stderr)
-        sys.exit(1)
-
-    print(render_position(chess.Board(fen)))
+    data = fetch_state()
+    # Board carries the real move history when it replays cleanly (the
+    # radar's repetition check needs the stack); _live.board_with_history
+    # falls back to a bare-FEN board on any reconstruction problem so the
+    # board view can never be taken down by history issues.
+    board = board_with_history(data)
+    print(render_position(board, move_cap=data.get("move_cap")))
 
 
 if __name__ == "__main__":
