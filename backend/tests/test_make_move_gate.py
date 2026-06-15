@@ -183,3 +183,16 @@ class TestSEELosingTrades:
         # No false positives on normal development.
         for uci in ("e2e4", "g1f3", "d2d4", "b1c3"):
             assert _gate_full(mm, chess.STARTING_FEN, uci) is None, uci
+
+    def test_sonnet_nxe5_blunder_blocked(self, mm):
+        # Game 872bf552 (Sonnet+skill, 2026-06-15): a Ruy Lopez where 6.Nxe5??
+        # nets a piece for pawns after the Nxe5/Nxc6/Bxc6 sequence. Confirms the
+        # gate catches the SAME blunder class across models (Haiku, Gemma,
+        # Sonnet all hung pieces this way). Position after
+        # e4 e5 Nf3 Nc6 Bb5 Nf6 O-O Nxe4 Re1 d5:
+        res = _gate_full(
+            mm,
+            "r1bqkb1r/ppp2ppp/2n5/1B1pp3/4n3/5N2/PPPP1PPP/RNBQR1K1 w kq - 0 6",
+            "f3e5",
+        )
+        assert res is not None and "LOSE MATERIAL" in res[0]
