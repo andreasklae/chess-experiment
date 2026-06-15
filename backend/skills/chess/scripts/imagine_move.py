@@ -49,6 +49,7 @@ from _eval import (  # noqa: E402
     parse_move,
     render_eval_delta_line,
     render_moves_table,
+    static_exchange_eval,
 )
 from _live import board_with_history, fetch_state  # noqa: E402
 from show_position import (  # noqa: E402
@@ -189,7 +190,7 @@ def _newly_hanging_own_pieces(board_before: chess.Board, board_after: chess.Boar
         # square even when defended by count (value). The value test catches
         # leaving a knight defended only by a pawn — game 9b0d7590 9.Nd2??
         # left the c3 knight to bxc3 bxc3, net -2, which the count test misses.
-        see_loss = _static_exchange_eval(board_after, sq, enemy_color)
+        see_loss = static_exchange_eval(board_after, sq, enemy_color)
         is_unsafe_now = (
             (not defenders_after or len(attackers_after) > len(defenders_after))
             or see_loss >= 150
@@ -225,50 +226,6 @@ def _en_passant_offered(board_after: chess.Board) -> str | None:
     return f"yes — {color_name(board_after.turn)} pawn on {capturers} may capture en passant on {chess.square_name(ep_sq)}"
 
 
-def _static_exchange_eval(board: chess.Board, square: int, side_to_capture: bool) -> int:
-    """Material the side initiating captures on `square` nets, in centipawns,
-    assuming both sides recapture with their least valuable piece each time
-    (standard static-exchange evaluation, SEE).
-
-    `side_to_capture` is the colour that moves first (the opponent of the
-    piece sitting on `square`). Returns the net gain for that side: positive
-    means the capturing side wins material. Pure rules arithmetic — it plays
-    out the legal recapture sequence on one square, no search or judgement.
-    """
-    target = board.piece_at(square)
-    if target is None:
-        return 0
-
-    def least_valuable_attacker(bd: chess.Board, color: bool, sq: int) -> int | None:
-        attackers = bd.attackers(color, sq)
-        if not attackers:
-            return None
-        return min(attackers, key=lambda a: MATERIAL.get(bd.piece_at(a).piece_type, 0))
-
-    # Iterative SEE via a swap-off list of captured-piece values.
-    gains: list[int] = []
-    work = board.copy(stack=False)
-    on_square_value = MATERIAL.get(target.piece_type, 0)
-    color = side_to_capture
-    while True:
-        frm = least_valuable_attacker(work, color, square)
-        if frm is None:
-            break
-        gains.append(on_square_value)
-        # the capturing piece now sits on the square and may itself be taken
-        on_square_value = MATERIAL.get(work.piece_at(frm).piece_type, 0)
-        work.remove_piece_at(square)
-        work.set_piece_at(square, work.piece_at(frm))
-        work.remove_piece_at(frm)
-        color = not color
-    # Standard SEE negamax fold: each side will stop capturing if continuing
-    # loses material.
-    net = 0
-    for g in reversed(gains):
-        net = max(0, g - net)
-    return net
-
-
 def _bad_trade_warning(
     board_before: chess.Board, board_after: chess.Board, move: chess.Move
 ) -> str | None:
@@ -283,7 +240,7 @@ def _bad_trade_warning(
         return None
     enemy = not board_before.turn
     # Net for the opponent if they start capturing on the moved piece's square.
-    opp_gain = _static_exchange_eval(board_after, move.to_square, enemy)
+    opp_gain = static_exchange_eval(board_after, move.to_square, enemy)
     # Credit anything THIS move just captured (a capture that gets recaptured
     # is a trade, not a fresh loss).
     my_gain = 0

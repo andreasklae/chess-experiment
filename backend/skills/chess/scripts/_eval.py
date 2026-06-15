@@ -353,6 +353,51 @@ def detect_phase(board: chess.Board) -> tuple[str, int, int]:
     return ("early middlegame", score, move)
 
 
+# ── Static exchange evaluation ─────────────────────────────────────────────
+
+
+def static_exchange_eval(board: chess.Board, square: int, side_to_capture: bool) -> int:
+    """Material the side initiating captures on ``square`` nets, in
+    centipawns, assuming both sides recapture with their least valuable piece
+    each time (standard static-exchange evaluation, SEE).
+
+    ``side_to_capture`` is the colour that moves first (the opponent of the
+    piece sitting on ``square``). Returns the net gain for that side: positive
+    means the capturing side wins material. Pure rules arithmetic — it plays
+    out the legal recapture sequence on one square; no move-tree search, no
+    positional judgement. Shared by imagine_move (reporting) and make_move's
+    commit gate (enforcement).
+    """
+    target = board.piece_at(square)
+    if target is None:
+        return 0
+
+    def least_valuable_attacker(bd: chess.Board, color: bool, sq: int) -> int | None:
+        attackers = bd.attackers(color, sq)
+        if not attackers:
+            return None
+        return min(attackers, key=lambda a: MATERIAL.get(bd.piece_at(a).piece_type, 0))
+
+    gains: list[int] = []
+    work = board.copy(stack=False)
+    on_square_value = MATERIAL.get(target.piece_type, 0)
+    color = side_to_capture
+    while True:
+        frm = least_valuable_attacker(work, color, square)
+        if frm is None:
+            break
+        gains.append(on_square_value)
+        on_square_value = MATERIAL.get(work.piece_at(frm).piece_type, 0)
+        work.remove_piece_at(square)
+        work.set_piece_at(square, work.piece_at(frm))
+        work.remove_piece_at(frm)
+        color = not color
+    net = 0
+    for g in reversed(gains):
+        net = max(0, g - net)
+    return net
+
+
 # ── Move parsing ─────────────────────────────────────────────────────────
 
 

@@ -55,7 +55,7 @@ import chess
 _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
-from _eval import MATERIAL, PIECE_NAMES, parse_move  # noqa: E402
+from _eval import MATERIAL, PIECE_NAMES, parse_move, static_exchange_eval  # noqa: E402
 from _live import board_with_history, fetch_state  # noqa: E402
 
 
@@ -126,59 +126,127 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | No
                 True,
             )
 
-    # Free captures: an opponent reply that takes a piece nobody recaptures.
-    # Netted against what THIS move just captured — taking a pawn and being
-    # recaptured pawn-for-pawn is a trade, not a giveaway.
-    my_gain = 0
-    if board.is_capture(move):
-        taken = board.piece_at(move.to_square)
-        my_gain = MATERIAL.get(taken.piece_type, 0) if taken else MATERIAL[chess.PAWN]
+    # Losing trades, via static exchange evaluation on the moved piece's
+    # square. SEE plays out the forced recapture sequence on that one square
+    # and returns the material the OPPONENT nets if they initiate captures
+    # there. This subsumes the old "free capture into an undefended square"
+    # check AND catches the defended-but-losing trade the count-based version
+    # missed (game 9b0d7590 16.Nxd6??/9.Nd2??, game f2d158d4 16.Ne5?? — a
+    # piece moved to a square defended only by a pawn). It is pure
+    # rules-of-chess arithmetic on a single square: no move-tree search, no
+    # positional judgement (2026-06-15 ruling: extend the gate to all
+    # single-square losing trades, since random blundering — not strategy —
+    # is what keeps the agent from ever reaching a won position).
+    #
+    # Netting: SEE already accounts for what the move captured (the captured
+    # piece is the first item on the swap-off list), so a fair trade nets 0
+    # and is not flagged.
+    sq = move.to_square
+    see_loss = static_exchange_eval(after, sq, not mover)
     worst: tuple[int, str, int] | None = None
-    for reply in after.legal_moves:
-        if not after.is_capture(reply):
-            continue
-        victim = after.piece_at(reply.to_square)
-        if victim is None:  # en passant — pawn-for-pawn, never free
-            continue
-        defenders = after.attackers(mover, reply.to_square)
-        if defenders:
-            continue
-        value = MATERIAL.get(victim.piece_type, 0) - my_gain
-        if value <= 0:
-            continue  # compensated — a trade, not a giveaway
-        # An uncompensated loss that leaves us unable to EVER win outranks
-        # raw value: losing the last pawn in K+P vs K (100cp) is a draw on
-        # the spot (game 9d2e1e58: Kc7?? Kxe7). Rules-of-chess fact.
-        b2 = after.copy(stack=False)
-        b2.push(reply)
-        if b2.has_insufficient_material(mover):
-            value = 10_000
-        if worst is None or value > worst[0]:
-            taker = after.piece_at(reply.from_square)
-            desc = (
-                f"after this move the opponent can play "
-                f"{after.san(reply)} and take your "
-                f"{PIECE_NAMES[victim.piece_type]} on "
-                f"{chess.square_name(reply.to_square)} FOR FREE — no piece "
-                f"of yours defends that square (capturer: "
-                f"{PIECE_NAMES[taker.piece_type]} from "
-                f"{chess.square_name(reply.from_square)})"
+    if see_loss >= 150:
+        moved = after.piece_at(sq)
+        moved_name = PIECE_NAMES[moved.piece_type] if moved else "piece"
+        value = see_loss
+        # An uncompensated loss that leaves us unable to EVER win outranks raw
+        # value: losing the last pawn in K+P vs K is an instant draw (game
+        # 9d2e1e58: Kc7?? Kxe7). Approximate by checking insufficient material
+        # after the opponent's cheapest capture on the square.
+        cheapest = min(
+            (r for r in after.legal_moves if r.to_square == sq and after.is_capture(r)),
+            key=lambda r: MATERIAL.get(after.piece_at(r.from_square).piece_type, 0),
+            default=None,
+        )
+        if cheapest is not None:
+            b2 = after.copy(stack=False)
+            b2.push(cheapest)
+            if b2.has_insufficient_material(mover):
+                value = 10_000
+        desc = (
+            f"after this move you LOSE MATERIAL on {chess.square_name(sq)}: "
+            f"the opponent wins about {see_loss} centipawns "
+            f"(~{see_loss // 100} pawn(s)) in the exchange there — your "
+            f"{moved_name} is not adequately defended for its value. "
+            f"'Defended' by count is not the same as safe."
+        )
+        if value >= 10_000:
+            desc += (
+                ". Worse: it leaves you with INSUFFICIENT MATERIAL TO WIN — "
+                "the game would be dead drawn"
             )
-            if value >= 10_000:
-                desc += (
-                    ". Losing it leaves you with INSUFFICIENT MATERIAL TO "
-                    "WIN — the game would be dead drawn"
+        worst = (value, desc, moved.piece_type if moved else chess.PAWN)
+
+    # Side-effect hangs: a move can leave a DIFFERENT own piece losing
+    # material — the "abandon a defender" blunder (game 9b0d7590 9.Nd2??
+    # left the c3 knight to bxc3 bxc3). Scan own pieces (excluding the moved
+    # piece's square) that were SAFE before the move and are SEE-losing
+    # after. Gating on "safe before" is essential: it flags only losses this
+    # move CAUSED, never a pre-existing hang the move didn't create (which
+    # might be unavoidable / not this move's fault).
+    for piece_type in (chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN):
+        for psq in after.pieces(piece_type, mover):
+            if psq == sq:
+                continue  # the moved piece itself — handled above
+            if board.piece_at(psq) is None or board.piece_at(psq).color != mover:
+                continue  # not a piece that existed (and was ours) before
+            safe_before = static_exchange_eval(board, psq, not mover) < 150
+            loss_after = static_exchange_eval(after, psq, not mover)
+            if not (safe_before and loss_after > 0):
+                continue
+            # Losing this piece may leave us unable to ever win (the last-pawn
+            # case: K+P vs K, Kc7?? Kxe7 is an instant draw — game 9d2e1e58).
+            # That outranks raw value, and matters even for a 100cp pawn that
+            # is below the normal 150 threshold.
+            value = loss_after
+            cheapest = min(
+                (r for r in after.legal_moves
+                 if r.to_square == psq and after.is_capture(r)),
+                key=lambda r: MATERIAL.get(after.piece_at(r.from_square).piece_type, 0),
+                default=None,
+            )
+            if cheapest is not None:
+                b2 = after.copy(stack=False)
+                b2.push(cheapest)
+                if b2.has_insufficient_material(mover):
+                    value = 10_000
+            if value < 150:
+                continue  # ordinary sub-threshold loss (a bare pawn) — skip
+            if worst is None or value > worst[0]:
+                desc = (
+                    f"this move leaves your {PIECE_NAMES[piece_type]} "
+                    f"on {chess.square_name(psq)} losing material: the "
+                    f"opponent wins about {loss_after} centipawns "
+                    f"(~{loss_after // 100} pawn(s)) in the exchange "
+                    f"there. Moving away a defender (or opening a line) "
+                    f"hangs it — find a move that keeps it protected."
                 )
-            worst = (value, desc, victim.piece_type)
-    # Threshold 150: catches dropping a MINOR PIECE for a pawn into an
-    # undefended square (net 300-100 = 200), which slipped under the old 300
-    # bar — game 9b0d7590 move 16 Nxd6+?? Bxd6 gave a safe knight for one
-    # pawn, and imagine_move's hanging warning was ignored. Still pure
-    # single-ply mechanics: the gate only ever inspects UNDEFENDED target
-    # squares (it skips any reply whose square we defend), so it never flags
-    # an equal trade — only a genuine net loss of ~2+ points. No SEE, no
-    # lookahead, no positional judgement (2026-06-15 fairness call: keep it
-    # at minor-for-pawn, do not extend to full exchange evaluation).
+                if value >= 10_000:
+                    desc = (
+                        f"this move abandons your {PIECE_NAMES[piece_type]} "
+                        f"on {chess.square_name(psq)} — the opponent takes it "
+                        f"and you are left with INSUFFICIENT MATERIAL TO WIN "
+                        f"(dead draw). Keep it defended."
+                    )
+                worst = (value, desc, piece_type)
+
+    # Promotion straight into a capture: a special, common, and especially
+    # costly case the agent reliably misreads (it banks the +800 promotion
+    # and ignores the immediate recapture — observed repeatedly). Flag it
+    # loudly and make it reflect on whether the promotion actually helps.
+    if move.promotion is not None and see_loss >= 150:
+        desc = (
+            f"you promoted to a {PIECE_NAMES[move.promotion]} on "
+            f"{chess.square_name(sq)}, but the opponent can capture it "
+            f"immediately and you cannot recapture for equal value — the "
+            f"promotion gains material on paper but loses it next move. "
+            f"Promoting is only worth it if the new piece SURVIVES or its "
+            f"capture wins you something bigger. Reflect: does this promotion "
+            f"actually strengthen your position, or just hand back a pawn? "
+            f"If not, promote on a safe square or prepare the push first."
+        )
+        worst = (max(see_loss, worst[0] if worst else 0), desc,
+                 move.promotion)
+
     if worst is not None and worst[0] >= 150:
         # Hard (unconfirmable) when it throws the win away outright, or hands
         # a rook/queen to a king with no army to support a sacrifice.
@@ -187,6 +255,44 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | No
             or (opp_has_no_pieces and worst[2] in (chess.ROOK, chess.QUEEN))
         )
         return worst[1], hard
+
+    # Rescuable hanging piece (SOFT only): the move doesn't CAUSE a loss, but
+    # after it one of your pieces is still losing-by-value AND a different
+    # legal move this turn would have saved it. This catches "fail to rescue
+    # an already-hanging piece" — game 9b0d7590, where the c3 knight was
+    # already hanging (8...b4) and the agent played Nd2 instead of retreating
+    # it. Soft because the loss may be unavoidable elsewhere or an intended
+    # sacrifice; we only nudge when a rescue demonstrably existed. Computing
+    # "could it be saved" scans this turn's legal moves — bounded, mechanical,
+    # no positional judgement (2026-06-15 ruling).
+    for piece_type in (chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT):
+        for psq in after.pieces(piece_type, mover):
+            if psq == sq:
+                continue
+            if static_exchange_eval(after, psq, not mover) < 150:
+                continue  # this piece is safe after the move
+            # Was it hanging before too? (if not, the move-caused scan above
+            # would have flagged it). Either way, check a rescue existed.
+            saved = False
+            for alt in board.legal_moves:
+                a2 = board.copy(stack=False)
+                a2.push(alt)
+                # the piece may itself be the one that moves to safety
+                check_sq = alt.to_square if alt.from_square == psq else psq
+                if a2.piece_at(check_sq) is None:
+                    continue
+                if static_exchange_eval(a2, check_sq, not mover) < 150:
+                    saved = True
+                    break
+            if saved:
+                return (
+                    f"heads up: your {PIECE_NAMES[piece_type]} on "
+                    f"{chess.square_name(psq)} is hanging (the opponent wins "
+                    f"material in the exchange there), and a move this turn "
+                    f"could save it — you are leaving it to be taken. If that "
+                    f"is not a deliberate sacrifice, rescue it instead.",
+                    False,
+                )
     return None
 
 

@@ -111,48 +111,65 @@ enough information is to play. Concretely:
   tool budget** — when you see that warning, commit the best
   candidate immediately rather than starting another investigation.
 
-## Your knowledge wiki
+## Your knowledge wiki — READ IT, it is how you play well
 
 You have a bundled wiki of chess knowledge — openings, principles,
 strategy, pawn structures, tactical patterns, mating patterns, endgames.
-It is *your own accumulated knowledge*, and it grows over time. Use it
-when you need a **plan** or want to **recognise a tactic**, not on every
-turn.
+**It is your own accumulated experience, and reading the relevant page is
+what separates a good move from a guess.** The model's raw chess intuition
+is weak; the wiki is where the actual chess understanding lives. So when
+the position raises a question the page below answers, **read it** — a
+single `read_reference` call is cheap next to losing a piece or drifting
+without a plan. Do not try to play from memory when a page covers exactly
+the situation in front of you.
 
 Two tools reach the wiki:
 
-```
-read_reference(skill_name="chess", path="index.md")          # read one page (start here)
-chess__search_wiki(args=["back rank mate"])                  # find pages by keyword
-```
+- **`read_reference(skill_name="chess", path="<path>")`** → returns a
+  page's full text. Paths are relative to the wiki root (e.g.
+  `principles/index.md`, `patterns/mating-patterns/back-rank-mate.md`).
+- **`chess__search_wiki(args=["<keywords>"])`** → finds pages by keyword,
+  returns their paths + descriptions (not bodies), each with the exact
+  `read_reference` call. Use it when you know a concept but not its path.
 
-- **`read_reference(skill_name="chess", path="<path>")`** returns a page's
-  full text. Paths are relative to the wiki root: `index.md`,
-  `patterns/index.md`, `patterns/mating-patterns/back-rank-mate.md`.
-  **Always start at `index.md`** — it is a routing decision-tree that sends
-  you to the right folder by what the position needs; each folder's
-  `index.md` routes one level deeper.
-- **`chess__search_wiki(args=["<keywords>"])`** returns matching pages'
-  paths and frontmatter (description, triggers, tags) — *not* their bodies.
-  Each result includes the exact `read_reference` call to read it. Use
-  search when you know a concept but not where it lives, then read the page
-  it points to.
+### The index — route from here every game (don't read everything)
 
-**When to consult the wiki (not every turn):**
+This is the top of the wiki (`index.md`). Pick the ONE folder that matches
+the position, read that folder's `index.md`, then read the one page that
+fits. Reading the wrong page wastes tokens; reading the right one wins
+games.
 
-- The position is quiet or unclear and you need a *plan* → start at
-  `index.md`, route to `strategic-thinking/`.
-- You sense a tactic (loose enemy piece, exposed king, pieces on a line)
-  but can't name or calculate it → `patterns/` (or search).
-- The enemy king looks matable → `patterns/mating-patterns/`.
-- Few pieces left and you're unsure of technique → `endgames/`.
+| If the position is… | read this folder's index |
+|---|---|
+| first ~10 moves / opening unclear | `openings/index.md` |
+| you need a rule-of-thumb / move sanity check | `principles/index.md` |
+| you need a PLAN ("what am I trying to do here?") | `strategic-thinking/index.md` |
+| a pawn-structure question (isolated/passed/doubled/chain) | `strategic-thinking/pawn-structures/index.md` |
+| a tactic is in the air (loose piece, exposed king, pin, fork) | `patterns/index.md` |
+| the enemy king looks matable | `patterns/mating-patterns/index.md` |
+| few pieces left (endgame technique) | `endgames/index.md` |
+
+### Explicit read-triggers — when you see X, read Y BEFORE moving
+
+- **You have a basic mate (K+Q, K+R, two rooks vs a lone king)** → read the
+  matching `patterns/mating-patterns/` drill and follow it; do not improvise.
+- **The enemy king is on its back rank / in a corner with few escape
+  squares** → `patterns/mating-patterns/` (back-rank, smothered, etc.).
+- **A `SAFETY CHECK` flagged a losing trade or hanging piece** → if you are
+  unsure how to defend it, the four responses are: defend, move, counter-
+  check, or make a bigger threat — see `principles/`.
+- **A passed pawn (yours or theirs), or K+P endgames** → `endgames/` for the
+  escort/promotion technique before you push.
+- **A quiet position with nothing forcing** → `strategic-thinking/` for a
+  plan (improve your worst piece, open a file for a rook, target a
+  weakness) rather than shuffling.
+- **The radar in `chess__show_position` names a page** → read that page; it
+  named it because the geometry for it is on the board right now.
 
 **When NOT to:** if the move is obvious (free capture, flagged
-`checkmate`, only-move), just play it. Reading the wiki costs tokens from
-this turn's budget — route deliberately, read one or two pages, then get
-back to choosing a move. The wiki tells you *what to look for*; the
-perception tools (`chess__imagine_move`, `chess__list_legal_moves`)
-*verify* it.
+`checkmate`, only-move, an opponent threat with one clear answer), just
+play it. The wiki tells you *what to look for*; the perception tools
+(`chess__imagine_move`, `chess__list_legal_moves`) *verify* it.
 
 ## Turn workflow
 
@@ -446,21 +463,32 @@ The move accepts UCI or SAN; trailing `+` or `#` is stripped.
 - On missing reasoning: `{"ok": false, "error": "Missing reasoning ..."}`.
   Add your reasoning and retry.
 - **On a SAFETY CHECK error** — the move was NOT committed because a
-  one-ply mechanical check found it gives away a piece for free (the
-  opponent has a capture nobody recaptures), delivers stalemate, or
-  instantly draws by rule while you are ahead on material. This is the
-  same geometry `chess__imagine_move` reports; it means you skipped
-  verification. **Default response: pick a better move** — almost always
-  the warning is right and you simply missed the hanging piece.
+  one-ply mechanical check found a problem. The check plays out the forced
+  capture sequence on a square (a *static exchange evaluation* — pure
+  counting, the same arithmetic behind `chess__imagine_move`'s reports) and
+  fires when the move:
+  - **loses material in a trade**, even on a square that looks "defended" —
+    a knight guarded only by a pawn is NOT safe (the opponent takes the
+    knight, you regain a pawn, you are down ~2). **"Defended" by count is
+    not the same as safe — trust the value.**
+  - **leaves one of your own pieces losing material** (you moved a defender
+    away or opened a line onto it), or **leaves an already-hanging piece to
+    die when a move this turn could have saved it**.
+  - **promotes a pawn straight into a capture** — gaining a queen on paper
+    that is taken next move is not progress; promote on a safe square or
+    prepare the push.
+  - **delivers stalemate**, or **instantly draws by rule while you are
+    ahead** on material.
+
+  **Default response: pick a better move** — almost always the warning is
+  right and you simply missed it.
   - A **soft** warning can be overridden by repeating the call with
-    `confirm=true`, but only when the sacrifice is genuinely intentional
-    and you have calculated the follow-up. Reflexively confirming is how
-    games are lost — do not do it.
+    `confirm=true`, but only when it is a genuine, calculated sacrifice.
+    Reflexively confirming is how games are lost — do not do it.
   - A **SAFETY CHECK (cannot override)** error is **hard**: the move loses
-    the game outright (stalemate, a draw while you are winning, or hanging
-    a rook/queen to a king that has no army). `confirm=true` will not
-    force it. There is no such thing as sacrificing your rook to a lone
-    king — find the move that keeps the win.
+    the game outright (stalemate, a draw while winning, hanging a major to a
+    king with no army, or dropping to insufficient material). `confirm=true`
+    will not force it — find the move that keeps the win.
 
 ## Move format
 
