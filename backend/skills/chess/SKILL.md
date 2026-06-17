@@ -192,6 +192,17 @@ A turn proceeds roughly like this. Skip steps when the move is obvious;
 spend more time on them when the position is sharp. Most turns finish
 well under ten tool calls. Between each tool call/step, do some reasoning, think before you do. write down your thoughts.
 
+**MOVE 1 ONLY:**
+0. **Load the skill and read the wiki.** Call `use_skill('chess')` to load the tools.
+1. **Call `chess__show_position`** to see the board and the radar.
+2. **READ THE RADAR.** If the radar names a wiki page (e.g., "read `endgames/two-rook-mate.md`"), **IMMEDIATELY**
+   call `read_reference(skill_name="chess", path="...")` and study the "What to do" section.
+   The wiki page has the exact technique you need for this position.
+3. **Write your plan** (2–3 sentences) citing the page you just read.
+4. **Then proceed to pick candidates and move** (see below).
+
+**EVERY TURN:**
+
 0. **Always check for checkmate first.** Before anything else, ask
    yourself: can I deliver checkmate this turn? In endgame positions
    (few pieces, king close to the edge), call `chess__list_legal_moves`
@@ -199,13 +210,11 @@ well under ten tool calls. Between each tool call/step, do some reasoning, think
    `checkmate`, play it immediately — there is nothing to verify.
    **Do not skip this step in any position where you have a material
    advantage** — the goal is to win, not just to maintain an edge.
-0a. **Stop passed pawns BEFORE they promote.** A pawn one square from
-   promotion is an emergency. Check `chess__show_position` for the "Passed
-   pawns" radar line. If you see a pawn on rank 7 (for opponent), or rank
-   2 (for you), or closer to promotion, your next move MUST stop it: block
-   it with a piece, capture it, or give check to buy a move. A promoted
-   queen will kill you. Stopping a pawn is higher priority than advancing
-   your own attack — unless you have checkmate.
+0a. **Passed pawn emergencies.** A pawn one square from promotion is
+   urgent. Check `chess__show_position` for the "Passed pawns" radar line.
+   If you see opponent pawn on rank 7 or closer (or a **PAWN PROMOTION WARNING**
+   in the imagine_move output), prioritize stopping it UNLESS checkmate
+   is forced in your replies. Read the radar warnings carefully.
 0b. **Consult your memory.** Your prior note, standing plan, and current
    goal are shown at the top of the turn. If they still fit the position,
    prefer candidate moves that advance the goal; deviate only for tactics
