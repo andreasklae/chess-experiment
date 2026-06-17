@@ -13,6 +13,7 @@ technique you either know or don't, so consult the relevant page.
 
 | Page | When it applies | Read with |
 |------|-----------------|-----------|
+| two-rook-mate | King and two rooks vs lone king; forced checkmate using the herding/support pattern | `read_reference(skill_name="chess", path="endgames/two-rook-mate.md")` |
 | king-pawn-endings | Only kings and pawns left; promotion, opposition, pawn races, creating a passed pawn | `read_reference(skill_name="chess", path="endgames/king-pawn-endings.md")` |
 
 ## Routing

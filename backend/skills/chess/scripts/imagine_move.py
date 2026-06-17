@@ -435,6 +435,24 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
         out.append(f"**En passant available:** {ep_text}")
         out.append("")
 
+    # Check if opponent can promote a pawn after this move
+    opp_can_promote = []
+    for sq in board_after.pieces(chess.PAWN, board_after.turn):
+        rank = chess.square_rank(sq)
+        # Opponent pawns on rank 7 (for black, rank 0 for white after turn switch — but we're already on opponent's turn after push)
+        target_rank = 0 if board_after.turn == chess.WHITE else 7
+        if rank == target_rank:
+            opp_can_promote.append(chess.square_name(sq))
+
+    if opp_can_promote:
+        out.append(
+            f"**⚠ PAWN PROMOTION WARNING: Opponent can promote a pawn on {', '.join(opp_can_promote)} "
+            f"— this is a NEW MAJOR PIECE. If they do, they likely win. Either (1) this move delivers "
+            f"checkmate in the opponent's forced replies, or (2) they have no legal moves / only losing moves. "
+            f"Scan the replies below: if even ONE reply is safe for them (not check, not mate for you), they promote and you lose.**"
+        )
+        out.append("")
+
     out.append("## Opponent legal replies")
     out.append("")
     legal = list(board_after.legal_moves)
