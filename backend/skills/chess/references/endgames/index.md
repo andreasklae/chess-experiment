@@ -1,22 +1,20 @@
 # Endgames — Index
 
-Endgame principles and technique: king activity, opposition, passed-pawn
-promotion, basic checkmates (K+Q, K+R), king-and-pawn endings, rook endings
-(the Lucena and Philidor positions), and the rules of thumb that change once
-queens are off and the king becomes a fighting piece.
+Endgame technique once the queens are off and the king becomes a fighting
+piece: king activity, opposition, passed-pawn promotion, king-and-pawn
+endings. Read here when few pieces remain and there is no immediate mate.
 
-**Read a page here when:** few pieces remain. The middlegame's caution about
-king safety inverts — the king must become active. Many endgames are
-technique you either know or don't, so consult the relevant page.
+**Basic checkmates (K+Q, K+R, K+2R) are NOT here — they live in
+[`../mates/`](../mates/index.md)** (a lone enemy king means you are mating,
+not grinding an endgame).
 
 ## Pages
 
-| Page | When it applies | Read with |
-|------|-----------------|-----------|
-| two-rook-mate | King and two rooks vs lone king; forced checkmate using the herding/support pattern | `read_reference(skill_name="chess", path="endgames/two-rook-mate.md")` |
-| king-pawn-endings | Only kings and pawns left; promotion, opposition, pawn races, creating a passed pawn | `read_reference(skill_name="chess", path="endgames/king-pawn-endings.md")` |
+| Read this when… | Page |
+|---|---|
+| only kings and pawns remain — promotion, opposition, pawn races, creating a passed pawn | [king-pawn-endings](king-pawn-endings.md) |
 
 ## Routing
 
-- Converting a pawn-structure edge (passed pawn, majority) → [`../strategic-thinking/pawn-structures/`](../strategic-thinking/pawn-structures/index.md).
-- You're mating with K+Q or K+R → [`../patterns/mating-patterns/`](../patterns/mating-patterns/index.md).
+- The enemy is down to a lone king and you have the material to mate → [`../mates/`](../mates/index.md).
+- You are converting a material or structural edge → [`../strategy/convert-advantage.md`](../strategy/convert-advantage.md).

@@ -1,51 +1,46 @@
 # Chess Knowledge Wiki — Index
 
-This is your accumulated chess knowledge. **Read this page to decide where
-to look, then read at most one or two pages — don't read everything.** Each
-folder has its own `index.md` that routes one level deeper. Pages are short
-by design; the cost of reading the wrong one is wasted tokens, so route
-deliberately.
+Your accumulated chess knowledge, in topic folders. **Pick the ONE folder
+that matches the position, open its index, then read the one page that
+fits.** Reading the wrong page wastes tokens; the indexes below tell you
+exactly what each folder holds so you can route in one hop.
 
 ## How to navigate
 
-1. You have already run `chess__show_position`. Use what it told you — the
-   phase (opening / middlegame / endgame), the material balance, what is
-   under attack — to pick a folder below.
-2. Read that folder's index with
-   `read_reference(skill_name="chess", path="<folder>/index.md")`. It lists
-   its pages with a one-line description and the board conditions that make
-   each relevant.
-3. Read the one page that fits with
-   `read_reference(skill_name="chess", path="<path>")`. Follow a
-   `[[wikilink]]` only if it is clearly relevant to *this* position.
-4. If you know the name of a concept but not where it lives, call
-   `chess__search_wiki(args=["<keywords>"])` — it returns matching pages'
-   paths, descriptions, and tags (not their bodies), each with the exact
-   `read_reference` call to open it.
+1. You have already run `chess__show_position` — use its phase, material,
+   and what-is-attacked to pick a folder below.
+2. Open that folder's index:
+   `read_reference(skill_name="chess", path="<folder>/index.md")`. Each
+   index lists its pages with a one-line "read this when…" so you can pick
+   the right page without opening several.
+3. Read the one page that fits:
+   `read_reference(skill_name="chess", path="<folder>/<page>.md")`.
+4. If you know a concept's name but not its folder, call
+   `chess__search_wiki(args=["<keywords>"])` — it returns matching pages
+   with the exact `read_reference` call.
 
-The wiki is reached two ways: **`chess__search_wiki`** (find pages by
-keyword → returns frontmatter + the read_reference call) and
-**`read_reference`** (read one page → returns its body). You are reading
-this index via `read_reference(skill_name="chess", path="index.md")` now.
+## The folders — route by what the position needs
 
-## Route by what the position needs
+| If the position is… | open this folder |
+|---|---|
+| **the enemy king is matable** — you can force or are hunting checkmate (basic K+Q / K+R / K+2R drills AND named mating nets like back-rank, smothered) | [`mates/`](mates/index.md) |
+| **a tactic is in the air** — a loose piece, an overworked defender, a combination to win material | [`tactics/`](tactics/index.md) |
+| **few pieces left, no immediate mate** — king-and-pawn play, promotion, opposition | [`endgames/`](endgames/index.md) |
+| **you need a rule-of-thumb / sanity check** on a move | [`principles/`](principles/index.md) |
+| **you need a PLAN** — quiet position, "what am I trying to do here?", converting an advantage | [`strategy/`](strategy/index.md) |
 
-- **Opening unclear, or you're in the first ~10 moves** → [`openings/`](openings/index.md)
-- **You need a rule of thumb / sanity check on a move** → [`principles/`](principles/index.md)
-- **You need a plan — what should I be trying to do here?** → [`strategic-thinking/`](strategic-thinking/index.md)
-  - pawn-structure questions (isolated / passed / doubled pawns, chains) live under [`strategic-thinking/pawn-structures/`](strategic-thinking/pawn-structures/index.md)
-- **There's a tactic in the air (loose piece, exposed king, pin, fork)** → [`patterns/`](patterns/index.md)
-  - **the enemy king looks exposed and you may be able to mate** → [`patterns/mating-patterns/`](patterns/mating-patterns/index.md)
-- **Few pieces left on the board** → [`endgames/`](endgames/index.md)
-- **Reviewing a finished game** (post-game only) → [`game-analyses/`](game-analyses/index.md)
+*(Folders for openings and per-game analyses exist but have no pages yet —
+they are added by ingestion and post-game review.)*
 
 ## When NOT to look anything up
 
-If the move is obvious (a free capture, a forced mate flagged by
-`list_legal_moves`, an only-move), just play it. The wiki is for when you
-need a plan or a check, not for every turn.
+If the move is obvious — a free capture, a `checkmate` flagged by
+`chess__list_legal_moves`, an only-move, a single clear answer to a
+threat — just play it. The wiki is for when you need a plan or a technique,
+not for every turn.
 
 ---
-*Folders, page contract, and how this wiki is maintained:
-`../../../../../../knowledge-base/decisions/2026-06-02-chess-agent-wiki-architecture.md`.
-You read these pages; the tutor maintains them.*
+*Structure and maintenance: this wiki has at most one level of subfolders;
+each folder index lists its own pages. You read these pages; the tutor
+maintains them. See
+`../../../../../../knowledge-base/decisions/2026-06-17-wiki-basic-mates-restructure.md`.*

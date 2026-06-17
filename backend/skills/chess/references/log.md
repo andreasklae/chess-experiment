@@ -13,7 +13,11 @@ what the agent learned and when — keep it faithful.
 
 ---
 
-## [2026-06-17] create | endgames/two-rook-mate.md | K+2R forced-mate technique: mechanical herding/support rook pattern, stalemate avoidance, edge-mate delivery. Diagnosed after puzzle 49389f2b: agent was moving wrong rook and trapped itself in loops; explicit drill prevents the pattern from repeating. status: tested.
+## [2026-06-17] restructure | (whole wiki) | Flattened to six topic folders, max one subfolder level (ADR 2026-06-17-wiki-basic-mates-restructure). `patterns/mating-patterns/` + the basic-mate pages → single `mates/` folder (split inside its index by bare-king-vs-not). `strategic-thinking/` (+ pawn-structures) → `strategy/`. `patterns/deflection.md` → `tactics/deflection.md`. Empty `openings/`, `pawn-structures/` no longer routed from the top index. All indexes rewritten to carry per-page "read this when…" so navigation needs one hop; all `[[wikilink]]`/related_pages/radar/SKILL paths repointed.
+
+## [2026-06-17] merge+retire | endgames/two-rook-mate.md → mates/two-rook-ladder-mate.md | Consolidated the day-old herding/support page into the older, more thorough ladder-mate page (now `mates/two-rook-ladder-mate.md`); kept all trap coverage, folded herding framing into "the idea", scoped the page to two rooks (Q+R / Q+Q ladders get their own pages when seeded). Resolves the two-pages-one-endgame duplication. status: draft.
+
+## [2026-06-17] create | endgames/two-rook-mate.md | K+2R forced-mate technique: mechanical herding/support rook pattern, stalemate avoidance, edge-mate delivery. Diagnosed after puzzle 49389f2b: agent was moving wrong rook and trapped itself in loops; explicit drill prevents the pattern from repeating. status: tested. (SAME DAY: merged into mates/two-rook-ladder-mate.md, see above.)
 
 ## [2026-06-10] create | raw/chess-fundamentals-capablanca.md | Ingested Capablanca's Chess Fundamentals (Gutenberg #33870, public domain): Ch. I §1-4 + Ch. II §9-13 converted to FEN + SAN, every line replayed in python-chess. Source for the simple-mates / promotion / opposition pages.
 

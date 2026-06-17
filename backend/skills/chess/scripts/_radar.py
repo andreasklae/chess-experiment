@@ -32,11 +32,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _eval  # noqa: E402
 
 # Wiki pages the radar may point to. Paths relative to references/.
-_PAGE_LADDER = "patterns/mating-patterns/ladder-mate.md"
-_PAGE_KQ = "patterns/mating-patterns/king-queen-mate.md"
-_PAGE_KR = "patterns/mating-patterns/king-rook-mate.md"
-_PAGE_BACK_RANK = "patterns/mating-patterns/back-rank-mate.md"
-_PAGE_CONVERT = "strategic-thinking/convert-advantage.md"
+_PAGE_LADDER = "mates/two-rook-ladder-mate.md"
+_PAGE_KQ = "mates/king-queen-mate.md"
+_PAGE_KR = "mates/king-rook-mate.md"
+_PAGE_BACK_RANK = "mates/back-rank-mate.md"
+_PAGE_CONVERT = "strategy/convert-advantage.md"
 _PAGE_KP = "endgames/king-pawn-endings.md"
 
 

@@ -2,7 +2,7 @@
 category: principles
 description: When far ahead, every quiet move must leave the opponent a legal reply — stalemate turns a won game into a draw in one move.
 triggers: [bare king, cornered king, huge material lead, quiet move when winning, stalemate]
-related_pages: [patterns/mating-patterns/king-queen-mate, patterns/mating-patterns/king-rook-mate, strategic-thinking/convert-advantage]
+related_pages: [mates/king-queen-mate, mates/king-rook-mate, strategy/convert-advantage]
 tags: [principle, stalemate, endgame, safety]
 status: draft
 updated: 2026-06-10

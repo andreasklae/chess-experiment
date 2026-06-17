@@ -53,7 +53,7 @@ are dead weight. Pass `dismiss_references="<path>[,<path>...]"` (or
 `"all"`) with your move to drop their text from your context from the
 next turn on — you can always `read_reference` them again later.
 
-The FEN in each turn's message is the complete game state, and `chess__show_position`'s radar tracks repetition/draw rules — so the plan is the one thing only *you* can carry forward. **A plan you do not write down is lost at the end of the turn.** **When you start a forced sequence from a wiki page (e.g. the smothered-mate sequence), write the REMAINING moves into `plan` verbatim** (e.g. plan="Forced: now Nf7+, then Nh6+ double check, then Qg8+!! sacrifice, then Nf7#") and on each following turn play the next move of the plan after confirming the opponent replied as forced — order is everything in a forced line. When your memory says "no standing plan" and no tactic decides the move, form one (read `strategic-thinking/make-a-plan.md`) and record it with your move.
+The FEN in each turn's message is the complete game state, and `chess__show_position`'s radar tracks repetition/draw rules — so the plan is the one thing only *you* can carry forward. **A plan you do not write down is lost at the end of the turn.** **When you start a forced sequence from a wiki page (e.g. the smothered-mate sequence), write the REMAINING moves into `plan` verbatim** (e.g. plan="Forced: now Nf7+, then Nh6+ double check, then Qg8+!! sacrifice, then Nf7#") and on each following turn play the next move of the plan after confirming the opponent replied as forced — order is everything in a forced line. When your memory says "no standing plan" and no tactic decides the move, form one (read `strategy/make-a-plan.md`) and record it with your move.
 
 Examples:
 
@@ -124,21 +124,21 @@ strategy, pawn structures, tactical patterns, mating patterns, endgames.
 **It is your own accumulated experience, and reading the relevant page is
 what separates a good move from a guess.** The model's raw chess intuition
 is weak; the wiki is where the actual chess understanding lives. **MANDATORY:**
-when the radar or these instructions name a page (e.g., "read `patterns/mating-patterns/
-two-rook-mate.md`"), or when the position matches an explicit trigger below,
+when the radar or these instructions name a page (e.g., "read `mates/
+two-rook-ladder-mate.md`"), or when the position matches an explicit trigger below,
 you MUST read that page before the next move — do not skip it. A single
 `read_reference` call is cheap next to a blunder or slow technique.
 
 When you open a wiki page and follow its explicit "What to do" section (drills,
 numbered steps, rules), track which page you are reading in your `plan` field
-so future turns can see you consulted it: e.g., `plan="Following two-rook-mate
+so future turns can see you consulted it: e.g., `plan="Following two-rook-ladder-mate
 drill: currently executing step 3 (drive king to edge)..."`
 
 Two tools reach the wiki:
 
 - **`read_reference(skill_name="chess", path="<path>")`** → returns a
   page's full text. Paths are relative to the wiki root (e.g.
-  `principles/index.md`, `patterns/mating-patterns/back-rank-mate.md`).
+  `principles/index.md`, `mates/back-rank-mate.md`).
 - **`chess__search_wiki(args=["<keywords>"])`** → finds pages by keyword,
   returns their paths + descriptions (not bodies), each with the exact
   `read_reference` call. Use it when you know a concept but not its path.
@@ -152,46 +152,45 @@ games.
 
 | If the position is… | read this folder's index |
 |---|---|
-| first ~10 moves / opening unclear | `openings/index.md` |
+| the enemy king is matable (basic K+Q/K+R/K+2R drills OR a named mating net) | `mates/index.md` |
+| a tactic is in the air (loose piece, overworked defender, combination) | `tactics/index.md` |
+| few pieces left, no immediate mate (king+pawn, promotion, opposition) | `endgames/index.md` |
 | you need a rule-of-thumb / move sanity check | `principles/index.md` |
-| you need a PLAN ("what am I trying to do here?") | `strategic-thinking/index.md` |
-| a pawn-structure question (isolated/passed/doubled/chain) | `strategic-thinking/pawn-structures/index.md` |
-| a tactic is in the air (loose piece, exposed king, pin, fork) | `patterns/index.md` |
-| the enemy king looks matable | `patterns/mating-patterns/index.md` |
-| few pieces left (endgame technique) | `endgames/index.md` |
+| you need a PLAN ("what am I trying to do here?") or to convert an edge | `strategy/index.md` |
+
+(Openings and per-game analyses have folders but no pages yet.)
 
 ### Explicit read-triggers — when you see X, read Y BEFORE moving
 
-**ENDGAME MATERIAL CHANGES** — re-read the wiki when material changes:
+**BASIC MATES (lone enemy king) — re-read the right page when material changes.**
+All three live in `mates/`:
 
-- **You have K+2R (two rooks vs a lone king)** → **ALWAYS read**
-  `read_reference(skill_name="chess", path="endgames/two-rook-mate.md")`.
-  Follow the herding/support rook pattern exactly. This is mechanical and forced-mate.
-- **You have K+R (king + rook vs lone king)** — material just dropped from K+2R →
-  **re-read** `read_reference(skill_name="chess", path="endgames/king-rook-mate.md")`.
-  K+R uses the fence-and-opposition drill, NOT the herding pattern. Different technique entirely.
-- **You have K+Q (king + queen vs lone king)** →
-  `read_reference(skill_name="chess", path="patterns/mating-patterns/king-queen-mate.md")`.
-- **Other basic mate (K+P, K+2B, K+B+N)** → `read_reference` to `endgames/index.md`
-  and pick the matching page.
+- **K+2R (two rooks vs a lone king)** → **ALWAYS read**
+  `read_reference(skill_name="chess", path="mates/two-rook-ladder-mate.md")`.
+  Fence one rank, check with the OTHER rook, leapfrog the king to the edge.
+- **K+R (one rook)** — if material just dropped from K+2R, your two-rook plan
+  is STALE → **re-read** `read_reference(skill_name="chess", path="mates/king-rook-mate.md")`.
+  K+R uses fence-and-opposition, NOT the two-rook ladder. Different technique.
+- **K+Q (king + queen)** →
+  `read_reference(skill_name="chess", path="mates/king-queen-mate.md")`.
+- **A named net is on the board** (back-rank, smothered, …) → open
+  `mates/index.md` and pick by geometry.
 
 **OTHER TRIGGERS:**
 
-- **The enemy king is on its back rank / in a corner with few escape
-  squares** → `patterns/mating-patterns/` for the specific pattern (back-rank, smothered, etc.).
 - **A `SAFETY CHECK` flagged a losing trade or hanging piece** → if you are
   unsure how to defend it, the four responses are: defend, move, counter-
   check, or make a bigger threat — see `principles/`.
 - **A passed pawn (yours or theirs), or K+P endgames** → `endgames/` for the
   escort/promotion technique before you push.
-- **A quiet position with nothing forcing** → `strategic-thinking/` for a
-  plan (improve your worst piece, open a file for a rook, target a
-  weakness) rather than shuffling.
+- **A quiet position with nothing forcing** → `strategy/` for a plan
+  (improve your worst piece, open a file for a rook, target a weakness)
+  rather than shuffling.
 - **The radar in `chess__show_position` names a page** → read that page; it
   named it because the geometry for it is on the board right now.
-- **Your standing plan from move 1 no longer applies** — material or position
-  changed fundamentally (e.g., went from K+2R ladder-mate to K+R fence-mate).
-  Re-read the wiki for the new phase and update your plan.
+- **Your standing plan no longer applies** — material or position changed
+  fundamentally (e.g., K+2R ladder → K+R fence). Re-read the matching
+  `mates/` page and update your plan.
 
 **When NOT to:** if the move is obvious (free capture, flagged
 `checkmate`, only-move, an opponent threat with one clear answer), just
@@ -207,7 +206,7 @@ well under ten tool calls. Between each tool call/step, do some reasoning, think
 **MOVE 1 ONLY:**
 0. **Load the skill and read the wiki.** Call `use_skill('chess')` to load the tools.
 1. **Call `chess__show_position`** to see the board and the radar.
-2. **READ THE RADAR.** If the radar names a wiki page (e.g., "read `endgames/two-rook-mate.md`"), **IMMEDIATELY**
+2. **READ THE RADAR.** If the radar names a wiki page (e.g., "read `mates/two-rook-ladder-mate.md`"), **IMMEDIATELY**
    call `read_reference(skill_name="chess", path="...")` and study the "What to do" section.
    The wiki page has the exact technique you need for this position.
 3. **Write your plan** (2–3 sentences) citing the page you just read.
@@ -482,7 +481,7 @@ knowledge wiki").
 
 ```
 read_reference(skill_name="chess", path="index.md")
-read_reference(skill_name="chess", path="patterns/mating-patterns/back-rank-mate.md")
+read_reference(skill_name="chess", path="mates/back-rank-mate.md")
 ```
 
 Reads one wiki page and returns its markdown. `path` is relative to the

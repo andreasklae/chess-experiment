@@ -1,11 +1,11 @@
 ---
-category: patterns/mating-patterns
+category: mates
 description: K+Q vs K as a three-phase drill — knight's-move shadowing to the edge, stop and bring the king, mate with king support. Stalemate is the only way to fail.
 triggers: [king and queen versus king, bare king, queen mate, basic mate, K+Q]
-related_pages: [patterns/mating-patterns/ladder-mate, patterns/mating-patterns/king-rook-mate, principles/avoid-stalemate]
+related_pages: [mates/two-rook-ladder-mate, mates/king-rook-mate, principles/avoid-stalemate]
 tags: [mate, endgame, queen, technique, recipe]
 status: draft
-updated: 2026-06-11
+updated: 2026-06-13
 ---
 
 # King + Queen vs King — the drill
@@ -14,7 +14,14 @@ updated: 2026-06-11
 
 Queen and king against a bare (or nearly bare) king — typically right
 after promoting. Forced mate in under ten moves. If you also have a rook,
-prefer the even simpler [[patterns/mating-patterns/ladder-mate]].
+prefer the even simpler [[mates/two-rook-ladder-mate]].
+
+**Your compass:** `chess__imagine_move` prints **Enemy king mobility:
+before → after**. Shrinking that number is the whole point of phase 1, so
+prefer moves that lower it — but in the final phases watch it like a hawk:
+if a quiet move drops it to **0 without check, that is STALEMATE** (the
+draw this mate throws away). Verify every candidate; commit a check only
+when it reports `gives checkmate`.
 
 ## What to do — three phases, in order
 
