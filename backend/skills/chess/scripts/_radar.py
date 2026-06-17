@@ -472,14 +472,31 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
             else:
                 edge = "rank-top" if (7 - kr) <= kr else "rank-bottom"
     else:
-        fenced = {
-            "rank-top": any(chess.square_rank(sq) == kr - 1 for sq in majors),
-            "rank-bottom": any(chess.square_rank(sq) == kr + 1 for sq in majors),
-            "file-h": any(chess.square_file(sq) == kf - 1 for sq in majors),
-            "file-a": any(chess.square_file(sq) == kf + 1 for sq in majors),
-        }
-        existing = [e for e, ok in fenced.items() if ok]
-        edge = min(existing, key=dists.get) if existing else min(dists, key=dists.get)
+        # Single major (K+R / K+Q): the drive direction MUST be consistent with
+        # the white king's side, or the rook check pushes the enemy king the
+        # WRONG way and the mate thrashes (game 4a211a2a, 2026-06-17: fence on
+        # rank 5 above the king while the white king sat below, so Rh4+ shoved
+        # the king UP through the vacated rank). The enemy king must be driven
+        # to the edge the WHITE KING is NOT blocking — i.e. the white king ends
+        # on the centre side, shouldering the king toward the edge.
+        mf = chess.square_file(my_k) if my_k is not None else 4
+        mr = chess.square_rank(my_k) if my_k is not None else 4
+        # For each candidate edge, the white king is "on the centre side" (good)
+        # when it sits between the enemy king and the board centre along that
+        # axis — i.e. NOT beyond the enemy king toward that edge.
+        def king_blocks(e: str) -> bool:
+            if e == "rank-bottom":   # driving toward rank 1: king must be above
+                return mr < kr
+            if e == "rank-top":      # driving toward rank 8: king must be below
+                return mr > kr
+            if e == "file-a":        # driving toward a-file: king must be right
+                return mf < kf
+            return mf > kf            # file-h: king must be left
+        # Prefer the nearest edge whose drive the king supports; fall back to
+        # nearest overall if the king blocks them all (it will reposition).
+        ordered = sorted(dists, key=dists.get)
+        supported = [e for e in ordered if not king_blocks(e)]
+        edge = supported[0] if supported else ordered[0]
     if edge.startswith("rank"):
         fence_line = kr - 1 if edge == "rank-top" else kr + 1
         on_fence = [sq for sq in majors if chess.square_rank(sq) == fence_line]
@@ -577,17 +594,19 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
             f"{_slide_away_text(touchable[0])}. Nothing else this turn."
         )
     # EFFICIENCY RULE (verified against Capablanca's mate-in-11: the kings stay
-    # within distance 3 the WHOLE mate). When a fence already exists but your
-    # king has drifted far (>3), stop fiddling with the major and MARCH the king
-    # — the slow 49-ply game efbdd8ce let the kings reach distance 5 while the
-    # rook shuffled. Bringing the king to opposition is what finishes.
-    elif on_fence and _kd > 3:
+    # within distance 3 the WHOLE mate). When the enemy king is already boxed
+    # (a fence holds it, OR the box short side is small) but your king has
+    # drifted far (>3), stop fiddling with the major and MARCH the king — the
+    # slow 49-ply game efbdd8ce let the kings reach distance 5 while the rook
+    # shuffled, and the K+Q stall kept the king on e1 (game 34391da0).
+    # Bringing the king up to opposition is the only thing that finishes.
+    elif _kd > 3 and (on_fence or min(_w, _h) <= 3):
         out.append(
-            pre + f"a fence is set but your kings are {_kd} apart — too far. "
-            f"MARCH YOUR KING one square toward the enemy king now (do NOT "
-            f"move the {piece_noun}; the fence is already holding). The mate "
-            f"needs the kings within 2 (opposition); closing that gap is the "
-            f"priority."
+            pre + f"the enemy king is boxed ({_w}x{_h}) but your kings are "
+            f"{_kd} apart — too far. MARCH YOUR KING one square toward the "
+            f"enemy king now (do NOT move the {piece_noun}; it is already "
+            f"confining the king). The mate needs the kings within 2 "
+            f"(opposition); closing that gap is the priority."
         )
     elif not on_fence:
         out.append(
