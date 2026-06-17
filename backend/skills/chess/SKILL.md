@@ -162,14 +162,23 @@ games.
 
 ### Explicit read-triggers — when you see X, read Y BEFORE moving
 
-- **You have K+2R (two rooks vs a lone king) — ALWAYS read this first** →
-  `read_reference(skill_name="chess", path="endgames/two-rook-mate.md")` and
-  follow the herding/support rook pattern exactly. This is mechanical and
-  forced-mate. Do not improvise. Do not move rooks randomly.
-- **You have a basic mate (K+Q, K+R)** → read the matching `patterns/mating-patterns/`
-  drill and follow it; do not improvise.
+**ENDGAME MATERIAL CHANGES** — re-read the wiki when material changes:
+
+- **You have K+2R (two rooks vs a lone king)** → **ALWAYS read**
+  `read_reference(skill_name="chess", path="endgames/two-rook-mate.md")`.
+  Follow the herding/support rook pattern exactly. This is mechanical and forced-mate.
+- **You have K+R (king + rook vs lone king)** — material just dropped from K+2R →
+  **re-read** `read_reference(skill_name="chess", path="endgames/king-rook-mate.md")`.
+  K+R uses the fence-and-opposition drill, NOT the herding pattern. Different technique entirely.
+- **You have K+Q (king + queen vs lone king)** →
+  `read_reference(skill_name="chess", path="patterns/mating-patterns/king-queen-mate.md")`.
+- **Other basic mate (K+P, K+2B, K+B+N)** → `read_reference` to `endgames/index.md`
+  and pick the matching page.
+
+**OTHER TRIGGERS:**
+
 - **The enemy king is on its back rank / in a corner with few escape
-  squares** → `patterns/mating-patterns/` (back-rank, smothered, etc.).
+  squares** → `patterns/mating-patterns/` for the specific pattern (back-rank, smothered, etc.).
 - **A `SAFETY CHECK` flagged a losing trade or hanging piece** → if you are
   unsure how to defend it, the four responses are: defend, move, counter-
   check, or make a bigger threat — see `principles/`.
@@ -180,6 +189,9 @@ games.
   weakness) rather than shuffling.
 - **The radar in `chess__show_position` names a page** → read that page; it
   named it because the geometry for it is on the board right now.
+- **Your standing plan from move 1 no longer applies** — material or position
+  changed fundamentally (e.g., went from K+2R ladder-mate to K+R fence-mate).
+  Re-read the wiki for the new phase and update your plan.
 
 **When NOT to:** if the move is obvious (free capture, flagged
 `checkmate`, only-move, an opponent threat with one clear answer), just
