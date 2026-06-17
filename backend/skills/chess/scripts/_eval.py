@@ -398,6 +398,32 @@ def static_exchange_eval(board: chess.Board, square: int, side_to_capture: bool)
     return net
 
 
+def is_losing_on_square(board: chess.Board, square: int, own_color: bool) -> bool:
+    """True when the opponent wins material (>= a pawn) by capturing the piece
+    on ``square`` — single-square SEE from the opponent's side. Considers ALL
+    enemy attackers (king and pieces), not just the king. Pure mechanics."""
+    return static_exchange_eval(board, square, not own_color) >= 100
+
+
+def safe_destination_squares(board: chess.Board, square: int, own_color: bool) -> list[int]:
+    """Squares the piece on ``square`` can legally move to where it would NOT
+    be losing material on arrival — SEE-safe against EVERY enemy piece, not
+    just the enemy king. Mechanics only: enumerate legal moves, filter by the
+    single-square SEE on the landing square. It does NOT account for material
+    lost by DISCOVERY (a line opened behind the moved piece) — verify the whole
+    move with imagine_move. Shared by show_position (hanging-piece hint) and
+    the ladder advisor (safe wall/check squares when enemy pieces are around)."""
+    out: list[int] = []
+    for mv in board.legal_moves:
+        if mv.from_square != square:
+            continue
+        after = board.copy(stack=False)
+        after.push(mv)
+        if static_exchange_eval(after, mv.to_square, not own_color) < 100:
+            out.append(mv.to_square)
+    return out
+
+
 # ── Move parsing ─────────────────────────────────────────────────────────
 
 
