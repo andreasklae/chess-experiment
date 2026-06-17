@@ -156,7 +156,8 @@ def _basic_mate_phase_lines(board: chess.Board, own: bool, piece_word: str) -> l
     if ek is None or mk is None:
         return []
 
-    _, _, area = _eval.confinement_box(board, opp)
+    w, h, area = _eval.confinement_box(board, opp)
+    thin = min(w, h)            # the box's short side — small = a tight band
     kdist = _eval.kings_distance(board)
     edge_name, edge_dist = _nearest_edge(ek)
     on_edge = edge_dist == 0
@@ -171,12 +172,12 @@ def _basic_mate_phase_lines(board: chess.Board, own: bool, piece_word: str) -> l
     pre = f"- **Drill state** (K+{piece_word} vs lone king): "
     lines = [
         f"- Confinement box (rectangle the enemy king is trapped in): "
-        f"**{area} squares**; your kings are **{kdist}** apart; the enemy king "
-        f"is **{edge_dist}** from {edge_name}."
+        f"**{w}x{h} = {area} squares**; your kings are **{kdist}** apart; the "
+        f"enemy king is **{edge_dist}** from {edge_name}."
     ]
 
-    # Stalemate guard fires in every phase: a quiet move leaving 0 squares and
-    # no check is a draw. (Mechanics: legal-move count.)
+    # Stalemate guard fires first in every phase: a quiet move leaving 0 squares
+    # and no check is a draw. (Mechanics: legal-move count.)
     if ek_moves <= 1:
         lines.append(
             pre + f"the enemy king has only {ek_moves} legal move(s) — "
@@ -186,39 +187,48 @@ def _basic_mate_phase_lines(board: chess.Board, own: bool, piece_word: str) -> l
         )
         return lines
 
-    if not on_edge:
-        # PHASE 1: shrink the box — drive the king toward its nearest edge.
+    # MATE: enemy king on the edge and your king is close enough to support it.
+    if on_edge and kdist <= 2:
         lines.append(
-            pre + f"the king is NOT on an edge yet (box {area} sq). SHRINK THE "
-            f"BOX: use your {piece_word} to cut off the rank/file just beyond "
-            f"the king on the side toward {edge_name}, making the box smaller. "
-            "Keep the "
-            + ("queen a KNIGHT'S-MOVE from the king (never adjacent unless your "
-               "king defends it) so it cannot be captured and you do not "
-               "stalemate" if piece_word == "Q"
-               else "rook far from the king so the king cannot attack it") +
-            ". The box area must go DOWN; verify with imagine_move."
+            pre + f"the enemy king is on {edge_name} and your king is close "
+            f"({kdist} away) — DELIVER MATE: put the {piece_word} on the edge "
+            "line so the king has no square, with your king guarding the "
+            "escape. Confirm `gives checkmate` with imagine_move (a quiet move "
+            "leaving zero squares without check is stalemate)."
         )
         return lines
 
-    if kdist > 2:
-        # PHASE 2: king is boxed on an edge — bring your own king in.
+    # The decisive correction: a lone queen/rook confines the king to a thin
+    # BAND quickly, but it CANNOT shrink that band to a mate by itself — only
+    # YOUR KING walking up does that. So once the box is already a tight band
+    # (short side <= 2), or your king is simply too far to ever mate (dist > 3),
+    # the instruction is MARCH THE KING, not shuffle the major. The old advisor
+    # gated 'march' on the king being literally on an edge, so with a thin
+    # band one rank short of the edge it kept moving the queen forever
+    # (game 76b34fb7, 2026-06-17: white king never left e1 in 14 plies).
+    if thin <= 2 or kdist > 3:
         lines.append(
-            pre + f"the enemy king is boxed on {edge_name} but your king is "
-            f"{kdist} squares away — too far to mate. MARCH YOUR KING one step "
-            f"toward the enemy king now (do NOT move the {piece_word}; moving "
-            "it just lets the king shuffle). Your king must reach distance 2 "
-            "to support the mate."
+            pre + f"the box is already a tight band ({w}x{h}) but your king is "
+            f"{kdist} squares away — the {piece_word} alone CANNOT finish; only "
+            f"your king can. MARCH YOUR KING one square toward the enemy king "
+            f"now. Do NOT move the {piece_word} (it is already confining the "
+            f"king; moving it just lets the king shuffle and wastes the turn). "
+            f"Keep marching until your king is 2 squares away, then mate."
         )
         return lines
 
-    # PHASE 3: king on edge, your king close — deliver mate.
+    # SHRINK: the box is still fat in both dimensions and your king is fairly
+    # close — squeeze the king toward its nearest edge with the major.
     lines.append(
-        pre + f"the enemy king is on {edge_name} and your king is close "
-        f"({kdist} away) — DELIVER MATE: put the {piece_word} on the edge "
-        "line so the king has no square, with your king guarding the "
-        "escape/queen. Confirm `gives checkmate` with imagine_move before you "
-        "commit (a quiet move leaving zero squares without check is stalemate)."
+        pre + f"the box is still fat ({w}x{h}); SHRINK IT — use your "
+        f"{piece_word} to cut off the rank/file just beyond the king on the "
+        f"side toward {edge_name}, so the box gets smaller. Keep the "
+        + ("queen a KNIGHT'S-MOVE from the king (never adjacent unless your "
+           "king defends it), so you neither hang it nor stalemate"
+           if piece_word == "Q"
+           else "rook far from the king so the king cannot attack it") +
+        ". The box area must go DOWN; verify with imagine_move. (If the box "
+        "will not shrink further, march your king instead.)"
     )
     return lines
 

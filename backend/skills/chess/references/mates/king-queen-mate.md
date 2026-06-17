@@ -31,28 +31,31 @@ The single biggest failure is shuffling the queen forever and never bringing
 the king. **Watch the box area and the king-distance every move: both must
 keep dropping.**
 
-## What to do — three phases; read the radar to know which you are in
+## What to do — confine once, then MARCH YOUR KING
 
-**Phase 1 — shrink (queen only):** put the queen a **knight's-move** from the
-enemy king, on the side toward the nearest edge, so the box gets smaller. A
-knight's-move is the magic distance: close enough to confine, never adjacent
-(adjacent and unprotected = the king captures it; adjacent with no escape =
-stalemate). No checks needed — checks just shove the king around without
-shrinking the box. Each queen move the box area must go DOWN.
+The trap to avoid: the queen confines the king to a thin band in one or two
+moves, and then **it can do no more on its own** — yet it is tempting to keep
+moving it. A lone queen cannot mate; **your king must walk up.** Most of the
+moves in this endgame are king moves.
 
-**Phase 2 — march (king walks, queen waits):** the moment the king is boxed
-on an edge, **STOP moving the queen** and walk your own king one square toward
-the enemy king every turn until it is **2 squares away**. Moving the queen now
-just lets the king shuffle and risks stalemate — the radar will tell you to
-march.
+1. **Confine (one or two queen moves):** put the queen a **knight's-move**
+   from the enemy king so the king is boxed into a thin band against an edge.
+   A knight's-move is the magic distance — close enough to confine, never
+   adjacent (adjacent + unprotected = the king captures it; adjacent with no
+   escape = stalemate). No checks needed.
+2. **MARCH (most of the game):** once the box is a thin band, **walk your king
+   one square toward the enemy king every turn**, until it is **2 squares
+   away**. Do NOT keep moving the queen — it is already confining; another
+   queen move just lets the king shuffle and wastes the turn (this is the
+   classic stall: the queen bounces around while the king never arrives). Move
+   the queen again only to re-confine if the king slips toward the centre.
+3. **Mate:** with your king close, deliver mate — queen to the edge line
+   beside the king, protected by your king, so the king has no square. Confirm
+   `gives checkmate` with `chess__imagine_move`.
 
-**Phase 3 — mate:** with your king close, deliver the mate — queen to the edge
-line beside the king, protected by your king, so the king has no square.
-Confirm `gives checkmate` with `chess__imagine_move`.
-
-This works in **all four directions** — drive to whichever edge (rank 1, rank
-8, the a-file, or the h-file) the king is already nearest; the box and the
-radar name it for you.
+The radar tells you which step you are in each turn — when it says MARCH, move
+the king, not the queen. This works in **all four directions** — drive toward
+whichever edge (rank 1, rank 8, the a-file, the h-file) the king is nearest.
 
 ## Watch out for
 

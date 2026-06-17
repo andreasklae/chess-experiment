@@ -582,10 +582,12 @@ def _pushed(board, move):
 # ── K+Q / K+R box-method advisor (2026-06-17) ──────────────────────────────
 
 
-def test_kq_central_says_shrink_the_box():
+def test_kq_central_gives_box_fact_and_an_instruction():
     out = radar("8/8/8/4k3/8/8/8/3QK3 w - - 0 1")
-    assert "SHRINK THE BOX" in out
     assert "Confinement box" in out
+    # From the centre the king should march (queen already confines to a band);
+    # either a march or shrink instruction is acceptable, never a stall.
+    assert ("MARCH YOUR KING" in out) or ("SHRINK IT" in out)
 
 
 def test_kq_king_on_edge_but_king_far_says_march():
@@ -593,7 +595,7 @@ def test_kq_king_on_edge_but_king_far_says_march():
     the advisor must say MARCH YOUR KING, not keep moving the queen."""
     out = radar("4k3/8/8/3Q4/8/8/8/4K3 w - - 0 1")
     assert "MARCH YOUR KING" in out
-    assert "do NOT move the Q" in out
+    assert "Do NOT move the Q" in out
 
 
 def test_kq_one_legal_move_warns_stalemate():
