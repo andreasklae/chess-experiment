@@ -595,7 +595,7 @@ def test_kq_king_on_edge_but_king_far_says_march():
     the advisor must say MARCH YOUR KING, not keep moving the queen."""
     out = radar("4k3/8/8/3Q4/8/8/8/4K3 w - - 0 1")
     assert "MARCH YOUR KING" in out
-    assert "Do NOT move the Q" in out
+    assert "do NOT move the queen" in out
 
 
 def test_kq_one_legal_move_warns_stalemate():
@@ -619,3 +619,33 @@ def test_kq_advisor_names_no_concrete_move():
     low = out.lower()
     assert "best move" not in low
     assert "play q" not in low
+
+
+# ── K+Q unified onto the K+R drill (2026-06-17) ────────────────────────────
+
+
+def test_kq_uses_unified_rook_drill_wording():
+    """A lone queen flows through the single-major (rook) advisor: it should
+    fence like a rook and the advice should mention the queen, not box-phases."""
+    out = radar("8/8/8/8/4k3/8/8/3QK3 w - - 0 1")
+    # The advice mentions the queen (unified rook drill), never the old box-phase
+    assert "queen" in out.lower()
+    assert "Drill state" in out
+
+
+def test_kq_and_kr_both_keep_kings_close():
+    """Both basic mates lead with the keep-kings-close efficiency principle."""
+    for fen in ("8/8/8/8/4k3/8/8/R3K3 w - - 0 1",
+                "8/8/8/8/4k3/8/8/3QK3 w - - 0 1"):
+        out = radar(fen)
+        assert "keep the two KINGS close" in out
+
+
+def test_kr_marches_king_when_kings_far_with_fence():
+    """The 49-ply-grind fix: fence set but kings far -> advisor says march the
+    king, not move the rook."""
+    # Fence on rank 6 (rook a6) behind a king on f7-ish, white king far on rank 1.
+    out = radar("8/5k2/R7/8/8/8/8/4K3 w - - 0 1")
+    # Either the dedicated march rule or the no-opposition march rule fires;
+    # both tell the king to step toward the enemy king.
+    assert "MARCH YOUR KING" in out or "step YOUR king" in out

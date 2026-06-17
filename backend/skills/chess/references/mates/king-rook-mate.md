@@ -28,11 +28,14 @@ opposition** (same file as the enemy king, exactly two ranks away, e.g. yours
 e6 vs his e8); (3) THEN one rook check along his edge is mate. Until
 opposition exists, a check only shoves the king sideways and wastes the fence.
 
-**Both must progress every move: the box area must shrink AND your king must
-close in.** A rook that fences but a king that never marches is the slow,
-drifting failure — watch the box and the king-distance the radar reports.
-This runs in all four directions (fence a rank to drive to rank 1/8, or a
-file to drive to the a/h-file) — drive toward whichever edge is nearest.
+**Keep the two KINGS close — within 2-3 squares — the WHOLE time.** This is
+the speed secret: in Capablanca's mate-in-11 the kings are never more than 3
+apart. The rook and your king work as a unit — the rook fences and checks to
+shove the enemy king back one line; your king stays right with it to take
+squares and reach opposition. When the kings drift far apart (the radar shows
+the distance), **stop moving the rook and march your king** — a fence with a
+distant king is the slow, drifting failure. This runs in all four directions
+(fence a rank to drive to rank 1/8, or a file to drive to the a/h-file).
 
 ## What to do — apply the FIRST rule that matches, every turn
 

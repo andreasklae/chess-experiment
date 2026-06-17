@@ -1,78 +1,66 @@
 ---
 category: mates
-description: K+Q vs lone king by the BOX METHOD — shrink the confinement box toward an edge, march your king in, then mate. Stalemate is the only way to fail.
+description: K+Q vs K — the SAME drill as king-and-rook (fence, keep the kings close, mate in opposition on the edge); the queen is a rook that also cuts diagonals, so it is faster, but watch stalemate.
 triggers: [king and queen versus king, bare king, queen mate, basic mate, K+Q]
-related_pages: [mates/two-rook-ladder-mate, mates/king-rook-mate, principles/avoid-stalemate]
-tags: [mate, endgame, queen, technique, recipe, basic-mate]
+related_pages: [mates/king-rook-mate, mates/two-rook-ladder-mate, principles/avoid-stalemate]
+tags: [mate, endgame, queen, technique, opposition, recipe, basic-mate]
 status: draft
 updated: 2026-06-17
 ---
 
-# King + Queen vs King — the box method
+# King + Queen vs King — same as king-and-rook, with a queen
 
 ## When to use
 
 Queen + king against a lone king — usually right after promoting. Forced
-mate in under ten moves. If you also have a rook, the
-[[mates/two-rook-ladder-mate]] is even simpler.
+mate in under ten moves.
 
-## The idea — the confinement box
+## The idea — it is the king-and-rook drill
 
-The lone king lives in a **box**: the rectangle bounded by the board edges
-and the ranks/files your queen cuts off. `chess__show_position` draws this
-box (cells marked `·`) and the radar reports its area. **Two jobs, alternating,
-win the game:**
+**A queen mates exactly the way a rook does** ([[mates/king-rook-mate]]):
+fence the enemy king onto fewer lines, keep your two kings close (within 2-3),
+march to **opposition**, then one queen check along the edge is mate. Read the
+K+R page — every rule there applies, because **the queen does everything a
+rook does** (fence a rank or file, check to push the king back, mate in
+opposition on the edge).
 
-1. **Shrink the box** — push the king toward the nearest edge with the queen.
-2. **March your king in** — the queen alone cannot mate; your king must arrive
-   to support the final blow.
+The queen is only *better*: it also cuts off **diagonals**, so it confines the
+king into a smaller box faster, and it can fence from more squares. So the
+mate is quicker — but the method is identical: **keep the kings together and
+walk the enemy king to an edge.** The radar's drill-state line guides you the
+same way it does for the rook.
 
-The single biggest failure is shuffling the queen forever and never bringing
-the king. **Watch the box area and the king-distance every move: both must
-keep dropping.**
+## What to do
 
-## What to do — confine once, then MARCH YOUR KING
+Follow the **king-and-rook rules** ([[mates/king-rook-mate]] "What to do"),
+reading "queen" for "rook":
 
-The trap to avoid: the queen confines the king to a thin band in one or two
-moves, and then **it can do no more on its own** — yet it is tempting to keep
-moving it. A lone queen cannot mate; **your king must walk up.** Most of the
-moves in this endgame are king moves.
+1. Fence the king onto fewer lines with the queen (a quiet move, not a check).
+2. Keep your kings close; when they drift apart, **march your king**, do not
+   move the queen.
+3. In opposition with the enemy king on the edge → **queen checks the edge =
+   mate.**
+4. Enemy king dodges sideways → **follow with your king.**
 
-1. **Confine (one or two queen moves):** put the queen a **knight's-move**
-   from the enemy king so the king is boxed into a thin band against an edge.
-   A knight's-move is the magic distance — close enough to confine, never
-   adjacent (adjacent + unprotected = the king captures it; adjacent with no
-   escape = stalemate). No checks needed.
-2. **MARCH (most of the game):** once the box is a thin band, **walk your king
-   one square toward the enemy king every turn**, until it is **2 squares
-   away**. Do NOT keep moving the queen — it is already confining; another
-   queen move just lets the king shuffle and wastes the turn (this is the
-   classic stall: the queen bounces around while the king never arrives). Move
-   the queen again only to re-confine if the king slips toward the centre.
-3. **Mate:** with your king close, deliver mate — queen to the edge line
-   beside the king, protected by your king, so the king has no square. Confirm
-   `gives checkmate` with `chess__imagine_move`.
+## Watch out for — STALEMATE (much easier with a queen)
 
-The radar tells you which step you are in each turn — when it says MARCH, move
-the king, not the queen. This works in **all four directions** — drive toward
-whichever edge (rank 1, rank 8, the a-file, the h-file) the king is nearest.
+The queen controls so many squares that it is easy to leave the lone king with
+**no legal move and no check = stalemate = draw.** This is the one real danger.
 
-## Watch out for
-
-- **Stalemate is the ONLY way to fail.** A quiet queen move that leaves the
-  king zero legal squares but no check is a draw. When the enemy king is down
-  to one square, do NOT take it with a quiet move — give check, or march your
-  king. The radar warns you; always confirm the final move says
-  `gives checkmate`, never `stalemate`, in `chess__imagine_move`.
-- **Never put the queen adjacent to the lone king unless your king defends
-  that square** — the king just captures it.
-- **Don't shuffle the queen when the king is already on an edge.** That is the
-  no-progress loop that draws by repetition. March your king.
+- When the enemy king is near an edge or corner with few squares, **do not
+  snatch its last square with a quiet queen move** — give a check, or march
+  your king instead. (A queen confines so well that the careless move which
+  would be fine with a rook can be stalemate with a queen.)
+- When the enemy king has **one legal move**, the radar shouts STALEMATE
+  DANGER. Heed it: confirm the move says `gives checkmate` (never `stalemate`)
+  in `chess__imagine_move` before committing.
+- **Never put the queen on a square next to the lone king unless your own king
+  defends it** — otherwise the king just captures the queen.
 
 ## Examples
 
-`7k/8/6K1/8/8/8/8/1Q6 w - - 0 1` — phase 3: kings close, **1.Qb8#**. Verified.
+`7k/8/6K1/8/8/8/8/1Q6 w - - 0 1` — kings close, **1.Qb8#**. Verified.
 
-`8/8/8/4k3/8/8/8/3QK3 w - - 0 1` — full mate from the centre: shrink the box
-driving the king to an edge, march your king up behind it, then mate on the
-edge. The radar names the phase each move.
+`4k3/8/4K3/8/8/8/8/7Q w - - 0 1` — opposition on the edge (Ke6 vs ke8):
+**1.Qh8#** — the same edge mate the rook delivers from the same position.
+Verified.

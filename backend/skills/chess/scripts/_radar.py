@@ -128,111 +128,6 @@ def _mating_material_lines(board: chess.Board, own: bool) -> list[str]:
     return lines
 
 
-def _nearest_edge(ek: int) -> tuple[str, int]:
-    """(edge_name, distance) of the board edge the enemy king is closest to.
-    Pure geometry — used to tell the agent which way to drive."""
-    f, r = chess.square_file(ek), chess.square_rank(ek)
-    dists = {"rank 1": r, "rank 8": 7 - r, "the a-file": f, "the h-file": 7 - f}
-    name = min(dists, key=dists.get)
-    return name, dists[name]
-
-
-def _basic_mate_phase_lines(board: chess.Board, own: bool, piece_word: str) -> list[str]:
-    """Live per-turn advisor for K+Q and K+R vs a lone king. Emits ONE
-    board-aware instruction for the current phase, mirroring the ladder
-    advisor's design: it names the recipe STEP (shrink the box / march the
-    king / deliver mate) from the geometry on the board — it does NOT search
-    for or score a concrete best move (that would be an engine, barred by the
-    tool-fairness rulebook). The agent still works out and verifies its own
-    move with imagine_move.
-
-    The method, made operational: the lone king lives in a CONFINEMENT BOX
-    (the rectangle your major + the edges trap it in). Two jobs alternate —
-    shrink the box toward an edge, and walk your own king in — until the king
-    is boxed on an edge with your king close, where the mate is delivered."""
-    opp = not own
-    ek = board.king(opp)
-    mk = board.king(own)
-    if ek is None or mk is None:
-        return []
-
-    w, h, area = _eval.confinement_box(board, opp)
-    thin = min(w, h)            # the box's short side — small = a tight band
-    kdist = _eval.kings_distance(board)
-    edge_name, edge_dist = _nearest_edge(ek)
-    on_edge = edge_dist == 0
-    # enemy king mobility (null-move trick: it is not the side to move).
-    probe = board.copy(stack=False)
-    try:
-        probe.push(chess.Move.null())
-        ek_moves = sum(1 for _ in probe.legal_moves)
-    except (AssertionError, ValueError):
-        ek_moves = 0
-
-    pre = f"- **Drill state** (K+{piece_word} vs lone king): "
-    lines = [
-        f"- Confinement box (rectangle the enemy king is trapped in): "
-        f"**{w}x{h} = {area} squares**; your kings are **{kdist}** apart; the "
-        f"enemy king is **{edge_dist}** from {edge_name}."
-    ]
-
-    # Stalemate guard fires first in every phase: a quiet move leaving 0 squares
-    # and no check is a draw. (Mechanics: legal-move count.)
-    if ek_moves <= 1:
-        lines.append(
-            pre + f"the enemy king has only {ek_moves} legal move(s) — "
-            "STALEMATE DANGER. Do not play a quiet move that takes its last "
-            "square; give a check or march your king. Verify the result with "
-            "imagine_move (it must say `gives checkmate`, never `stalemate`)."
-        )
-        return lines
-
-    # MATE: enemy king on the edge and your king is close enough to support it.
-    if on_edge and kdist <= 2:
-        lines.append(
-            pre + f"the enemy king is on {edge_name} and your king is close "
-            f"({kdist} away) — DELIVER MATE: put the {piece_word} on the edge "
-            "line so the king has no square, with your king guarding the "
-            "escape. Confirm `gives checkmate` with imagine_move (a quiet move "
-            "leaving zero squares without check is stalemate)."
-        )
-        return lines
-
-    # The decisive correction: a lone queen/rook confines the king to a thin
-    # BAND quickly, but it CANNOT shrink that band to a mate by itself — only
-    # YOUR KING walking up does that. So once the box is already a tight band
-    # (short side <= 2), or your king is simply too far to ever mate (dist > 3),
-    # the instruction is MARCH THE KING, not shuffle the major. The old advisor
-    # gated 'march' on the king being literally on an edge, so with a thin
-    # band one rank short of the edge it kept moving the queen forever
-    # (game 76b34fb7, 2026-06-17: white king never left e1 in 14 plies).
-    if thin <= 2 or kdist > 3:
-        lines.append(
-            pre + f"the box is already a tight band ({w}x{h}) but your king is "
-            f"{kdist} squares away — the {piece_word} alone CANNOT finish; only "
-            f"your king can. MARCH YOUR KING one square toward the enemy king "
-            f"now. Do NOT move the {piece_word} (it is already confining the "
-            f"king; moving it just lets the king shuffle and wastes the turn). "
-            f"Keep marching until your king is 2 squares away, then mate."
-        )
-        return lines
-
-    # SHRINK: the box is still fat in both dimensions and your king is fairly
-    # close — squeeze the king toward its nearest edge with the major.
-    lines.append(
-        pre + f"the box is still fat ({w}x{h}); SHRINK IT — use your "
-        f"{piece_word} to cut off the rank/file just beyond the king on the "
-        f"side toward {edge_name}, so the box gets smaller. Keep the "
-        + ("queen a KNIGHT'S-MOVE from the king (never adjacent unless your "
-           "king defends it), so you neither hang it nor stalemate"
-           if piece_word == "Q"
-           else "rook far from the king so the king cannot attack it") +
-        ". The box area must go DOWN; verify with imagine_move. (If the box "
-        "will not shrink further, march your king instead.)"
-    )
-    return lines
-
-
 def _pawn_escort_lines(board: chess.Board, own: bool, psq: int) -> list[str]:
     """Which rule of the K+P escort drill applies now. Pure geometry:
     king-in-front, opposition, and the never-7th-with-check trap that drew
@@ -629,18 +524,38 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
     pre = ("- **Drill state** (vs bare king): " if opp_bare
            else "- **Drill state** (opponent has no major piece — run the king "
                 "down with the ladder): ")
-    # Lone queen: the K+Q drill is the BOX METHOD — shrink the confinement box
-    # toward an edge, march your king in, deliver mate. The box-based advisor
-    # makes the phase transition mechanical (king-on-edge + kings-far => march),
-    # which the older "mirror, or march if stuck" wording failed to force
-    # (the agent always found another queen shuffle and never marched —
-    # game 34391da0, 2026-06-17 stalled 26 plies with the king on e1).
-    if own_mat[chess.QUEEN] == 1 and own_mat[chess.ROOK] == 0:
-        return _basic_mate_phase_lines(board, own, "Q")
-
     if len(majors) >= 2:
         out += _ladder_lines(board, own, opp, majors, own_mat, ksq, opp_bare)
         return out
+
+    # ── Single major: K+R AND K+Q share ONE drill. The queen IS a rook for the
+    #    purposes of fencing, opposition, and the edge mate — it just also cuts
+    #    diagonals (so it confines faster) and is easier to stalemate with.
+    #    Verified against Capablanca: both keep the kings within ~3 the whole
+    #    mate, fence the king onto fewer lines, and mate in opposition on the
+    #    edge. So the queen flows through the same rules below, with "queen"
+    #    wording and a stalemate guard up front.
+    lone_queen = own_mat[chess.QUEEN] == 1 and own_mat[chess.ROOK] == 0
+    piece_noun = "queen" if lone_queen else "rook"
+
+    # Stalemate guard (mechanics: enemy-king legal-move count). The queen
+    # controls many squares, so a careless quiet move can leave the lone king
+    # with zero moves and no check = draw. Fires before any rule that might
+    # suggest such a move.
+    _probe = board.copy(stack=False)
+    if _probe.turn == own:
+        try:
+            _probe.push(chess.Move.null())
+        except (AssertionError, ValueError):
+            pass
+    _ek_moves = sum(1 for m in _probe.legal_moves if m.from_square == ksq)
+    if lone_queen and _ek_moves <= 1:
+        return [
+            pre + f"the enemy king has only {_ek_moves} legal move(s) — "
+            "STALEMATE DANGER. Do NOT play a quiet queen move that removes its "
+            "last square; give check, or march your king. Confirm the move "
+            "says `gives checkmate` (never `stalemate`) in imagine_move."
+        ]
     # ── Single major (K+R): needs king support, so the rules stay
     #    position-specific but are still applied by the model. Lead with the
     #    box + king-distance fact (pure geometry): K+R is a forced mate but the
@@ -651,8 +566,9 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
     _kd = _eval.kings_distance(board)
     out.append(
         f"- Confinement box (rectangle the enemy king is trapped in): "
-        f"**{_area} squares**; your kings are **{_kd}** apart. Shrink the box "
-        f"AND keep your king marching in — both must progress."
+        f"**{_w}x{_h} = {_area} squares**; your kings are **{_kd}** apart. To "
+        f"mate quickly: keep the two KINGS close (≤2-3 apart) and let the "
+        f"{piece_noun} check to push the king back — both must progress."
     )
     if touchable:
         out.append(
@@ -660,32 +576,46 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
             f"{chess.square_name(touchable[0])} — RULE: "
             f"{_slide_away_text(touchable[0])}. Nothing else this turn."
         )
+    # EFFICIENCY RULE (verified against Capablanca's mate-in-11: the kings stay
+    # within distance 3 the WHOLE mate). When a fence already exists but your
+    # king has drifted far (>3), stop fiddling with the major and MARCH the king
+    # — the slow 49-ply game efbdd8ce let the kings reach distance 5 while the
+    # rook shuffled. Bringing the king to opposition is what finishes.
+    elif on_fence and _kd > 3:
+        out.append(
+            pre + f"a fence is set but your kings are {_kd} apart — too far. "
+            f"MARCH YOUR KING one square toward the enemy king now (do NOT "
+            f"move the {piece_noun}; the fence is already holding). The mate "
+            f"needs the kings within 2 (opposition); closing that gap is the "
+            f"priority."
+        )
     elif not on_fence:
         out.append(
-            pre + f"no fence — RULE: put your rook on {line_word} "
+            pre + f"no fence — RULE: put your {piece_noun} on {line_word} "
             f"{line_name} (one line centre-side of the enemy king), far from "
             f"the king. The king must never cross it."
         )
     elif opposition:
-        # On-edge + opposition = the rook check is MATE; otherwise it just
-        # forces a retreat. Spell out the edge-mate so the agent stops
-        # hunting for the corner (the user's "gets to the edge, can't
-        # finish" failure: K+R mates on ANY edge, no corner needed).
+        # On-edge + opposition = the check is MATE; otherwise it just forces a
+        # retreat. Spell out the edge-mate so the agent stops hunting for the
+        # corner (the user's "gets to the edge, can't finish" failure: K+R/K+Q
+        # mate on ANY edge, no corner needed).
         king_on_edge = (kf in (0, 7)) if edge.startswith("file") else (kr in (0, 7))
         if king_on_edge:
             out.append(
                 pre + f"fence ✓ and kings in OPPOSITION with the enemy king on "
                 f"the edge ✓ — this is MATE: CHECK on {king_line_name} (the "
-                f"enemy king's {line_word}), a rook move TO that {line_word} "
-                f"FAR from your king. You do NOT need the corner — the edge is "
-                f"enough. Verify `gives checkmate` with imagine_move."
+                f"enemy king's {line_word}), a {piece_noun} move TO that "
+                f"{line_word} FAR from your king. You do NOT need the corner — "
+                f"the edge is enough. Verify `gives checkmate` with imagine_move."
             )
         else:
             out.append(
                 pre + f"fence ✓ and kings in opposition ✓ — RULE: CHECK on "
-                f"{king_line_name} (the enemy king's {line_word}) now — a rook "
-                f"move TO that {line_word}, far from the king; it must retreat. "
-                f"Then re-fence. A check on any other line is a wasted move."
+                f"{king_line_name} (the enemy king's {line_word}) now — a "
+                f"{piece_noun} move TO that {line_word}, far from the king; it "
+                f"must retreat. Then re-fence. A check on any other line is a "
+                f"wasted move."
             )
     else:
         # Did the enemy king just dodge SIDEWAYS along its edge (parallel to
@@ -707,8 +637,8 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
                 pre + f"fence on {line_word} {line_name} ✓ — the enemy king "
                 f"just DODGED SIDEWAYS along its edge. RULE: FOLLOW it — step "
                 f"YOUR king one square the SAME sideways direction to re-take "
-                f"opposition (do NOT move the fence rook, do NOT check). The "
-                f"fence keeps it pinned to the edge; it runs out of room at "
+                f"opposition (do NOT move the fence {piece_noun}, do NOT check). "
+                f"The fence keeps it pinned to the edge; it runs out of room at "
                 f"the a/h end, where the opposition check is mate."
             )
         else:
@@ -718,8 +648,8 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
                 f"enemy king (stay on your side of the fence) to reach "
                 f"opposition. Do NOT check yet — a check without opposition "
                 f"only lets the king escape. If your king already mirrors it "
-                f"and cannot approach, make a one-square rook WAITING move "
-                f"along the fence line, far from the king, to pass the turn."
+                f"and cannot approach, make a one-square {piece_noun} WAITING "
+                f"move along the fence line, far from the king, to pass the turn."
             )
     return out
 
