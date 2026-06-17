@@ -443,3 +443,41 @@ def test_apply_line_does_not_mutate_input(ev):
     except ev.MoveListError:
         pass
     assert board.fen() == original_fen
+
+
+# ── Confinement box & king distance (basic-mate geometry) ──────────────────
+
+
+def test_confinement_box_central_king_is_large(ev):
+    """A central lone king with one cutting rook sits in a large box."""
+    b = chess.Board("8/8/8/8/4k3/8/8/R3K3 w - - 0 1")
+    w, h, area = ev.confinement_box(b, chess.BLACK)
+    assert area == w * h
+    assert area > 30  # barely confined
+
+
+def test_confinement_box_shrinks_as_king_is_cornered(ev):
+    """Driving the king to an edge with the queen makes the box smaller."""
+    central = ev.confinement_box(chess.Board("8/8/8/4k3/8/8/8/3QK3 w - - 0 1"), chess.BLACK)[2]
+    edged = ev.confinement_box(chess.Board("4k3/8/8/3Q4/8/8/8/4K3 w - - 0 1"), chess.BLACK)[2]
+    assert edged < central
+
+
+def test_confinement_box_bounds_contains_the_king(ev):
+    b = chess.Board("8/8/8/4k3/8/8/8/3QK3 w - - 0 1")
+    min_f, max_f, min_r, max_r = ev.confinement_box_bounds(b, chess.BLACK)
+    ek = b.king(chess.BLACK)
+    assert min_f <= chess.square_file(ek) <= max_f
+    assert min_r <= chess.square_rank(ek) <= max_r
+
+
+def test_kings_distance_is_chebyshev(ev):
+    b = chess.Board("8/8/8/4k3/8/8/8/3QK3 w - - 0 1")  # Ke1 vs Ke5 -> 4 ranks
+    assert ev.kings_distance(b) == 4
+
+
+def test_confinement_box_missing_king_defaults_full_board(ev):
+    # Board with no black king (synthetic) -> full board fallback, no crash.
+    b = chess.Board("8/8/8/8/8/8/8/R3K3 w - - 0 1")
+    assert ev.confinement_box(b, chess.BLACK) == (8, 8, 64)
+    assert ev.confinement_box_bounds(b, chess.BLACK) is None

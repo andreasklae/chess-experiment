@@ -427,6 +427,88 @@ def safe_destination_squares(board: chess.Board, square: int, own_color: bool) -
 # ── Move parsing ─────────────────────────────────────────────────────────
 
 
+def _major_attacked_squares(board: chess.Board, color: bool) -> set[int]:
+    """Squares attacked by ``color``'s queens and rooks — the cage walls in a
+    basic mate. King and minor pieces are excluded: only majors cut a full
+    rank/file."""
+    walls: set[int] = set()
+    for pt in (chess.QUEEN, chess.ROOK):
+        for sq in board.pieces(pt, color):
+            walls |= set(board.attacks(sq))
+    return walls
+
+
+def confinement_box(board: chess.Board, defender: bool) -> tuple[int, int, int]:
+    """Return (width, height, area) of the rectangle the ``defender`` king is
+    confined to by the OTHER side's major pieces and the board edges.
+
+    Mechanics only: walk outward from the king along each of the four
+    orthogonal directions until hitting a square the attacking side's
+    queen/rook controls (a wall) or the board edge. The box is the rectangle
+    those four walls (or edges) bound. A smaller area = a tighter cage; the
+    basic-mate method is to drive this toward the few squares around the edge
+    where mate is delivered. Geometry, not evaluation: it does not consider
+    whose move it is or whether a wall is defended."""
+    ek = board.king(defender)
+    if ek is None:
+        return (8, 8, 64)
+    ekf, ekr = chess.square_file(ek), chess.square_rank(ek)
+    walls = _major_attacked_squares(board, not defender)
+
+    def reach(df: int, dr: int) -> int:
+        f, r, steps = ekf + df, ekr + dr, 0
+        while 0 <= f <= 7 and 0 <= r <= 7:
+            if chess.square(f, r) in walls:
+                return steps
+            f += df
+            r += dr
+            steps += 1
+        return steps  # ran into the board edge
+
+    left, right = reach(-1, 0), reach(1, 0)
+    down, up = reach(0, -1), reach(0, 1)
+    width = left + right + 1
+    height = down + up + 1
+    return (width, height, width * height)
+
+
+def confinement_box_bounds(board: chess.Board, defender: bool) -> tuple[int, int, int, int] | None:
+    """File/rank bounds (min_file, max_file, min_rank, max_rank) of the
+    rectangle the ``defender`` king is confined to — the same box
+    ``confinement_box`` measures, returned as coordinates so a renderer can
+    draw it. None if the defender king is missing. Pure geometry."""
+    ek = board.king(defender)
+    if ek is None:
+        return None
+    ekf, ekr = chess.square_file(ek), chess.square_rank(ek)
+    walls = _major_attacked_squares(board, not defender)
+
+    def reach(df: int, dr: int) -> int:
+        f, r, steps = ekf + df, ekr + dr, 0
+        while 0 <= f <= 7 and 0 <= r <= 7:
+            if chess.square(f, r) in walls:
+                return steps
+            f += df
+            r += dr
+            steps += 1
+        return steps
+
+    return (
+        ekf - reach(-1, 0), ekf + reach(1, 0),
+        ekr - reach(0, -1), ekr + reach(0, 1),
+    )
+
+
+def kings_distance(board: chess.Board) -> int:
+    """Chebyshev (king-move) distance between the two kings, or 8 if either is
+    missing. The basic-mate 'march your king in' progress signal: pure
+    geometry."""
+    wk, bk = board.king(chess.WHITE), board.king(chess.BLACK)
+    if wk is None or bk is None:
+        return 8
+    return chess.square_distance(wk, bk)
+
+
 def parse_move(board: chess.Board, raw: str) -> chess.Move:
     """Parse a move string in UCI or SAN form on the given board.
 

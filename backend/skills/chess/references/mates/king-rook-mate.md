@@ -18,12 +18,21 @@ opposition or check with the fence rook. Both are avoidable.
 
 ## The idea
 
-Three jobs, in order: (1) the rook is a **fence** on the rank (or file)
-directly behind the enemy king — it may never cross it; (2) your king
-marches up to stand **in opposition** (same file as the enemy king, exactly
-two ranks away, e.g. yours e6 vs his e8); (3) THEN one rook check along his
-edge is mate. Until opposition exists, a check only shoves the king sideways
-and wastes the fence.
+The lone king lives in a **confinement box** (the rectangle your rook and the
+edges trap it in — `chess__show_position` draws it, marked `·`, and the radar
+reports its area). You win by shrinking the box to the edge while marching
+your king in. Concretely, three jobs, in order: (1) the rook is a **fence** on
+the rank (or file) directly behind the enemy king — it may never cross it,
+and it caps one side of the box; (2) your king marches up to stand **in
+opposition** (same file as the enemy king, exactly two ranks away, e.g. yours
+e6 vs his e8); (3) THEN one rook check along his edge is mate. Until
+opposition exists, a check only shoves the king sideways and wastes the fence.
+
+**Both must progress every move: the box area must shrink AND your king must
+close in.** A rook that fences but a king that never marches is the slow,
+drifting failure — watch the box and the king-distance the radar reports.
+This runs in all four directions (fence a rank to drive to rank 1/8, or a
+file to drive to the a/h-file) — drive toward whichever edge is nearest.
 
 ## What to do — apply the FIRST rule that matches, every turn
 
