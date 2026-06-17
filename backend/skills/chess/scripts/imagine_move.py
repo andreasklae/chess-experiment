@@ -439,17 +439,31 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
     opp_can_promote = []
     for sq in board_after.pieces(chess.PAWN, board_after.turn):
         rank = chess.square_rank(sq)
-        # Opponent pawns on rank 7 (for black, rank 0 for white after turn switch — but we're already on opponent's turn after push)
         target_rank = 0 if board_after.turn == chess.WHITE else 7
         if rank == target_rank:
             opp_can_promote.append(chess.square_name(sq))
 
     if opp_can_promote:
+        # Build mitigation strategies
+        strategies = [
+            "**Protect the promotion square:** Place a piece on it (e.g., rook on c8 protects c7-pawn on c8)",
+            "**Block the pawn:** Place a piece directly in front (one rank back) to prevent advance",
+            "**Place rook/queen behind:** Put a major piece on the pawn's file, behind it (same file, safe distance)",
+            "**Give check:** Force opponent's king to move instead of pushing the pawn",
+            "**Deliver checkmate:** If opponent has no safe moves, they cannot promote (already losing)",
+        ]
         out.append(
-            f"**⚠ PAWN PROMOTION WARNING: Opponent can promote a pawn on {', '.join(opp_can_promote)} "
-            f"— this is a NEW MAJOR PIECE. If they do, they likely win. Either (1) this move delivers "
-            f"checkmate in the opponent's forced replies, or (2) they have no legal moves / only losing moves. "
-            f"Scan the replies below: if even ONE reply is safe for them (not check, not mate for you), they promote and you lose.**"
+            f"**⚠️ CRITICAL: PAWN PROMOTION THREAT on {', '.join(opp_can_promote)}**\n\n"
+            f"Opponent can promote next move — this becomes a NEW QUEEN/ROOK. You likely lose unless:\n"
+            f"- (1) This move delivers **checkmate in your opponent's forced replies**, OR\n"
+            f"- (2) Opponent has **NO LEGAL MOVES** or **ONLY LOSING MOVES** (all replies lose material/mate)\n\n"
+            f"**Ways to stop promotion (pick one if you allow it):**\n"
+        )
+        for strategy in strategies:
+            out.append(f"- {strategy}")
+        out.append(
+            f"\n**SCAN THE LEGAL REPLIES BELOW:** If opponent has even ONE safe reply (not check, not losing), "
+            f"they will play {opp_can_promote[0]}=Q (or =R) and win. Do NOT allow this unless checkmate is forced."
         )
         out.append("")
 
