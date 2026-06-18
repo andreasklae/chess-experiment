@@ -68,7 +68,11 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="Chess Experiment Backend", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
+    # localhost for desktop dev, plus any private-LAN host on the Vite dev port
+    # so a phone on the same wifi (e.g. http://192.168.1.7:5173) can reach the
+    # API. Scoped to :5173 and RFC-1918 ranges — not a wide-open CORS policy.
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origin_regex=r"http://(192\.168|10|172\.(1[6-9]|2\d|3[01]))\.[\d.]+:5173",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

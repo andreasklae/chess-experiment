@@ -1,6 +1,25 @@
 import type { AgentElo, Batch, BatchPool, GameState, GameSummary, PlayerConfig, PlayerTypeInfo } from './types';
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000';
+// API base resolution, in priority order:
+//  1. VITE_API_BASE env (explicit override).
+//  2. When the page is served from a non-localhost host (e.g. a phone loading
+//     it over the LAN at 192.168.x.y:5173), talk to the backend on the SAME
+//     host, port 8000 — so the same build works on the laptop and the phone
+//     without rebuilding. This requires the backend to bind 0.0.0.0.
+//  3. Fall back to localhost:8000 for the plain desktop dev case.
+function resolveApiBase(): string {
+  const explicit = import.meta.env.VITE_API_BASE;
+  if (explicit) return explicit;
+  if (typeof window !== 'undefined') {
+    const { hostname, protocol } = window.location;
+    if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return `${protocol}//${hostname}:8000`;
+    }
+  }
+  return 'http://localhost:8000';
+}
+
+const API_BASE = resolveApiBase();
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
