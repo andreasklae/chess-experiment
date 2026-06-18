@@ -561,15 +561,20 @@ def confine_state(board: chess.Board, own: bool) -> dict | None:
       current_area:    the box area the major confines the king to right now;
       best_area:       the smallest box area reachable by a single major move
                        to a square the king can still defend in time;
-      can_tighten:     True if best_area < current_area (a tighter defensible
-                       confining square exists → MOVE THE MAJOR there);
-                       False if the major is already on its tightest defensible
-                       confining square (→ STEP THE KING closer instead).
+      can_tighten:     True  → MOVE THE MAJOR (a defensible major move improves
+                       the position more than any king move on the combined
+                       'box then kings-closer' measure);
+                       False → STEP THE KING closer (no defensible major move
+                       beats simply walking the king in — the coordination the
+                       enemy king exploits when you squeeze too early).
 
-    Pure geometry: it measures box areas (rectangle from major-attacks + edges)
-    and the king-distance race for defensibility. It does NOT score positions,
-    look for mate, or name a move — it classifies the current structure so the
-    agent knows which branch of the method applies."""
+    The combined measure (box area first, kings-distance second) is what makes
+    this match real K+R technique rather than greedy box-shrinking: a rook move
+    that shrinks the *measured* box but abandons the cut just lets the enemy
+    king walk back (the repetition draw in game f36a4618). Pure geometry — box
+    rectangles + the king-distance race; it does NOT search, score positions,
+    or name a move; it classifies the current structure so the agent knows
+    which branch of the method applies."""
     defender = not own
     majors = [sq for pt in (chess.QUEEN, chess.ROOK) for sq in board.pieces(pt, own)]
     if lone_king_color(board) != defender or len(majors) != 1:
@@ -577,12 +582,17 @@ def confine_state(board: chess.Board, own: bool) -> dict | None:
     msq = majors[0]
     current_area = confinement_box(board, defender)[2]
 
-    # Smallest box reachable by a single legal major move to a square that is
-    # NOT immediately hanging and stays defensible in time.
+    # Rank every legal non-stalemate move by the combined measure
+    #   (box area, then kings closer, then prefer a KING move on ties)
+    # and report whether the best move is the major or the king. This matches
+    # real K+R technique: a rook move that shrinks the box but leaves the king
+    # behind ties or loses to a king step (verified: this ordering mates a
+    # running king in ~29 plies without repetition, whereas pure box-greedy
+    # drew by repetition, game f36a4618).
+    best_key = None
+    best_is_major = False
     best_area = current_area
     for mv in board.legal_moves:
-        if mv.from_square != msq:
-            continue
         after = board.copy(stack=False)
         after.push(mv)
         if after.is_checkmate():          # a mate is its own signal; ignore here
@@ -590,19 +600,27 @@ def confine_state(board: chess.Board, own: bool) -> dict | None:
         if after.is_stalemate():
             continue
         ek = after.king(defender)
-        # hanging now (king adjacent, undefended) disqualifies the square
-        if ek is not None and chess.square_distance(ek, mv.to_square) == 1 \
-                and not after.is_attacked_by(own, mv.to_square):
-            continue
-        if piece_defensible_in_time(after, mv.to_square, own) is False:
-            continue
+        is_major = mv.from_square == msq
+        if is_major:
+            if ek is not None and chess.square_distance(ek, mv.to_square) == 1 \
+                    and not after.is_attacked_by(own, mv.to_square):
+                continue
+            if piece_defensible_in_time(after, mv.to_square, own) is False:
+                continue
         area = confinement_box(after, defender)[2]
+        mk = after.king(own)
+        kd = chess.square_distance(mk, ek) if (mk is not None and ek is not None) else 8
+        # prefer king moves on ties: third key 0 for king, 1 for major
+        key = (area, kd, 1 if is_major else 0)
+        if best_key is None or key < best_key:
+            best_key = key
+            best_is_major = is_major
         if area < best_area:
             best_area = area
     return {
         "current_area": current_area,
         "best_area": best_area,
-        "can_tighten": best_area < current_area,
+        "can_tighten": best_is_major,
     }
 
 

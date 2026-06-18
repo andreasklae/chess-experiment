@@ -517,3 +517,54 @@ def test_confine_state_rook_already_tight_means_move_king(ev):
 def test_confine_state_none_when_not_single_major_ending(ev):
     import chess
     assert ev.confine_state(chess.Board(), chess.WHITE) is None  # full board
+
+
+def test_confine_state_drives_a_terminating_mate(ev):
+    """Following confine_state's branch each move must MATE a running king
+    without repetition — the property that distinguishes a correct drill from
+    greedy box-shrinking (which drew by repetition, game f36a4618)."""
+    import chess
+    def pick(b):
+        s = ev.confine_state(b, b.turn)
+        opp = not b.turn
+        majors = [sq for pt in (chess.QUEEN, chess.ROOK) for sq in b.pieces(pt, b.turn)]
+        msq = majors[0]
+        cands = []
+        for m in b.legal_moves:
+            a = b.copy(); a.push(m)
+            if a.is_checkmate():
+                return m
+            if a.is_stalemate():
+                continue
+            is_major = m.from_square == msq
+            if s and s["can_tighten"] != is_major:
+                continue
+            if is_major:
+                ek = a.king(opp)
+                if chess.square_distance(ek, m.to_square) == 1 and not a.is_attacked_by(b.turn, m.to_square):
+                    continue
+                if ev.piece_defensible_in_time(a, m.to_square, b.turn) is False:
+                    continue
+            ek = a.king(opp)
+            cands.append(((ev.confinement_box(a, opp)[2], chess.square_distance(a.king(b.turn), ek)), m))
+        if not cands:
+            for m in b.legal_moves:
+                a = b.copy(); a.push(m)
+                if not a.is_stalemate():
+                    cands.append(((ev.confinement_box(a, opp)[2], 0), m))
+        cands.sort(key=lambda x: x[0])
+        return cands[0][1] if cands else None
+
+    b = chess.Board("8/8/8/8/4k3/8/8/R3K3 w - - 0 1")
+    plies = 0; seen = {}
+    while not b.is_game_over() and plies < 70:
+        if b.turn == chess.WHITE:
+            m = pick(b)
+        else:
+            wk = b.king(chess.WHITE)
+            m = max(b.legal_moves, key=lambda mv: chess.square_distance(mv.to_square, wk))
+        b.push(m); plies += 1
+        k = b.board_fen(); seen[k] = seen.get(k, 0) + 1
+        assert seen[k] < 3, f"repetition at ply {plies}"
+    assert b.is_checkmate(), f"did not mate (result {b.result()}, {plies} plies)"
+    assert plies <= 40
