@@ -55,14 +55,22 @@ before→after, the **distance between the kings**, and whether your rook stays
    one step toward the nearest edge with the rook (on a defensible square), or
    step your king to keep the squeeze. Pick the move that makes the box
    **smaller** without loosening it.
-4. **Enemy king on the EDGE and your kings ≤2 apart?** This is the mate: the
-   rook checks along the edge with the king's flight squares covered by your
-   king. **You mate on the edge — you do NOT need the corner.** Confirm
-   `gives checkmate` in imagine_move.
+4. **Enemy king on the EDGE and your kings ≤2 apart?** The finish — but
+   usually NOT in one check. First ask `chess__list_legal_moves`: is any move
+   flagged `checkmate`? If yes, play it. If NOT, **do not move your king
+   (it is already close) and do not check for the sake of checking** — make
+   the **quiet rook move that shrinks the box ONE step**, squeezing the king
+   further along its edge toward the corner, on a square your king still
+   defends. Tighten one line at a time; the mate falls in a move or two.
+   **You mate on the edge — you do NOT need the corner**, but you usually need
+   one or two quiet squeezing rook moves to take the king's last sideways
+   squares first. Never leave the king zero moves without check — that is
+   stalemate (check `gives checkmate`, not `stalemate`, in imagine_move).
 
-The whole method in one line: **bring your king in while keeping the enemy
-king's box shrinking, then mate on the edge.** Both numbers — box area and
-king-distance — must trend down.
+The whole method in one line: **bring your king in, then squeeze the enemy
+king's box smaller one rook move at a time until it is mated on the edge.**
+No drastic moves — one rank/file at a time, the king always defending the
+rook. Both numbers — box area and king-distance — must trend down.
 
 ## Watch out for
 

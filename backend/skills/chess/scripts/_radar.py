@@ -610,14 +610,35 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
             f"confining is the whole point."
         )
     elif on_edge and _kd <= 2:
-        # Enemy king on the edge, your king close enough to support: mate is here.
-        out.append(
-            pre + f"the enemy king is on the EDGE and your kings are {_kd} apart "
-            f"— this is the mating position. Find the {piece_noun} move that "
-            f"checks along the edge with no escape (your king covers the flight "
-            f"squares). Confirm `gives checkmate` in imagine_move (a quiet move "
-            f"leaving zero squares without check is stalemate)."
+        # Enemy king on the edge, your king close. EITHER a mating move exists
+        # now, OR — the case the agent kept missing (game 1403f9cc W13-17: it
+        # had mate-in-2 every move but played KING moves because it was told to
+        # 'find the check' and there was none yet) — you need a QUIET rook move
+        # that squeezes the king one line toward the corner first, then mate.
+        # Detect a mate-in-1 mechanically (scanning legal moves for checkmate is
+        # rules, not search/eval).
+        has_mate_in_1 = any(
+            (board.push(mv), board.is_checkmate(), board.pop())[1]
+            for mv in list(board.legal_moves)
         )
+        if has_mate_in_1:
+            out.append(
+                pre + f"the enemy king is on the EDGE, kings {_kd} apart — "
+                f"there is a CHECKMATE available this move. Scan "
+                f"chess__list_legal_moves for the `checkmate` flag and play it."
+            )
+        else:
+            out.append(
+                pre + f"the enemy king is on the EDGE and your kings are {_kd} "
+                f"apart, but there is no mate THIS move. Do NOT shuffle your "
+                f"king (it is already close enough). Make the QUIET {piece_noun} "
+                f"move that shrinks the box ONE step — squeezing the enemy king "
+                f"toward the corner/edge along its own line — on a square your "
+                f"king still defends in time. imagine_move each candidate: pick "
+                f"the one with the SMALLEST box that is NOT stalemate (the box "
+                f"must shrink; never leave the king zero moves without check). "
+                f"Tighten one line at a time; mate comes within a move or two."
+            )
     elif _kd > 2:
         # The march is the engine of progress. Bring the king in — but only
         # confine with the major when your king can defend it in time.
