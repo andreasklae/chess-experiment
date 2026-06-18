@@ -579,87 +579,59 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
     #    agent plays it slowly when it does not bring its king in (game
     #    efbdd8ce, 2026-06-17: 49 plies). The box must shrink AND the king must
     #    close to ~2 squares before the edge check mates.
+    # ── The K+R / K+Q method as Capablanca states it, encoded as ONE
+    #    deterministic rule (replaces the brittle fence/opposition machine and
+    #    the priority-list that both produced shuffles and wrong-way checks —
+    #    games 4a211a2a, f923a018, 1403f9cc, 8063c239). The geometry is computed
+    #    by `confine_state` (a structural fact, like "is there a back-rank
+    #    weakness" — it does NOT name a move); the agent executes the branch
+    #    with chess__imagine_move, which reports each candidate's box + whether
+    #    the major stays defensible.
     _w, _h, _area = _eval.confinement_box(board, opp)
     _kd = _eval.kings_distance(board)
-    out.append(
-        f"- Confinement box (rectangle the enemy king is trapped in): "
-        f"**{_w}x{_h} = {_area} squares**; your kings are **{_kd}** apart. To "
-        f"mate quickly: keep the two KINGS close (≤2-3 apart) and let the "
-        f"{piece_noun} check to push the king back — both must progress."
-    )
-    # ── The K+R / K+Q method, as PRIORITIES (not a brittle fence state
-    #    machine — the previous one chose the drive direction from the fence
-    #    without regard to the king's side and produced wrong-way checks and
-    #    rook-shuffles, games 4a211a2a / f923a018, 2026-06-17). The agent now
-    #    SEES the box-area, king-distance, and rook-defensibility consequences
-    #    of each candidate in chess__imagine_move, so the radar only names the
-    #    priority; the agent picks and verifies the move itself.
     on_edge = kf in (0, 7) or kr in (0, 7)
-    short_side = min(_w, _h)
 
-    if touchable:
-        # The lone king can capture the major: move it — but to the TIGHTEST
-        # still-protectable square, NOT a far corner (the Ra8 blunder, game
-        # 4ad26820: fleeing to safety loosened the box from 21 to 49).
+    # 0) A mate this move? (scanning legal moves for checkmate is rules.)
+    has_mate_in_1 = any(
+        (board.push(mv), board.is_checkmate(), board.pop())[1]
+        for mv in list(board.legal_moves)
+    )
+    if has_mate_in_1:
         out.append(
-            pre + f"the enemy king can capture your {piece_noun} on "
-            f"{chess.square_name(touchable[0])} — move it, but do NOT flee to a "
-            f"far corner (that loosens the box). imagine_move SEVERAL retreat "
-            f"squares and pick the one with the SMALLEST box that is still "
-            f"'protectable in time'. Keeping the {piece_noun} near your king and "
-            f"confining is the whole point."
+            pre + f"there is a CHECKMATE available this move — scan "
+            f"chess__list_legal_moves for the `checkmate` flag and play it."
         )
-    elif on_edge and _kd <= 2:
-        # Enemy king on the edge, your king close. EITHER a mating move exists
-        # now, OR — the case the agent kept missing (game 1403f9cc W13-17: it
-        # had mate-in-2 every move but played KING moves because it was told to
-        # 'find the check' and there was none yet) — you need a QUIET rook move
-        # that squeezes the king one line toward the corner first, then mate.
-        # Detect a mate-in-1 mechanically (scanning legal moves for checkmate is
-        # rules, not search/eval).
-        has_mate_in_1 = any(
-            (board.push(mv), board.is_checkmate(), board.pop())[1]
-            for mv in list(board.legal_moves)
-        )
-        if has_mate_in_1:
-            out.append(
-                pre + f"the enemy king is on the EDGE, kings {_kd} apart — "
-                f"there is a CHECKMATE available this move. Scan "
-                f"chess__list_legal_moves for the `checkmate` flag and play it."
-            )
-        else:
-            out.append(
-                pre + f"the enemy king is on the EDGE and your kings are {_kd} "
-                f"apart, but there is no mate THIS move. Do NOT shuffle your "
-                f"king (it is already close enough). Make the QUIET {piece_noun} "
-                f"move that shrinks the box ONE step — squeezing the enemy king "
-                f"toward the corner/edge along its own line — on a square your "
-                f"king still defends in time. imagine_move each candidate: pick "
-                f"the one with the SMALLEST box that is NOT stalemate (the box "
-                f"must shrink; never leave the king zero moves without check). "
-                f"Tighten one line at a time; mate comes within a move or two."
-            )
-    elif _kd > 2:
-        # The march is the engine of progress. Bring the king in — but only
-        # confine with the major when your king can defend it in time.
+        return out
+
+    # The single rule: confine tighter with the major on a square the king can
+    # defend in time; if the major is already on its tightest defensible
+    # confining square, step the king closer instead.
+    cs = _eval.confine_state(board, own)
+    out.append(
+        f"- K+{piece_noun[0].upper()} method: the enemy king is boxed in "
+        f"**{_w}x{_h} = {_area} squares**; your kings are **{_kd}** apart. "
+        f"Each move, confine the box TIGHTER with the {piece_noun} on a square "
+        f"your king can defend IN TIME; when the {piece_noun} is already on its "
+        f"tightest defensible square, step the king closer instead. Keep king "
+        f"and {piece_noun} together."
+    )
+    if cs is not None and cs["can_tighten"]:
         out.append(
-            pre + f"your kings are {_kd} apart — too far to mate (you need 2). "
-            f"MARCH YOUR KING one square toward the enemy king. Move the "
-            f"{piece_noun} only to confine the box TIGHTER on a square your "
-            f"king can defend in time (imagine_move tells you both: the box "
-            f"area after the move, and whether the {piece_noun} stays "
-            f"defensible). Do not loosen the box; do not park the {piece_noun} "
-            f"where the king reaches it first."
+            pre + f"a tighter {piece_noun} square EXISTS that your king can "
+            f"still defend in time — it shrinks the box from {cs['current_area']} "
+            f"to {cs['best_area']}. MOVE THE {piece_noun.upper()} there (find it "
+            f"with imagine_move: try {piece_noun} moves, pick the one with the "
+            f"SMALLEST box whose confinement line says 'protectable in time' and "
+            f"is not stalemate). Do NOT move the king, do NOT check for its own "
+            f"sake, do NOT loosen the box."
         )
     else:
-        # Kings are close but the enemy king is not yet on an edge: squeeze.
         out.append(
-            pre + f"your kings are close ({_kd}) but the enemy king is not on an "
-            f"edge yet (box {_w}x{_h} = {_area}). Tighten the box one step "
-            f"toward the nearest edge with your {piece_noun} (keep it on a "
-            f"square your king defends in time), or step your king to keep the "
-            f"squeeze. Use imagine_move: pick the move that makes the box "
-            f"SMALLER without loosening it. The box must trend toward 0."
+            pre + f"your {piece_noun} is already on its tightest defensible "
+            f"confining square (box {_area}; no tighter defensible square "
+            f"exists yet). STEP YOUR KING one square toward the enemy king to "
+            f"take more squares and let the {piece_noun} confine tighter next "
+            f"move. Do NOT move the {piece_noun}."
         )
     return out
 

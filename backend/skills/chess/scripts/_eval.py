@@ -546,6 +546,66 @@ def piece_defensible_in_time(board: chess.Board, sq: int, own: bool) -> bool | N
     return my_d <= opp_d
 
 
+def confine_state(board: chess.Board, own: bool) -> dict | None:
+    """Geometric state of the K+R / K+Q confine-and-defend method, as a
+    structural fact about the CURRENT position — not a move recommendation.
+
+    The method (Capablanca): the major confines the lone king into the
+    smallest box it can while the king stays able to defend the major in time;
+    when the major already sits on the tightest defensible confining line, the
+    king steps closer instead. This reports which of those two situations holds
+    — like 'is there a back-rank weakness' — leaving the agent to find and play
+    the actual square with imagine_move.
+
+    Returns a dict (or None if not a lone-king ending with a single major):
+      current_area:    the box area the major confines the king to right now;
+      best_area:       the smallest box area reachable by a single major move
+                       to a square the king can still defend in time;
+      can_tighten:     True if best_area < current_area (a tighter defensible
+                       confining square exists → MOVE THE MAJOR there);
+                       False if the major is already on its tightest defensible
+                       confining square (→ STEP THE KING closer instead).
+
+    Pure geometry: it measures box areas (rectangle from major-attacks + edges)
+    and the king-distance race for defensibility. It does NOT score positions,
+    look for mate, or name a move — it classifies the current structure so the
+    agent knows which branch of the method applies."""
+    defender = not own
+    majors = [sq for pt in (chess.QUEEN, chess.ROOK) for sq in board.pieces(pt, own)]
+    if lone_king_color(board) != defender or len(majors) != 1:
+        return None
+    msq = majors[0]
+    current_area = confinement_box(board, defender)[2]
+
+    # Smallest box reachable by a single legal major move to a square that is
+    # NOT immediately hanging and stays defensible in time.
+    best_area = current_area
+    for mv in board.legal_moves:
+        if mv.from_square != msq:
+            continue
+        after = board.copy(stack=False)
+        after.push(mv)
+        if after.is_checkmate():          # a mate is its own signal; ignore here
+            continue
+        if after.is_stalemate():
+            continue
+        ek = after.king(defender)
+        # hanging now (king adjacent, undefended) disqualifies the square
+        if ek is not None and chess.square_distance(ek, mv.to_square) == 1 \
+                and not after.is_attacked_by(own, mv.to_square):
+            continue
+        if piece_defensible_in_time(after, mv.to_square, own) is False:
+            continue
+        area = confinement_box(after, defender)[2]
+        if area < best_area:
+            best_area = area
+    return {
+        "current_area": current_area,
+        "best_area": best_area,
+        "can_tighten": best_area < current_area,
+    }
+
+
 def parse_move(board: chess.Board, raw: str) -> chess.Move:
     """Parse a move string in UCI or SAN form on the given board.
 

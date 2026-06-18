@@ -584,19 +584,17 @@ def _pushed(board, move):
 
 def test_kq_central_gives_box_fact_and_an_instruction():
     out = radar("8/8/8/4k3/8/8/8/3QK3 w - - 0 1")
-    assert "Confinement box" in out
-    # From the centre the king should march (queen already confines to a band);
-    # either a march or shrink instruction is acceptable, never a stall.
-    assert ("MARCH YOUR KING" in out) or ("SHRINK IT" in out)
+    assert "K+Q method" in out
+    # confine-or-march: either move the queen tighter or step the king
+    assert ("MOVE THE QUEEN" in out) or ("STEP YOUR KING" in out)
 
 
 def test_kq_king_on_edge_but_king_far_says_march():
     """The exact failure mode: enemy king boxed on an edge, own king far —
     the advisor must say MARCH YOUR KING, not keep moving the queen."""
     out = radar("4k3/8/8/3Q4/8/8/8/4K3 w - - 0 1")
-    assert "MARCH YOUR KING" in out
-    # the queen should only be moved to confine tighter, not shuffled
-    assert "confine the box TIGHTER" in out or "queen only" in out
+    # queen already on its tightest defensible square, kings far -> step the king
+    assert "STEP YOUR KING" in out
 
 
 def test_kq_one_legal_move_warns_stalemate():
@@ -607,7 +605,7 @@ def test_kq_one_legal_move_warns_stalemate():
 
 def test_kr_shows_box_and_king_distance():
     out = radar("8/8/8/8/4k3/8/8/R3K3 w - - 0 1")
-    assert "Confinement box" in out
+    assert "K+R method" in out
     assert "kings are" in out
 
 
@@ -639,7 +637,7 @@ def test_kq_and_kr_both_keep_kings_close():
     for fen in ("8/8/8/8/4k3/8/8/R3K3 w - - 0 1",
                 "8/8/8/8/4k3/8/8/3QK3 w - - 0 1"):
         out = radar(fen)
-        assert "keep the two KINGS close" in out
+        assert "together" in out  # king and major stay together
 
 
 def test_kr_marches_king_when_kings_far_with_fence():
@@ -647,9 +645,8 @@ def test_kr_marches_king_when_kings_far_with_fence():
     king, not move the rook."""
     # Fence on rank 6 (rook a6) behind a king on f7-ish, white king far on rank 1.
     out = radar("8/5k2/R7/8/8/8/8/4K3 w - - 0 1")
-    # Either the dedicated march rule or the no-opposition march rule fires;
-    # both tell the king to step toward the enemy king.
-    assert "MARCH YOUR KING" in out or "step YOUR king" in out
+    # rook already on its tightest defensible square, kings far -> step the king
+    assert "STEP YOUR KING" in out
 
 
 # ── imagine_move confinement facts (2026-06-17) ────────────────────────────

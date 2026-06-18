@@ -497,3 +497,23 @@ def test_piece_defensible_in_time(ev):
     # King adjacent to the rook -> defensible.
     b2 = chess.Board("8/8/8/RK6/8/2k5/8/8 w - - 0 1")
     assert ev.piece_defensible_in_time(b2, chess.A5, chess.WHITE) is True
+
+
+def test_confine_state_can_tighten(ev):
+    import chess
+    # central K+R: a tighter defensible rook square exists -> move the rook
+    s = ev.confine_state(chess.Board("8/8/8/8/4k3/8/8/R3K3 w - - 0 1"), chess.WHITE)
+    assert s is not None and s["can_tighten"] is True
+    assert s["best_area"] < s["current_area"]
+
+
+def test_confine_state_rook_already_tight_means_move_king(ev):
+    import chess
+    # rook on its tightest defensible line, enemy king far -> can_tighten False
+    s = ev.confine_state(chess.Board("8/4k3/8/R7/8/8/8/4K3 w - - 0 1"), chess.WHITE)
+    assert s is not None and s["can_tighten"] is False
+
+
+def test_confine_state_none_when_not_single_major_ending(ev):
+    import chess
+    assert ev.confine_state(chess.Board(), chess.WHITE) is None  # full board

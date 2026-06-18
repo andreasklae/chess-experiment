@@ -37,40 +37,29 @@ the distance), **stop moving the rook and march your king** — a fence with a
 distant king is the slow, drifting failure. This runs in all four directions
 (fence a rank to drive to rank 1/8, or a file to drive to the a/h-file).
 
-## What to do — confine, march, mate (use imagine_move to compare moves)
+## What to do — ONE rule, every move
 
-Each turn, decide between TWO jobs by the numbers `chess__imagine_move` gives
-you (it reports, for any move you imagine: the enemy king's **box area**
-before→after, the **distance between the kings**, and whether your rook stays
-**defensible** on its new square):
+The king and rook **always stay together**: the rook shrinks the box the
+enemy king is trapped in; your king protects the rook. Each move, apply this
+single rule (`chess__imagine_move` reports, for any move, the enemy king's
+**box area** and whether the rook stays **protectable in time** — yes/no):
 
-1. **Rook can be captured by the king?** Move it to safety first — a square
-   the king cannot reach, or one your king defends. imagine_move's confinement
-   line flags whether a square is defensible in time.
-2. **Kings more than 2 apart?** **MARCH YOUR KING** one square toward the enemy
-   king. Move the rook *only* if a rook move makes the box strictly **smaller**
-   AND leaves the rook **defensible in time** (imagine_move tells you both).
-   Never loosen the box; never park the rook where the king reaches it first.
-3. **Kings close (≤2) but the enemy king not yet on an edge?** Tighten the box
-   one step toward the nearest edge with the rook (on a defensible square), or
-   step your king to keep the squeeze. Pick the move that makes the box
-   **smaller** without loosening it.
-4. **Enemy king on the EDGE and your kings ≤2 apart?** The finish — but
-   usually NOT in one check. First ask `chess__list_legal_moves`: is any move
-   flagged `checkmate`? If yes, play it. If NOT, **do not move your king
-   (it is already close) and do not check for the sake of checking** — make
-   the **quiet rook move that shrinks the box ONE step**, squeezing the king
-   further along its edge toward the corner, on a square your king still
-   defends. Tighten one line at a time; the mate falls in a move or two.
-   **You mate on the edge — you do NOT need the corner**, but you usually need
-   one or two quiet squeezing rook moves to take the king's last sideways
-   squares first. Never leave the king zero moves without check — that is
-   stalemate (check `gives checkmate`, not `stalemate`, in imagine_move).
+1. **Is a move flagged `checkmate`?** (`chess__list_legal_moves`) → play it.
+2. **Does a tighter rook square exist that your king can still defend in
+   time?** Imagine a few rook moves; if one shrinks the box AND its
+   confinement line says *protectable in time*, **move the rook to the
+   tightest such square.** Do NOT move the king; do NOT check for its own
+   sake; do NOT loosen the box.
+3. **Otherwise** (the rook is already on its tightest defensible confining
+   square) → **step your king one square toward the enemy king.** This takes
+   more squares from it and lets the rook confine tighter next move.
 
-The whole method in one line: **bring your king in, then squeeze the enemy
-king's box smaller one rook move at a time until it is mated on the edge.**
-No drastic moves — one rank/file at a time, the king always defending the
-rook. Both numbers — box area and king-distance — must trend down.
+That's the whole drill: **rook tightens when it safely can; king steps in when
+the rook can't tighten.** No drastic moves — one rank/file at a time. The box
+area shrinks, the enemy king is squeezed to an edge/corner, and the mate
+appears (rule 1). **You mate on the edge — you do NOT need the corner.** Never
+leave the king zero moves without check — that is stalemate (confirm
+`gives checkmate`, not `stalemate`, in imagine_move).
 
 ## Watch out for
 

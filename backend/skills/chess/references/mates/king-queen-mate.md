@@ -30,19 +30,22 @@ mate is quicker — but the method is identical: **keep the kings together and
 walk the enemy king to an edge.** The radar's drill-state line guides you the
 same way it does for the rook.
 
-## What to do
+## What to do — the same ONE rule as king-and-rook
 
-Follow the **king-and-rook method** ([[mates/king-rook-mate]] "What to do"),
-reading "queen" for "rook" — and use `chess__imagine_move`, which reports for
-any move the enemy king's **box area**, the **king-distance**, and whether the
-queen stays **defensible**:
+Use the **king-and-rook rule** ([[mates/king-rook-mate]] "What to do"), reading
+"queen" for "rook" — the queen confines exactly like a rook (it just also cuts
+diagonals, so it boxes the king faster). Each move (`chess__imagine_move`
+reports the box area and whether the queen is *protectable in time*):
 
-1. **Kings more than 2 apart → march your king.** Move the queen only to make
-   the box strictly smaller on a square your king can defend in time.
-2. **Kings close, king not yet on an edge →** tighten the box one step toward
-   the nearest edge (never loosen it).
-3. **Enemy king on the edge, kings ≤2 apart →** queen checks the edge with the
-   flight squares covered = mate. Confirm `gives checkmate` in imagine_move.
+1. **Is a move flagged `checkmate`?** → play it.
+2. **Does a tighter queen square exist that your king can still defend in
+   time?** → move the queen to the tightest such square. Don't move the king;
+   don't loosen the box.
+3. **Otherwise** → step your king one square toward the enemy king.
+
+**The one extra danger with a queen is STALEMATE** (it covers so many squares):
+never make a quiet move that leaves the lone king zero legal moves without
+check — confirm `gives checkmate`, not `stalemate`, in imagine_move.
 
 ## Watch out for — STALEMATE (much easier with a queen)
 
