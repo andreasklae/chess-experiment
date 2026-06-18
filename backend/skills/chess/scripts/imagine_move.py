@@ -165,6 +165,10 @@ def _confinement_lines(
     lines = [
         "## Confinement (basic mate)",
         "",
+        "**The whole K+R/K+Q method: each move, confine the enemy king's box "
+        "TIGHTER while keeping your major on a square your king can protect in "
+        "time. Compare candidates by these two numbers.**",
+        "",
         f"- Enemy king's box (squares it is trapped in): "
         f"**{area_before} → {area_after}** — {trend(area_before, area_after, True)}.",
         f"- Distance between the kings: **{kd_before} → {kd_after}** "
@@ -172,28 +176,38 @@ def _confinement_lines(
         f"{'closer' if kd_after < kd_before else ('further' if kd_after > kd_before else 'no change')}).",
     ]
 
-    # If the moved piece is a major and the lone king could be adjacent to it,
-    # report whether our king defends it in time.
+    # For ANY major move, report whether the major stays protectable in time —
+    # the core K+R/K+Q safety test (your king must be able to reach a defending
+    # square before the enemy king reaches one attacking it). This is what makes
+    # a confining square usable vs. a square where the king just wins the rook.
     piece = board_after.piece_at(move.to_square)
     if piece is not None and piece.piece_type in (chess.QUEEN, chess.ROOK):
+        name = PIECE_NAMES[piece.piece_type]
+        sq = chess.square_name(move.to_square)
         ek = board_after.king(defender)
-        if ek is not None and chess.square_distance(ek, move.to_square) <= 2:
-            safe = piece_defensible_in_time(board_after, move.to_square, mover)
-            if safe is True:
-                lines.append(
-                    f"- Your {PIECE_NAMES[piece.piece_type]} on "
-                    f"{chess.square_name(move.to_square)} is near the enemy king, "
-                    f"but your king can reach a defending square in time — safe "
-                    f"to confine from here."
-                )
-            elif safe is False:
-                lines.append(
-                    f"- ⚠ Your {PIECE_NAMES[piece.piece_type]} on "
-                    f"{chess.square_name(move.to_square)} is near the enemy king "
-                    f"and your king CANNOT defend it in time — the enemy king may "
-                    f"reach it first. Confine from a square your king can support, "
-                    f"or keep it far from the king."
-                )
+        attacked_now = ek is not None and chess.square_distance(ek, move.to_square) == 1
+        attacked_now = attacked_now and not board_after.is_attacked_by(mover, move.to_square)
+        safe = piece_defensible_in_time(board_after, move.to_square, mover)
+        if attacked_now:
+            lines.append(
+                f"- ⚠ Your {name} on {sq} is attacked by the enemy king right "
+                f"now and not yet defended — it will be lost unless your king "
+                f"defends it immediately."
+            )
+        elif safe is True:
+            lines.append(
+                f"- Your {name} on {sq}: your king can reach a defending square "
+                f"no later than the enemy king can attack it — **protectable in "
+                f"time**, a usable confining square."
+            )
+        elif safe is False:
+            lines.append(
+                f"- ⚠ Your {name} on {sq}: the enemy king can reach a square "
+                f"attacking it BEFORE your king can defend it — **not "
+                f"protectable in time**. Confine from a square nearer your own "
+                f"king instead (do not flee to a far corner — that loosens the "
+                f"box; pick the tightest square your king can still protect)."
+            )
     lines.append("")
     return lines
 

@@ -598,13 +598,16 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
     short_side = min(_w, _h)
 
     if touchable:
-        # The lone king can capture the major: get it safe first.
+        # The lone king can capture the major: move it — but to the TIGHTEST
+        # still-protectable square, NOT a far corner (the Ra8 blunder, game
+        # 4ad26820: fleeing to safety loosened the box from 21 to 49).
         out.append(
             pre + f"the enemy king can capture your {piece_noun} on "
-            f"{chess.square_name(touchable[0])} — move it to safety NOW "
-            f"(a square the king cannot reach, or one your own king defends). "
-            f"Use imagine_move: the confinement line flags whether a square is "
-            f"defensible in time."
+            f"{chess.square_name(touchable[0])} — move it, but do NOT flee to a "
+            f"far corner (that loosens the box). imagine_move SEVERAL retreat "
+            f"squares and pick the one with the SMALLEST box that is still "
+            f"'protectable in time'. Keeping the {piece_noun} near your king and "
+            f"confining is the whole point."
         )
     elif on_edge and _kd <= 2:
         # Enemy king on the edge, your king close enough to support: mate is here.
