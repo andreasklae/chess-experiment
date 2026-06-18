@@ -32,15 +32,17 @@ same way it does for the rook.
 
 ## What to do
 
-Follow the **king-and-rook rules** ([[mates/king-rook-mate]] "What to do"),
-reading "queen" for "rook":
+Follow the **king-and-rook method** ([[mates/king-rook-mate]] "What to do"),
+reading "queen" for "rook" — and use `chess__imagine_move`, which reports for
+any move the enemy king's **box area**, the **king-distance**, and whether the
+queen stays **defensible**:
 
-1. Fence the king onto fewer lines with the queen (a quiet move, not a check).
-2. Keep your kings close; when they drift apart, **march your king**, do not
-   move the queen.
-3. In opposition with the enemy king on the edge → **queen checks the edge =
-   mate.**
-4. Enemy king dodges sideways → **follow with your king.**
+1. **Kings more than 2 apart → march your king.** Move the queen only to make
+   the box strictly smaller on a square your king can defend in time.
+2. **Kings close, king not yet on an edge →** tighten the box one step toward
+   the nearest edge (never loosen it).
+3. **Enemy king on the edge, kings ≤2 apart →** queen checks the edge with the
+   flight squares covered = mate. Confirm `gives checkmate` in imagine_move.
 
 ## Watch out for — STALEMATE (much easier with a queen)
 

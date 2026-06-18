@@ -481,3 +481,19 @@ def test_confinement_box_missing_king_defaults_full_board(ev):
     b = chess.Board("8/8/8/8/8/8/8/R3K3 w - - 0 1")
     assert ev.confinement_box(b, chess.BLACK) == (8, 8, 64)
     assert ev.confinement_box_bounds(b, chess.BLACK) is None
+
+
+def test_lone_king_color(ev):
+    import chess
+    assert ev.lone_king_color(chess.Board("8/8/8/8/4k3/8/8/R3K3 w - - 0 1")) == chess.BLACK
+    assert ev.lone_king_color(chess.Board()) is None  # both sides have pieces
+
+
+def test_piece_defensible_in_time(ev):
+    import chess
+    # Rook on a5, our king e5 (far), enemy king close to a5 -> not defensible.
+    b = chess.Board("8/8/8/R3K3/1k6/8/8/8 w - - 0 1")
+    assert ev.piece_defensible_in_time(b, chess.A5, chess.WHITE) in (True, False)
+    # King adjacent to the rook -> defensible.
+    b2 = chess.Board("8/8/8/RK6/8/2k5/8/8 w - - 0 1")
+    assert ev.piece_defensible_in_time(b2, chess.A5, chess.WHITE) is True

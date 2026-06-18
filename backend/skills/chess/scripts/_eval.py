@@ -509,6 +509,43 @@ def kings_distance(board: chess.Board) -> int:
     return chess.square_distance(wk, bk)
 
 
+def lone_king_color(board: chess.Board) -> bool | None:
+    """Colour of the side reduced to king (+ pawns), while the other side has a
+    queen or rook — the basic-mate precondition. None if neither side qualifies.
+    Pure material count."""
+    for color in (chess.WHITE, chess.BLACK):
+        own_pieces = sum(
+            len(board.pieces(pt, color))
+            for pt in (chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT)
+        )
+        opp_majors = len(board.pieces(chess.QUEEN, not color)) + len(
+            board.pieces(chess.ROOK, not color)
+        )
+        if own_pieces == 0 and opp_majors >= 1:
+            return color
+    return None
+
+
+def piece_defensible_in_time(board: chess.Board, sq: int, own: bool) -> bool | None:
+    """Geometry race: can ``own``'s king reach a square defending ``sq`` no
+    later than the enemy king can reach a square attacking ``sq``? Compares the
+    Chebyshev distance of each king to the nearest square adjacent to ``sq``.
+    Used to judge whether a major parked on ``sq`` (to confine the lone king)
+    will stay safe. Pure geometry — does not search. None if a king is missing.
+
+    Note: this is a coarse race (it ignores whose move it is and blocking); it
+    is a hint, not a guarantee — the agent still verifies with imagine_move."""
+    mk, ek = board.king(own), board.king(not own)
+    if mk is None or ek is None:
+        return None
+    adjacent = [s for s in chess.SQUARES if chess.square_distance(s, sq) == 1]
+    if not adjacent:
+        return None
+    my_d = min(chess.square_distance(mk, s) for s in adjacent)
+    opp_d = min(chess.square_distance(ek, s) for s in adjacent)
+    return my_d <= opp_d
+
+
 def parse_move(board: chess.Board, raw: str) -> chess.Move:
     """Parse a move string in UCI or SAN form on the given board.
 

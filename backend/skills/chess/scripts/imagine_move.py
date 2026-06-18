@@ -44,9 +44,13 @@ from _eval import (  # noqa: E402
     annotate_move,
     classify_illegal_move,
     color_name,
+    confinement_box,
     describe_piece,
     enemy_king_mobility,
+    kings_distance,
+    lone_king_color,
     parse_move,
+    piece_defensible_in_time,
     render_eval_delta_line,
     render_moves_table,
     static_exchange_eval,
@@ -120,6 +124,78 @@ def _move_summary(board_before: chess.Board, move: chess.Move) -> str:
         )
 
     return f"`{move.uci()}` ({san}) — {piece_name} {from_name} → {to_name} (no capture){promo_extra}"
+
+
+def _confinement_lines(
+    board_before: chess.Board, board_after: chess.Board, move: chess.Move
+) -> list[str]:
+    """Basic-mate confinement facts for the imagined move, in numbers + words
+    (no ASCII art — the model reads the numbers better). Only emitted when one
+    side is a lone king and the mover has a queen/rook (the basic-mate case).
+
+    Reports, all pure geometry:
+      - the lone king's confinement-box area BEFORE → AFTER this move (the
+        cage the major + edges trap it in; smaller = tighter), with the change;
+      - the distance between the two kings before → after (the 'march your
+        king in' progress signal);
+      - if the move places/leaves your major where the lone king could attack
+        it, whether your king can defend it in time (the safe-to-confine test).
+    """
+    defender = lone_king_color(board_before)
+    if defender is None:
+        return []
+    mover = board_before.turn
+    if defender == mover:               # the lone king is the side to move; skip
+        return []
+
+    area_before = confinement_box(board_before, defender)[2]
+    area_after = confinement_box(board_after, defender)[2]
+    kd_before = kings_distance(board_before)
+    kd_after = kings_distance(board_after)
+
+    def trend(before: int, after: int, good_is_down: bool) -> str:
+        if after == before:
+            return "no change"
+        better = (after < before) if good_is_down else (after > before)
+        arrow = "smaller" if after < before else "larger"
+        if good_is_down:
+            return f"{arrow} ({'good — tighter' if better else 'WORSE — looser'})"
+        return arrow
+
+    lines = [
+        "## Confinement (basic mate)",
+        "",
+        f"- Enemy king's box (squares it is trapped in): "
+        f"**{area_before} → {area_after}** — {trend(area_before, area_after, True)}.",
+        f"- Distance between the kings: **{kd_before} → {kd_after}** "
+        f"(bring it to 2 to support the mate; "
+        f"{'closer' if kd_after < kd_before else ('further' if kd_after > kd_before else 'no change')}).",
+    ]
+
+    # If the moved piece is a major and the lone king could be adjacent to it,
+    # report whether our king defends it in time.
+    piece = board_after.piece_at(move.to_square)
+    if piece is not None and piece.piece_type in (chess.QUEEN, chess.ROOK):
+        ek = board_after.king(defender)
+        if ek is not None and chess.square_distance(ek, move.to_square) <= 2:
+            safe = piece_defensible_in_time(board_after, move.to_square, mover)
+            if safe is True:
+                lines.append(
+                    f"- Your {PIECE_NAMES[piece.piece_type]} on "
+                    f"{chess.square_name(move.to_square)} is near the enemy king, "
+                    f"but your king can reach a defending square in time — safe "
+                    f"to confine from here."
+                )
+            elif safe is False:
+                lines.append(
+                    f"- ⚠ Your {PIECE_NAMES[piece.piece_type]} on "
+                    f"{chess.square_name(move.to_square)} is near the enemy king "
+                    f"and your king CANNOT defend it in time — the enemy king may "
+                    f"reach it first. Confine from a square your king can support, "
+                    f"or keep it far from the king."
+                )
+    lines.append("")
+    return lines
 
 
 def _check_status(board_after: chess.Board) -> str:
@@ -396,6 +472,11 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
     out.append(f"**FEN:** `{board_after.fen()}`")
     out.append(f"**Side to move:** {color_name(board_after.turn)}")
     out.append("")
+
+    # Basic-mate confinement facts (only fires vs a lone king): how this move
+    # changes the enemy king's box and the king-distance, and whether a major
+    # placed near the king stays defensible. Numbers + words, no ASCII art.
+    out.extend(_confinement_lines(board_before, board_after, move))
 
     out.append("## Discovered attacks")
     out.append("")

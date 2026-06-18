@@ -595,7 +595,8 @@ def test_kq_king_on_edge_but_king_far_says_march():
     the advisor must say MARCH YOUR KING, not keep moving the queen."""
     out = radar("4k3/8/8/3Q4/8/8/8/4K3 w - - 0 1")
     assert "MARCH YOUR KING" in out
-    assert "do NOT move the queen" in out
+    # the queen should only be moved to confine tighter, not shuffled
+    assert "confine the box TIGHTER" in out or "queen only" in out
 
 
 def test_kq_one_legal_move_warns_stalemate():
@@ -649,3 +650,32 @@ def test_kr_marches_king_when_kings_far_with_fence():
     # Either the dedicated march rule or the no-opposition march rule fires;
     # both tell the king to step toward the enemy king.
     assert "MARCH YOUR KING" in out or "step YOUR king" in out
+
+
+# ── imagine_move confinement facts (2026-06-17) ────────────────────────────
+
+
+def test_imagine_confinement_reports_box_and_king_distance():
+    import importlib, sys
+    sys.path.insert(0, str(SCRIPTS))
+    import imagine_move; importlib.reload(imagine_move)
+    import chess
+    b = chess.Board("8/8/8/8/4k3/8/8/R3K3 w - - 0 1")
+    m = b.parse_san("Ra5")
+    b2 = b.copy(); b2.push(m)
+    lines = imagine_move._confinement_lines(b, b2, m)
+    text = "\n".join(lines)
+    assert "Confinement" in text
+    assert "49 → 28" in text          # box shrinks
+    assert "tighter" in text.lower()
+
+
+def test_imagine_confinement_silent_when_not_basic_mate():
+    import importlib, sys
+    sys.path.insert(0, str(SCRIPTS))
+    import imagine_move; importlib.reload(imagine_move)
+    import chess
+    b = chess.Board()  # full board, not a lone-king ending
+    m = b.parse_san("e4")
+    b2 = b.copy(); b2.push(m)
+    assert imagine_move._confinement_lines(b, b2, m) == []

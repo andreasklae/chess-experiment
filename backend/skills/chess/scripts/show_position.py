@@ -46,8 +46,6 @@ from _eval import (  # noqa: E402 — sys.path adjusted above
     MATERIAL,
     PIECE_NAMES,
     color_name,
-    confinement_box,
-    confinement_box_bounds,
     detect_phase,
     is_losing_on_square,
     phase_score,
@@ -68,48 +66,6 @@ def render_ascii(board: chess.Board) -> str:
     labelled = [f"{8 - i}  {row}" for i, row in enumerate(rows)]
     labelled.append("   a b c d e f g h")
     return "\n".join(labelled)
-
-
-def _lone_king_color(board: chess.Board) -> bool | None:
-    """The colour of the side reduced to a bare king (no pieces, pawns allowed),
-    while the other side has a queen or rook — the basic-mate precondition for
-    the confinement-box drawing. None if neither side qualifies."""
-    for c in (chess.WHITE, chess.BLACK):
-        c_pieces = sum(len(board.pieces(pt, c))
-                       for pt in (chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT))
-        opp_majors = len(board.pieces(chess.QUEEN, not c)) + len(board.pieces(chess.ROOK, not c))
-        if c_pieces == 0 and opp_majors >= 1:
-            return c
-    return None
-
-
-def render_confinement_box(board: chess.Board, defender: bool) -> str | None:
-    """ASCII board with the enemy king's confinement box marked: cells inside
-    the box that are empty show ``·``; pieces still show their letter. This
-    lets the agent SEE the cage it must shrink. Pure geometry (uses
-    _eval.confinement_box_bounds). None if no box is computable."""
-    bounds = confinement_box_bounds(board, defender)
-    if bounds is None:
-        return None
-    min_f, max_f, min_r, max_r = bounds
-    w, h, area = confinement_box(board, defender)
-    rows = []
-    for r in range(7, -1, -1):
-        cells = []
-        for f in range(8):
-            piece = board.piece_at(chess.square(f, r))
-            inside = min_f <= f <= max_f and min_r <= r <= max_r
-            if piece is not None:
-                cells.append(piece.symbol())
-            elif inside:
-                cells.append("·")
-            else:
-                cells.append(".")
-        rows.append(f"{r + 1}  " + " ".join(cells))
-    rows.append("   a b c d e f g h")
-    head = (f"Confinement box for the {color_name(defender)} king: "
-            f"{w}×{h} = {area} squares (· marks the cage). Shrink it toward an edge.")
-    return head + "\n" + "\n".join(rows)
 
 
 def piece_label(board: chess.Board, square: int, *, pinned: bool) -> str:
@@ -315,15 +271,6 @@ def render_position(board: chess.Board, move_cap: int | None = None) -> str:
         render_ascii(board),
         "```",
         "",
-    ]
-    # Basic-mate aid: when one side is a lone king, draw the confinement box so
-    # the agent can SEE the cage it must shrink (pure geometry).
-    _lone = _lone_king_color(board)
-    if _lone is not None:
-        _box = render_confinement_box(board, _lone)
-        if _box:
-            out += ["```", _box, "```", ""]
-    out += [
         f"**Pieces:** white: {_piece_list(board, chess.WHITE)} · "
         f"black: {_piece_list(board, chess.BLACK)}",
         f"**FEN:** `{board.fen()}`",

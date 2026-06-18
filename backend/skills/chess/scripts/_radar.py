@@ -587,89 +587,56 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
         f"mate quickly: keep the two KINGS close (≤2-3 apart) and let the "
         f"{piece_noun} check to push the king back — both must progress."
     )
+    # ── The K+R / K+Q method, as PRIORITIES (not a brittle fence state
+    #    machine — the previous one chose the drive direction from the fence
+    #    without regard to the king's side and produced wrong-way checks and
+    #    rook-shuffles, games 4a211a2a / f923a018, 2026-06-17). The agent now
+    #    SEES the box-area, king-distance, and rook-defensibility consequences
+    #    of each candidate in chess__imagine_move, so the radar only names the
+    #    priority; the agent picks and verifies the move itself.
+    on_edge = kf in (0, 7) or kr in (0, 7)
+    short_side = min(_w, _h)
+
     if touchable:
+        # The lone king can capture the major: get it safe first.
         out.append(
-            pre + f"the enemy king can capture your piece on "
-            f"{chess.square_name(touchable[0])} — RULE: "
-            f"{_slide_away_text(touchable[0])}. Nothing else this turn."
+            pre + f"the enemy king can capture your {piece_noun} on "
+            f"{chess.square_name(touchable[0])} — move it to safety NOW "
+            f"(a square the king cannot reach, or one your own king defends). "
+            f"Use imagine_move: the confinement line flags whether a square is "
+            f"defensible in time."
         )
-    # EFFICIENCY RULE (verified against Capablanca's mate-in-11: the kings stay
-    # within distance 3 the WHOLE mate). When the enemy king is already boxed
-    # (a fence holds it, OR the box short side is small) but your king has
-    # drifted far (>3), stop fiddling with the major and MARCH the king — the
-    # slow 49-ply game efbdd8ce let the kings reach distance 5 while the rook
-    # shuffled, and the K+Q stall kept the king on e1 (game 34391da0).
-    # Bringing the king up to opposition is the only thing that finishes.
-    elif _kd > 3 and (on_fence or min(_w, _h) <= 3):
+    elif on_edge and _kd <= 2:
+        # Enemy king on the edge, your king close enough to support: mate is here.
         out.append(
-            pre + f"the enemy king is boxed ({_w}x{_h}) but your kings are "
-            f"{_kd} apart — too far. MARCH YOUR KING one square toward the "
-            f"enemy king now (do NOT move the {piece_noun}; it is already "
-            f"confining the king). The mate needs the kings within 2 "
-            f"(opposition); closing that gap is the priority."
+            pre + f"the enemy king is on the EDGE and your kings are {_kd} apart "
+            f"— this is the mating position. Find the {piece_noun} move that "
+            f"checks along the edge with no escape (your king covers the flight "
+            f"squares). Confirm `gives checkmate` in imagine_move (a quiet move "
+            f"leaving zero squares without check is stalemate)."
         )
-    elif not on_fence:
+    elif _kd > 2:
+        # The march is the engine of progress. Bring the king in — but only
+        # confine with the major when your king can defend it in time.
         out.append(
-            pre + f"no fence — RULE: put your {piece_noun} on {line_word} "
-            f"{line_name} (one line centre-side of the enemy king), far from "
-            f"the king. The king must never cross it."
+            pre + f"your kings are {_kd} apart — too far to mate (you need 2). "
+            f"MARCH YOUR KING one square toward the enemy king. Move the "
+            f"{piece_noun} only to confine the box TIGHTER on a square your "
+            f"king can defend in time (imagine_move tells you both: the box "
+            f"area after the move, and whether the {piece_noun} stays "
+            f"defensible). Do not loosen the box; do not park the {piece_noun} "
+            f"where the king reaches it first."
         )
-    elif opposition:
-        # On-edge + opposition = the check is MATE; otherwise it just forces a
-        # retreat. Spell out the edge-mate so the agent stops hunting for the
-        # corner (the user's "gets to the edge, can't finish" failure: K+R/K+Q
-        # mate on ANY edge, no corner needed).
-        king_on_edge = (kf in (0, 7)) if edge.startswith("file") else (kr in (0, 7))
-        if king_on_edge:
-            out.append(
-                pre + f"fence ✓ and kings in OPPOSITION with the enemy king on "
-                f"the edge ✓ — this is MATE: CHECK on {king_line_name} (the "
-                f"enemy king's {line_word}), a {piece_noun} move TO that "
-                f"{line_word} FAR from your king. You do NOT need the corner — "
-                f"the edge is enough. Verify `gives checkmate` with imagine_move."
-            )
-        else:
-            out.append(
-                pre + f"fence ✓ and kings in opposition ✓ — RULE: CHECK on "
-                f"{king_line_name} (the enemy king's {line_word}) now — a "
-                f"{piece_noun} move TO that {line_word}, far from the king; it "
-                f"must retreat. Then re-fence. A check on any other line is a "
-                f"wasted move."
-            )
     else:
-        # Did the enemy king just dodge SIDEWAYS along its edge (parallel to
-        # the fence)? Then the cure is to FOLLOW with your king to restore
-        # opposition — NOT to check (a check here lets it slip out, the
-        # user's "checks that do nothing, king escapes" failure). Read the
-        # last enemy king step off the move stack.
-        dodged_sideways = False
-        if board.move_stack:
-            last = board.move_stack[-1]
-            if last.to_square == ksq:
-                df = chess.square_file(ksq) - chess.square_file(last.from_square)
-                dr = chess.square_rank(ksq) - chess.square_rank(last.from_square)
-                # Sideways = moved parallel to the fence line (along the rank
-                # when fencing a rank, along the file when fencing a file).
-                dodged_sideways = (dr == 0) if edge.startswith("rank") else (df == 0)
-        if dodged_sideways:
-            out.append(
-                pre + f"fence on {line_word} {line_name} ✓ — the enemy king "
-                f"just DODGED SIDEWAYS along its edge. RULE: FOLLOW it — step "
-                f"YOUR king one square the SAME sideways direction to re-take "
-                f"opposition (do NOT move the fence {piece_noun}, do NOT check). "
-                f"The fence keeps it pinned to the edge; it runs out of room at "
-                f"the a/h end, where the opposition check is mate."
-            )
-        else:
-            out.append(
-                pre + f"fence on {line_word} {line_name} ✓, kings NOT in "
-                f"opposition — RULE: step YOUR king one square toward the "
-                f"enemy king (stay on your side of the fence) to reach "
-                f"opposition. Do NOT check yet — a check without opposition "
-                f"only lets the king escape. If your king already mirrors it "
-                f"and cannot approach, make a one-square {piece_noun} WAITING "
-                f"move along the fence line, far from the king, to pass the turn."
-            )
+        # Kings are close but the enemy king is not yet on an edge: squeeze.
+        out.append(
+            pre + f"your kings are close ({_kd}) but the enemy king is not on an "
+            f"edge yet (box {_w}x{_h} = {_area}). Tighten the box one step "
+            f"toward the nearest edge with your {piece_noun} (keep it on a "
+            f"square your king defends in time), or step your king to keep the "
+            f"squeeze. Use imagine_move: pick the move that makes the box "
+            f"SMALLER without loosening it. The box must trend toward 0."
+        )
     return out
 
 

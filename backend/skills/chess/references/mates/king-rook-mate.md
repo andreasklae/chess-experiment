@@ -37,40 +37,50 @@ the distance), **stop moving the rook and march your king** — a fence with a
 distant king is the slow, drifting failure. This runs in all four directions
 (fence a rank to drive to rank 1/8, or a file to drive to the a/h-file).
 
-## What to do — apply the FIRST rule that matches, every turn
+## What to do — confine, march, mate (use imagine_move to compare moves)
 
-1. **Rook not fencing?** Put it on the rank just behind the enemy king
-   (his rank ∓1), from a file far from both kings. Quiet move, not a check.
-2. **Enemy king attacks the rook?** Slide it along the fence rank to the far
-   end (a- or h-file, whichever is farther). Fence holds. Done.
-3. **Kings in opposition** (same file, your king two ranks from his, on the
-   centre side)? **Check along his edge rank, far from his king** — it mates
-   if he is already on the edge, else he retreats a rank and you re-fence.
-   This is the ONLY time you check.
-4. **Not in opposition, and your king can step toward his?** March your king
-   one square toward opposition (stay on your side of the fence). Do NOT
-   check.
-5. **Enemy king dodged SIDEWAYS along the edge** (e.g. e8→f8)? **Follow it
-   sideways with YOUR king** (e6→f6) to re-take opposition. Do NOT check and
-   do NOT chase with the rook — the fence stays put. He runs out of room at
-   the a/h-file, where rule 3 mates.
-6. **Kings opposed but it's YOUR move (wrong side to be on move)?** Make a
-   **rook waiting move**: slide the fence rook along its rank to the far side
-   from the king. Now HE must move out of opposition, and rule 3 or 5 fires.
+Each turn, decide between TWO jobs by the numbers `chess__imagine_move` gives
+you (it reports, for any move you imagine: the enemy king's **box area**
+before→after, the **distance between the kings**, and whether your rook stays
+**defensible** on its new square):
+
+1. **Rook can be captured by the king?** Move it to safety first — a square
+   the king cannot reach, or one your king defends. imagine_move's confinement
+   line flags whether a square is defensible in time.
+2. **Kings more than 2 apart?** **MARCH YOUR KING** one square toward the enemy
+   king. Move the rook *only* if a rook move makes the box strictly **smaller**
+   AND leaves the rook **defensible in time** (imagine_move tells you both).
+   Never loosen the box; never park the rook where the king reaches it first.
+3. **Kings close (≤2) but the enemy king not yet on an edge?** Tighten the box
+   one step toward the nearest edge with the rook (on a defensible square), or
+   step your king to keep the squeeze. Pick the move that makes the box
+   **smaller** without loosening it.
+4. **Enemy king on the EDGE and your kings ≤2 apart?** This is the mate: the
+   rook checks along the edge with the king's flight squares covered by your
+   king. **You mate on the edge — you do NOT need the corner.** Confirm
+   `gives checkmate` in imagine_move.
+
+The whole method in one line: **bring your king in while keeping the enemy
+king's box shrinking, then mate on the edge.** Both numbers — box area and
+king-distance — must trend down.
 
 ## Watch out for
 
-- **Never check without opposition** (rule 3 only). A check from rule-4/5
-  positions just lets the king slip out — this is the #1 way the win is
-  thrown away.
-- **Never check with the fence rook if it abandons the fence rank.** If
-  Ra7 is your fence and you play Ra8+, you vacate the 7th and the king
-  escapes forward (…Kg7). Keep the fence; mate with opposition instead.
-- Stalemate when the king is cornered: `k7/8/K7/8/8/8/8/1R6 b` is stalemate.
-  When the enemy king has ≤2 squares, prefer a rule-3 check and watch
+- **Don't check just to check.** A check that pushes the enemy king toward
+  open space (away from your king) makes no progress — it slips out and you
+  start over. Only check when it drives the king toward its edge with your
+  king covering the escape, or when it is mate.
+- **Don't loosen the box.** A rook move that makes the box area *bigger*
+  (imagine_move shows this) gives the king room — reject it. The box must
+  only ever shrink.
+- **Don't park the rook where the king reaches it first.** If imagine_move
+  says the rook is not defensible in time, confine from a square your king
+  supports instead.
+- **Stalemate when the king is cornered:** `k7/8/K7/8/8/8/8/1R6 b` is
+  stalemate. When the enemy king has ≤2 squares, prefer a check and watch
   `chess__imagine_move` for `stalemate`.
-- `repeats!`/`draw:repetition` means you broke the drill — re-read and apply
-  rules 1→6 in order.
+- `repeats!`/`draw:repetition` means you are shuffling without progress —
+  march your king (the box-area and king-distance numbers must trend down).
 
 ## Examples
 
@@ -78,15 +88,14 @@ Opposition on the edge — `4k3/8/4K3/8/8/8/8/7R w - - 0 1`, kings opposed
 (Ke6 vs Ke8) with the king already on the edge: 1.Rh8#. The king is on e8,
 NOT a corner. Verified.
 
-Herding a sideways dodge — `4k3/R7/5K2/8/8/8/8/8 w - - 0 1` (fence on the
-7th rank, king one step from opposition): 1.Ke6 Kf8 2.Kf6 Kg8 3.Kg6 Kh8
-4.Ra8#. Each time the king dodges sideways you FOLLOW with YOUR king (rule
-5), keeping the rook on the fence; the king is herded to the h-file and
-mated on the edge. Verified.
+Herding a sideways dodge — `4k3/R7/5K2/8/8/8/8/8 w - - 0 1` (rook caps the
+7th rank, king one step away): 1.Ke6 Kf8 2.Kf6 Kg8 3.Kg6 Kh8 4.Ra8#. Each
+time the king dodges sideways you FOLLOW with YOUR king, keeping the rook on
+its rank; the king is herded to the h-file and mated on the edge. Verified.
 
-Waiting move — `4k3/1R6/4K3/8/8/8/8/8 w - - 0 1`: kings opposed but it is
-White to move (the wrong side), so 1.Ra7 hands the move to Black (rule 6);
-now Black must break the opposition and walk into the mate. Verified.
+Waiting move — `4k3/1R6/4K3/8/8/8/8/8 w - - 0 1`: the kings face off but it is
+White to move, so 1.Ra7 hands the move to Black; now Black must step aside and
+walk into the mate. Verified.
 
 Full worked mate: Capablanca Examples 1–2 in
 `raw/chess-fundamentals-capablanca.md` (mate in 10–11 from anywhere).
