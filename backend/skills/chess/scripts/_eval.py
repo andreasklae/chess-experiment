@@ -636,7 +636,20 @@ def confine_state(board: chess.Board, own: bool) -> dict | None:
         if is_queen:
             key = (kd, _enemy_king_moves(after), tie)
         else:
-            key = (area, kd, tie)
+            # K+R: box first, then keep the ROOK FAR from the enemy king
+            # (Capablanca's "keep the rook away from the king"). Without this,
+            # box-greedy jumps the rook PERPENDICULAR toward the king to shave
+            # the rectangle (a4->g4), abandoning its cut and producing the
+            # messy back-and-forth that drew game f33e1c5a. Preferring the rook
+            # far keeps the wall steady on one line. Rook distance only matters
+            # for a rook move; a king move uses a neutral 0 so it is not
+            # penalised here (the box+kd already ordered it).
+            rsq_after = next(iter(after.pieces(chess.ROOK, own)), None)
+            rook_far = (
+                -chess.square_distance(rsq_after, ek)
+                if (rsq_after is not None and ek is not None) else 0
+            )
+            key = (area, rook_far, kd, tie)
         if best_key is None or key < best_key:
             best_key = key
             best_is_major = is_major
