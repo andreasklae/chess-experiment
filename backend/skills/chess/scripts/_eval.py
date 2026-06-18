@@ -589,6 +589,28 @@ def confine_state(board: chess.Board, own: bool) -> dict | None:
     # behind ties or loses to a king step (verified: this ordering mates a
     # running king in ~29 plies without repetition, whereas pure box-greedy
     # drew by repetition, game f36a4618).
+    # Ranking metric is PIECE-SPECIFIC (each verified to mate; the wrong one
+    # draws — K+R game f36a4618, K+Q game b2648178):
+    #   K+R: (box area, then kings closer) — the rook confines, the king
+    #        escorts. A rook move that shrinks the measured box but leaves the
+    #        king behind ties/loses to a king step.
+    #   K+Q: (kings closer, then enemy-king mobility) — the queen is strong
+    #        enough that the KING march is primary; the queen just cuts the
+    #        enemy king's legal moves. Box-greedy stalls the queen (it boxes
+    #        the king instantly, then never finishes / stalemates).
+    is_queen = board.piece_type_at(msq) == chess.QUEEN
+
+    def _enemy_king_moves(bd: chess.Board) -> int:
+        eksq = bd.king(defender)
+        probe = bd
+        if bd.turn != defender:
+            probe = bd.copy(stack=False)
+            try:
+                probe.push(chess.Move.null())
+            except (AssertionError, ValueError):
+                return 0
+        return sum(1 for m in probe.legal_moves if m.from_square == eksq)
+
     best_key = None
     best_is_major = False
     best_area = current_area
@@ -610,8 +632,11 @@ def confine_state(board: chess.Board, own: bool) -> dict | None:
         area = confinement_box(after, defender)[2]
         mk = after.king(own)
         kd = chess.square_distance(mk, ek) if (mk is not None and ek is not None) else 8
-        # prefer king moves on ties: third key 0 for king, 1 for major
-        key = (area, kd, 1 if is_major else 0)
+        tie = 1 if is_major else 0       # prefer a king move on exact ties
+        if is_queen:
+            key = (kd, _enemy_king_moves(after), tie)
+        else:
+            key = (area, kd, tie)
         if best_key is None or key < best_key:
             best_key = key
             best_is_major = is_major
