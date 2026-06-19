@@ -100,7 +100,7 @@ export function ChessBoard({ game, canMove, onMove }: { game: GameState | null; 
       <div className="turn-hint">
         {game ? (canMove ? `Move ${game.turn}` : `${game.turn} is controlled by ${game.turn === 'white' ? game.white.type : game.black.type}`) : 'Create a game'}
       </div>
-      <div style={{ position: 'relative', display: 'inline-block' }}>
+      <div className="board-frame-wrap">
         <div className="board-frame" ref={elementRef} />
         {pendingPromo && (
           <div className="promo-overlay">

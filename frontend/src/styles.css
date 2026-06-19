@@ -146,6 +146,14 @@ select {
   font-weight: 700;
 }
 
+/* Wrapper around the board frame (holds the promo overlay positioned over it).
+   inline-block on desktop so it hugs the square board; full-width block on a
+   phone so the board can fill the screen width (see the phone breakpoint). */
+.board-frame-wrap {
+  position: relative;
+  display: inline-block;
+}
+
 .board-frame {
   width: min(80vh, 100cqw);
   height: min(80vh, 100cqw);
@@ -1195,5 +1203,35 @@ dd {
     max-width: 100%;
     overflow-x: auto;
     display: block;
+  }
+
+  /* BOARD: fill the phone width. The default min(80vh, 100cqw) lets the
+     viewport HEIGHT cap squeeze the board thin on a tall phone screen; on a
+     phone we want the board to take the full available width and stay square.
+     Drive size from width only and keep it square with aspect-ratio. */
+  .board-frame-wrap {
+    display: block;
+    width: 100%;
+  }
+  .board-frame {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+  .board-panel,
+  .board-with-eval > .board-panel {
+    width: 100%;
+  }
+  /* The eval bar height tracks the (now width-based) square board. */
+  .eval-bar {
+    height: auto;
+    align-self: stretch;
+    margin-top: 0;
+  }
+  /* chessground fills its frame. */
+  .board-frame .cg-wrap,
+  .cg-wrap {
+    width: 100% !important;
+    height: 100% !important;
   }
 }
