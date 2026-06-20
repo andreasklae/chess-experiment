@@ -125,12 +125,21 @@ enough information is to play. Concretely:
     move is safe, that hesitation IS the signal to calculate, not guess.
 
   In all of these, one ply of `chess__imagine_move` is not enough — play the
-  line out a few moves: add ONE move at a time (your move, the opponent's best
+  line out a few moves: add ONE move at a time (your move, the opponent's
   reply, yours…), read the frontier report, branch/backtrack to compare lines,
-  then commit the first move of the line you trust. **Using it several times in
-  a game is normal and good** — it is far cheaper than the blunder or slow loss
-  it prevents. Only skip it when a move is genuinely obvious (a free capture, a
-  flagged `checkmate`, an only-move).
+  then commit the first move of the line you trust.
+
+  **Try SEVERAL of the opponent's replies — do not assume they play the one move
+  you hope for.** When it is the opponent's turn in your line, pick their **2–3
+  most probable/dangerous replies** (captures, checks, the move that defends or
+  counter-attacks) and run each as a **separate branch** from the same point.
+  Your move is only good if it works against ALL of their reasonable replies —
+  if any branch refutes it, choose a different move. A line that only works
+  because the opponent cooperates is not calculated; it is hope.
+
+  **Using it several times in a game is normal and good** — it is far cheaper
+  than the blunder or slow loss it prevents. Only skip it when a move is
+  genuinely obvious (a free capture, a flagged `checkmate`, an only-move).
 - **After imagining 2–3 serious candidates, pick the best and commit.**
   The tools cannot tell you more than you already know once you've seen
   the resulting position for each candidate. Past that point, more
