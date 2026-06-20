@@ -99,6 +99,16 @@ enough information is to play. Concretely:
   `chess__imagine_move` to confirm a free queen capture is wasted work. Play
   the move. A `checkmate` flag in `chess__list_legal_moves` is the ultimate
   obviously good move — commit it immediately.
+- **When there is NO obvious move and the position is tricky** — candidates
+  look roughly equal, or it is sharp (your move invites a forcing reply, a
+  sacrifice or combination is in the air, a passed pawn is racing, or you are
+  planning a multi-move maneuver like a basic-mate drive) — **use
+  `chess__imagine_line` to calculate a few moves deep before committing.** Add
+  ONE move at a time (your move, then the opponent's best reply, then yours…),
+  read the frontier report, and branch/backtrack to compare lines. One ply of
+  `chess__imagine_move` is not enough to judge a forcing sequence; the line tool
+  is. Then commit the first move of the line you trust. (This is for genuinely
+  unclear positions only — do not run it when an obvious move is present.)
 - **After imagining 2–3 serious candidates, pick the best and commit.**
   The tools cannot tell you more than you already know once you've seen
   the resulting position for each candidate. Past that point, more
