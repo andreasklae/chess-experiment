@@ -99,16 +99,25 @@ enough information is to play. Concretely:
   `chess__imagine_move` to confirm a free queen capture is wasted work. Play
   the move. A `checkmate` flag in `chess__list_legal_moves` is the ultimate
   obviously good move — commit it immediately.
-- **When there is NO obvious move and the position is tricky** — candidates
-  look roughly equal, or it is sharp (your move invites a forcing reply, a
-  sacrifice or combination is in the air, a passed pawn is racing, or you are
-  planning a multi-move maneuver like a basic-mate drive) — **use
-  `chess__imagine_line` to calculate a few moves deep before committing.** Add
-  ONE move at a time (your move, then the opponent's best reply, then yours…),
-  read the frontier report, and branch/backtrack to compare lines. One ply of
-  `chess__imagine_move` is not enough to judge a forcing sequence; the line tool
-  is. Then commit the first move of the line you trust. (This is for genuinely
-  unclear positions only — do not run it when an obvious move is present.)
+- **When the best move is not obvious, calculate with `chess__imagine_line` —
+  and lean toward doing this often.** Reach for it freely, not just in sharp
+  tactics. Use it whenever you cannot immediately see the right move, including:
+  - **sharp positions** — a forcing reply, sacrifice, or combination is
+    possible, or a passed pawn is racing;
+  - **quiet-but-tricky positions** — choosing which trade or simplification
+    keeps your advantage, deciding where to put a piece when nothing forces, or
+    forming a multi-move plan (a basic-mate drive, a king march);
+  - **defensive / endgame positions** — how to **hold a pawn**, defend a worse
+    endgame, or stop the opponent's plan over the next few moves. (This is where
+    the agent has quietly lost worse endgames before — calculate, don't drift.)
+
+  In all of these, one ply of `chess__imagine_move` is not enough — play the
+  line out a few moves: add ONE move at a time (your move, the opponent's best
+  reply, yours…), read the frontier report, branch/backtrack to compare lines,
+  then commit the first move of the line you trust. **Using it several times in
+  a game is normal and good** — it is far cheaper than the blunder or slow loss
+  it prevents. Only skip it when a move is genuinely obvious (a free capture, a
+  flagged `checkmate`, an only-move).
 - **After imagining 2–3 serious candidates, pick the best and commit.**
   The tools cannot tell you more than you already know once you've seen
   the resulting position for each candidate. Past that point, more
