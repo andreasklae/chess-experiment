@@ -44,9 +44,13 @@ from _eval import (  # noqa: E402
     annotate_move,
     classify_illegal_move,
     color_name,
+    confinement_box,
     describe_piece,
     enemy_king_mobility,
+    kings_distance,
+    lone_king_color,
     parse_move,
+    piece_defensible_in_time,
     render_eval_delta_line,
     render_moves_table,
     static_exchange_eval,
@@ -120,6 +124,92 @@ def _move_summary(board_before: chess.Board, move: chess.Move) -> str:
         )
 
     return f"`{move.uci()}` ({san}) — {piece_name} {from_name} → {to_name} (no capture){promo_extra}"
+
+
+def _confinement_lines(
+    board_before: chess.Board, board_after: chess.Board, move: chess.Move
+) -> list[str]:
+    """Basic-mate confinement facts for the imagined move, in numbers + words
+    (no ASCII art — the model reads the numbers better). Only emitted when one
+    side is a lone king and the mover has a queen/rook (the basic-mate case).
+
+    Reports, all pure geometry:
+      - the lone king's confinement-box area BEFORE → AFTER this move (the
+        cage the major + edges trap it in; smaller = tighter), with the change;
+      - the distance between the two kings before → after (the 'march your
+        king in' progress signal);
+      - if the move places/leaves your major where the lone king could attack
+        it, whether your king can defend it in time (the safe-to-confine test).
+    """
+    defender = lone_king_color(board_before)
+    if defender is None:
+        return []
+    mover = board_before.turn
+    if defender == mover:               # the lone king is the side to move; skip
+        return []
+
+    area_before = confinement_box(board_before, defender)[2]
+    area_after = confinement_box(board_after, defender)[2]
+    kd_before = kings_distance(board_before)
+    kd_after = kings_distance(board_after)
+
+    def trend(before: int, after: int, good_is_down: bool) -> str:
+        if after == before:
+            return "no change"
+        better = (after < before) if good_is_down else (after > before)
+        arrow = "smaller" if after < before else "larger"
+        if good_is_down:
+            return f"{arrow} ({'good — tighter' if better else 'WORSE — looser'})"
+        return arrow
+
+    lines = [
+        "## Confinement (basic mate)",
+        "",
+        "**The whole K+R/K+Q method: each move, confine the enemy king's box "
+        "TIGHTER while keeping your major on a square your king can protect in "
+        "time. Compare candidates by these two numbers.**",
+        "",
+        f"- Enemy king's box (squares it is trapped in): "
+        f"**{area_before} → {area_after}** — {trend(area_before, area_after, True)}.",
+        f"- Distance between the kings: **{kd_before} → {kd_after}** "
+        f"(bring it to 2 to support the mate; "
+        f"{'closer' if kd_after < kd_before else ('further' if kd_after > kd_before else 'no change')}).",
+    ]
+
+    # For ANY major move, report whether the major stays protectable in time —
+    # the core K+R/K+Q safety test (your king must be able to reach a defending
+    # square before the enemy king reaches one attacking it). This is what makes
+    # a confining square usable vs. a square where the king just wins the rook.
+    piece = board_after.piece_at(move.to_square)
+    if piece is not None and piece.piece_type in (chess.QUEEN, chess.ROOK):
+        name = PIECE_NAMES[piece.piece_type]
+        sq = chess.square_name(move.to_square)
+        ek = board_after.king(defender)
+        attacked_now = ek is not None and chess.square_distance(ek, move.to_square) == 1
+        attacked_now = attacked_now and not board_after.is_attacked_by(mover, move.to_square)
+        safe = piece_defensible_in_time(board_after, move.to_square, mover)
+        if attacked_now:
+            lines.append(
+                f"- ⚠ Your {name} on {sq} is attacked by the enemy king right "
+                f"now and not yet defended — it will be lost unless your king "
+                f"defends it immediately."
+            )
+        elif safe is True:
+            lines.append(
+                f"- Your {name} on {sq}: your king can reach a defending square "
+                f"no later than the enemy king can attack it — **protectable in "
+                f"time**, a usable confining square."
+            )
+        elif safe is False:
+            lines.append(
+                f"- ⚠ Your {name} on {sq}: the enemy king can reach a square "
+                f"attacking it BEFORE your king can defend it — **not "
+                f"protectable in time**. Confine from a square nearer your own "
+                f"king instead (do not flee to a far corner — that loosens the "
+                f"box; pick the tightest square your king can still protect)."
+            )
+    lines.append("")
+    return lines
 
 
 def _check_status(board_after: chess.Board) -> str:
@@ -302,13 +392,30 @@ def _moved_piece_hanging_warning(
     )
 
 
-def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
+def render_imagine(
+    board_before: chess.Board, move: chess.Move, agent_color: bool | None = None
+) -> str:
     """Markdown-formatted one-ply look-ahead report for `move` from `board_before`.
-    Caller must have already verified the move is legal."""
+    Caller must have already verified the move is legal.
+
+    The report is MOVER-RELATIVE: "Moved piece status" / "Newly hanging own
+    pieces" describe the side that just moved, and "Opponent legal replies" /
+    "Enemy king mobility" describe the other side. `chess__imagine_move` always
+    imagines the agent's OWN move, so that is unambiguous and it passes
+    ``agent_color=None``.
+
+    `chess__imagine_line` can imagine the OPPONENT's move too. When
+    ``agent_color`` is given and the mover is the opponent (mover ≠
+    agent_color), we keep the single mover-relative rendering but PREPEND an
+    orientation banner and relabel the two most invertible headers, so the agent
+    is never confused about whose pieces are whose."""
     board_after = board_before.copy()
     board_after.push(move)
 
     mover_color = board_before.turn
+    # Opponent-move framing: only when the caller declared the agent's colour
+    # AND the move being shown is the opponent's.
+    opp_move = agent_color is not None and mover_color != agent_color
     moved_piece = board_after.piece_at(move.to_square)
 
     attacker_chain = compute_attack_chain(board_after, not mover_color, move.to_square)
@@ -359,6 +466,21 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
     )
 
     out: list[str] = []
+    if opp_move:
+        you = color_name(agent_color)
+        them = color_name(mover_color)
+        out.append(
+            f"> ⟳ **This is the OPPONENT's ({them}) move** — not yours. Read the "
+            f"perspective carefully:\n"
+            f"> - 'Moved piece status', 'Side-effects', 'Newly hanging' below are "
+            f"about {them.upper()}'s pieces (the opponent's).\n"
+            f"> - **'Replies' are YOUR ({you}) options** — what you can play after "
+            f"this line.\n"
+            f"> - **'Enemy king mobility'** counts YOUR ({you}) king's squares — "
+            f"after the opponent's move you want this HIGH (your king free), the "
+            f"opposite of when imagining your own move."
+        )
+        out.append("")
     out.append(f"## Move: {_move_summary(board_before, move)}")
     out.append("")
     out.append(f"**Check:** {check_text}")
@@ -397,6 +519,11 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
     out.append(f"**Side to move:** {color_name(board_after.turn)}")
     out.append("")
 
+    # Basic-mate confinement facts (only fires vs a lone king): how this move
+    # changes the enemy king's box and the king-distance, and whether a major
+    # placed near the king stays defensible. Numbers + words, no ASCII art.
+    out.extend(_confinement_lines(board_before, board_after, move))
+
     out.append("## Discovered attacks")
     out.append("")
     if discoveries:
@@ -422,7 +549,10 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
     out.append(f"- **no longer defending:** {_format_squares_with_pieces(board_before, no_longer_defending)}")
     out.append("")
 
-    out.append("## Newly hanging own pieces")
+    out.append(
+        f"## {color_name(mover_color).capitalize()}'s newly hanging pieces (opponent's)"
+        if opp_move else "## Newly hanging own pieces"
+    )
     out.append("")
     if newly_hanging:
         for h in newly_hanging:
@@ -435,7 +565,42 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
         out.append(f"**En passant available:** {ep_text}")
         out.append("")
 
-    out.append("## Opponent legal replies")
+    # Check if opponent can promote a pawn after this move
+    opp_can_promote = []
+    for sq in board_after.pieces(chess.PAWN, board_after.turn):
+        rank = chess.square_rank(sq)
+        target_rank = 0 if board_after.turn == chess.WHITE else 7
+        if rank == target_rank:
+            opp_can_promote.append(chess.square_name(sq))
+
+    if opp_can_promote:
+        # Build mitigation strategies
+        strategies = [
+            "**Protect the promotion square:** Place a piece on it (e.g., rook on c8 protects c7-pawn on c8)",
+            "**Block the pawn:** Place a piece directly in front (one rank back) to prevent advance",
+            "**Place rook/queen behind:** Put a major piece on the pawn's file, behind it (same file, safe distance)",
+            "**Give check:** Force opponent's king to move instead of pushing the pawn",
+            "**Deliver checkmate:** If opponent has no safe moves, they cannot promote (already losing)",
+        ]
+        out.append(
+            f"**⚠️ CRITICAL: PAWN PROMOTION THREAT on {', '.join(opp_can_promote)}**\n\n"
+            f"Opponent can promote next move — this becomes a NEW QUEEN/ROOK. You likely lose unless:\n"
+            f"- (1) This move delivers **checkmate in your opponent's forced replies**, OR\n"
+            f"- (2) Opponent has **NO LEGAL MOVES** or **ONLY LOSING MOVES** (all replies lose material/mate)\n\n"
+            f"**Ways to stop promotion (pick one if you allow it):**\n"
+        )
+        for strategy in strategies:
+            out.append(f"- {strategy}")
+        out.append(
+            f"\n**SCAN THE LEGAL REPLIES BELOW:** If opponent has even ONE safe reply (not check, not losing), "
+            f"they will play {opp_can_promote[0]}=Q (or =R) and win. Do NOT allow this unless checkmate is forced."
+        )
+        out.append("")
+
+    out.append(
+        f"## Your ({color_name(agent_color)}) replies after this line"
+        if opp_move else "## Opponent legal replies"
+    )
     out.append("")
     legal = list(board_after.legal_moves)
     if not legal:
@@ -444,6 +609,32 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
         out.append(f"_{len(legal)} legal replies_:")
         out.append("")
         out.append(render_moves_table(board_after, legal))
+
+    # Nudge: if this move is sharp/forcing/material-changing, one ply is not
+    # enough — tell the agent to calculate the LINE before committing. Only in
+    # the standalone imagine_move tool (agent_color is None); not when
+    # imagine_line itself rendered this frontier. Never on mate (obvious win) or
+    # a clean free capture (nothing to recapture).
+    if agent_color is None and not board_after.is_checkmate() and not board_after.is_stalemate():
+        reasons = []
+        if board_before.is_capture(move) and attacker_chain:
+            reasons.append("a TRADE (your piece can be recaptured here)")
+        if hanging_warning or bad_trade_warning or newly_hanging:
+            reasons.append("a SACRIFICE / material giveaway")
+        if board_after.is_check():
+            reasons.append("a CHECK (a forcing line)")
+        if discoveries:
+            reasons.append("a DISCOVERED ATTACK")
+        if reasons:
+            out.append("")
+            out.append(
+                "**⮕ Calculate before committing.** This move is "
+                + ", and ".join(reasons)
+                + " — a sharp, forcing, or material-changing move where ONE ply "
+                "is not enough. Before `chess__make_move`, play it out with "
+                "`chess__imagine_line` (this move, the opponent's best reply, your "
+                "follow-up — add one move at a time) and confirm the line works."
+            )
 
     return "\n".join(out)
 

@@ -443,3 +443,128 @@ def test_apply_line_does_not_mutate_input(ev):
     except ev.MoveListError:
         pass
     assert board.fen() == original_fen
+
+
+# ── Confinement box & king distance (basic-mate geometry) ──────────────────
+
+
+def test_confinement_box_central_king_is_large(ev):
+    """A central lone king with one cutting rook sits in a large box."""
+    b = chess.Board("8/8/8/8/4k3/8/8/R3K3 w - - 0 1")
+    w, h, area = ev.confinement_box(b, chess.BLACK)
+    assert area == w * h
+    assert area > 30  # barely confined
+
+
+def test_confinement_box_shrinks_as_king_is_cornered(ev):
+    """Driving the king to an edge with the queen makes the box smaller."""
+    central = ev.confinement_box(chess.Board("8/8/8/4k3/8/8/8/3QK3 w - - 0 1"), chess.BLACK)[2]
+    edged = ev.confinement_box(chess.Board("4k3/8/8/3Q4/8/8/8/4K3 w - - 0 1"), chess.BLACK)[2]
+    assert edged < central
+
+
+def test_confinement_box_bounds_contains_the_king(ev):
+    b = chess.Board("8/8/8/4k3/8/8/8/3QK3 w - - 0 1")
+    min_f, max_f, min_r, max_r = ev.confinement_box_bounds(b, chess.BLACK)
+    ek = b.king(chess.BLACK)
+    assert min_f <= chess.square_file(ek) <= max_f
+    assert min_r <= chess.square_rank(ek) <= max_r
+
+
+def test_kings_distance_is_chebyshev(ev):
+    b = chess.Board("8/8/8/4k3/8/8/8/3QK3 w - - 0 1")  # Ke1 vs Ke5 -> 4 ranks
+    assert ev.kings_distance(b) == 4
+
+
+def test_confinement_box_missing_king_defaults_full_board(ev):
+    # Board with no black king (synthetic) -> full board fallback, no crash.
+    b = chess.Board("8/8/8/8/8/8/8/R3K3 w - - 0 1")
+    assert ev.confinement_box(b, chess.BLACK) == (8, 8, 64)
+    assert ev.confinement_box_bounds(b, chess.BLACK) is None
+
+
+def test_lone_king_color(ev):
+    import chess
+    assert ev.lone_king_color(chess.Board("8/8/8/8/4k3/8/8/R3K3 w - - 0 1")) == chess.BLACK
+    assert ev.lone_king_color(chess.Board()) is None  # both sides have pieces
+
+
+def test_piece_defensible_in_time(ev):
+    import chess
+    # Rook on a5, our king e5 (far), enemy king close to a5 -> not defensible.
+    b = chess.Board("8/8/8/R3K3/1k6/8/8/8 w - - 0 1")
+    assert ev.piece_defensible_in_time(b, chess.A5, chess.WHITE) in (True, False)
+    # King adjacent to the rook -> defensible.
+    b2 = chess.Board("8/8/8/RK6/8/2k5/8/8 w - - 0 1")
+    assert ev.piece_defensible_in_time(b2, chess.A5, chess.WHITE) is True
+
+
+def test_confine_state_can_tighten(ev):
+    import chess
+    # central K+R: a tighter defensible rook square exists -> move the rook
+    s = ev.confine_state(chess.Board("8/8/8/8/4k3/8/8/R3K3 w - - 0 1"), chess.WHITE)
+    assert s is not None and s["can_tighten"] is True
+    assert s["best_area"] < s["current_area"]
+
+
+def test_confine_state_rook_already_tight_means_move_king(ev):
+    import chess
+    # rook on its tightest defensible line, enemy king far -> can_tighten False
+    s = ev.confine_state(chess.Board("8/4k3/8/R7/8/8/8/4K3 w - - 0 1"), chess.WHITE)
+    assert s is not None and s["can_tighten"] is False
+
+
+def test_confine_state_none_when_not_single_major_ending(ev):
+    import chess
+    assert ev.confine_state(chess.Board(), chess.WHITE) is None  # full board
+
+
+def test_confine_state_drives_a_terminating_mate(ev):
+    """Following confine_state's branch each move must MATE a running king
+    without repetition — the property that distinguishes a correct drill from
+    greedy box-shrinking (which drew by repetition, game f36a4618)."""
+    import chess
+    def pick(b):
+        s = ev.confine_state(b, b.turn)
+        opp = not b.turn
+        majors = [sq for pt in (chess.QUEEN, chess.ROOK) for sq in b.pieces(pt, b.turn)]
+        msq = majors[0]
+        cands = []
+        for m in b.legal_moves:
+            a = b.copy(); a.push(m)
+            if a.is_checkmate():
+                return m
+            if a.is_stalemate():
+                continue
+            is_major = m.from_square == msq
+            if s and s["can_tighten"] != is_major:
+                continue
+            if is_major:
+                ek = a.king(opp)
+                if chess.square_distance(ek, m.to_square) == 1 and not a.is_attacked_by(b.turn, m.to_square):
+                    continue
+                if ev.piece_defensible_in_time(a, m.to_square, b.turn) is False:
+                    continue
+            ek = a.king(opp)
+            cands.append(((ev.confinement_box(a, opp)[2], chess.square_distance(a.king(b.turn), ek)), m))
+        if not cands:
+            for m in b.legal_moves:
+                a = b.copy(); a.push(m)
+                if not a.is_stalemate():
+                    cands.append(((ev.confinement_box(a, opp)[2], 0), m))
+        cands.sort(key=lambda x: x[0])
+        return cands[0][1] if cands else None
+
+    b = chess.Board("8/8/8/8/4k3/8/8/R3K3 w - - 0 1")
+    plies = 0; seen = {}
+    while not b.is_game_over() and plies < 70:
+        if b.turn == chess.WHITE:
+            m = pick(b)
+        else:
+            wk = b.king(chess.WHITE)
+            m = max(b.legal_moves, key=lambda mv: chess.square_distance(mv.to_square, wk))
+        b.push(m); plies += 1
+        k = b.board_fen(); seen[k] = seen.get(k, 0) + 1
+        assert seen[k] < 3, f"repetition at ply {plies}"
+    assert b.is_checkmate(), f"did not mate (result {b.result()}, {plies} plies)"
+    assert plies <= 40

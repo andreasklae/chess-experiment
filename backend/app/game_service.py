@@ -115,8 +115,8 @@ class Game:
     result_override: str | None = None
     # Forced-draw cap. When the half-move count reaches this limit the game
     # is declared a draw (1/2-1/2) regardless of position. Prevents infinite
-    # endgames where neither bot can deliver mate. Default 150 = 75 full moves.
-    max_half_moves: int = 150
+    # endgames where neither bot can deliver mate. Default 300 = 150 full moves.
+    max_half_moves: int = 300
     # Custom starting position (puzzle mode). chess.STARTING_FEN for normal
     # games; persisted so replays/loads reconstruct the right board.
     initial_fen: str = chess.STARTING_FEN
@@ -195,7 +195,7 @@ class Game:
             legal_moves=[move.uci() for move in self.board.legal_moves],
             uci_moves=self.uci_moves,
             san_moves=self.san_moves,
-            status="finished" if result else "active",
+            status="finished" if (result or self.aborted_reason) else "active",
             result=result,
             termination=termination,
             eval_cp=self.eval_cp,
@@ -208,11 +208,15 @@ class Game:
 
     def summary(self) -> GameSummary:
         result = self.result()
+        # An aborted game is over even though it has no result — without this it
+        # reads "active" forever in the games list (confusing, and looks like a
+        # second concurrent game). Treat aborted as finished.
+        finished = bool(result) or bool(self.aborted_reason)
         return GameSummary(
             game_id=self.game_id,
             white=self.white_config,
             black=self.black_config,
-            status="finished" if result else "active",
+            status="finished" if finished else "active",
             result=result,
             turn=color_name(self.board.turn),
             move_count=len(self.uci_moves),
@@ -290,11 +294,32 @@ class GameService:
         asyncio.create_task(self._publish(game))
         return paused
 
-    async def create_game(self, request: CreateGameRequest) -> GameState:
+    async def create_game(self, request: CreateGameRequest, force: bool = False) -> GameState:
         logger.info("create_game · white=%s black=%s%s",
                     request.white.type,
                     request.black.type,
                     f" (elo {request.black.elo})" if request.black.elo is not None else "")
+        # ONE GAME AT A TIME. A new game would tear the current one down
+        # mid-move; with the agent driven by the shared eX3 inference server,
+        # two overlapping games starve each other and both abort with
+        # `agent_resigned_no_move` (observed 2026-06-16 running puzzles
+        # back-to-back). So refuse to start a new game while one is still
+        # genuinely in progress. `force=True` (the batch runner, which owns the
+        # game lifecycle and only advances after a game finishes) bypasses this.
+        if self._game is not None and not force:
+            current = self._game
+            still_running = current.result() is None and not current.aborted_reason
+            if still_running:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"A game is already in progress ({current.game_id[:8]}, "
+                        f"{len(current.uci_moves)} plies). Only one game runs at a "
+                        f"time — the eX3 inference server cannot serve two. Wait "
+                        f"for it to finish, or cancel it "
+                        f"(DELETE /api/games/{current.game_id}) first."
+                    ),
+                )
         if self._game is not None:
             logger.info("create_game · tearing down prior game %s", self._game.game_id[:8])
             await self._teardown(self._game)
@@ -310,7 +335,7 @@ class GameService:
                 game_id=game_id,
                 board=chess.Board(initial_fen),
                 initial_fen=initial_fen,
-                max_half_moves=request.max_half_moves or 150,
+                max_half_moves=request.max_half_moves or 300,
                 white_config=request.white,
                 black_config=request.black,
                 white_player=self._player_factory.create(
@@ -422,11 +447,14 @@ class GameService:
                 else:
                     result = board.result(claim_draw=True) if board.is_game_over(claim_draw=True) else None
                 san_moves = data["san_moves"]
+                # An aborted game is over even with no result — otherwise it
+                # lists as "active" forever and looks like a live game.
+                aborted = bool((data.get("aborted_reason") or "").strip())
                 summaries.append(GameSummary(
                     game_id=data["game_id"],
                     white=PlayerConfig(**data["white"]),
                     black=PlayerConfig(**data["black"]),
-                    status="finished" if result else "active",
+                    status="finished" if (result or aborted) else "active",
                     result=result,
                     turn=color_name(board.turn),
                     move_count=len(data["uci_moves"]),
@@ -801,6 +829,11 @@ class GameService:
                     stockfish_before_task=stockfish_eval_before_task,
                     move_time_ms=move_time_ms,
                 )
+                # Flush agent log to disk immediately so reasoning is visible mid-game
+                from app.folder_resolver import resolve_target_folder
+                target = resolve_target_folder()
+                model = "google/gemma-4-31B-it"  # hardcoded for now; could extract from player
+                self._logging.flush_agent_log(game.game_id, model, target.folder)
 
     def _push_uci_move(self, game: Game, move_uci: str) -> None:
         try:

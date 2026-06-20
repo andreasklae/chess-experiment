@@ -20,4 +20,4 @@ its own games during post-game analysis.)_
 - Need a *principle* rather than concrete theory ("develop pieces, don't
   move the same piece twice") → [`../principles/`](../principles/index.md).
 - Opening choice driven by the pawn structure you want →
-  [`../strategic-thinking/pawn-structures/`](../strategic-thinking/pawn-structures/index.md).
+  [`../strategy/pawn-structures/`](../strategy/pawn-structures/index.md).

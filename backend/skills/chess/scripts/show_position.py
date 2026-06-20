@@ -43,11 +43,15 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 from _eval import (  # noqa: E402 — sys.path adjusted above
     EVAL_WARNING,
+    MATERIAL,
     PIECE_NAMES,
     color_name,
     detect_phase,
+    is_losing_on_square,
     phase_score,
     render_eval_line,
+    safe_destination_squares,
+    static_exchange_eval,
 )
 from _live import board_with_history, fetch_state  # noqa: E402
 from _radar import render_radar  # noqa: E402
@@ -176,12 +180,31 @@ def format_chain(board: chess.Board, by_color: bool, chain: list[tuple[int, bool
     return ", ".join(parts)
 
 
+def _safe_squares_line(board: chess.Board, sq: int, own_color: bool) -> str | None:
+    """One-line 'safe squares' hint for a piece that is currently losing
+    material on its square. None when the piece is not actually losing (it is
+    defended/trades even) or when there is no safe square to flag.
+
+    SEE helpers are shared from _eval (also used by the ladder advisor)."""
+    if not is_losing_on_square(board, sq, own_color):
+        return None
+    safe = safe_destination_squares(board, sq, own_color)
+    if not safe:
+        return "  ↳ no safe square to relocate it — consider defending it, "\
+               "capturing the attacker, or counter-attacking instead."
+    names = ", ".join(chess.square_name(s) for s in safe)
+    return f"  ↳ safe squares to move it (not losing material there): {names}"\
+           " — verify the full move with imagine_move (this ignores discovered"\
+           " attacks)."
+
+
 def attack_defense_section(
     board: chess.Board,
     own_color: bool,
     opp_color: bool,
     header: str,
     action: str,
+    show_safe_squares: bool = False,
 ) -> str:
     lines = [header]
     found_any = False
@@ -202,6 +225,12 @@ def attack_defense_section(
         atk_str = format_chain(board, opp_color, attacker_chain)
         def_str = format_chain(board, own_color, defender_chain) if defender_chain else "nothing"
         lines.append(f"- {desc}: {action} {atk_str}; defended by {def_str}")
+        # For OUR attacked pieces, when the piece is actually losing material
+        # on its square, list where it can go without re-hanging it.
+        if show_safe_squares:
+            hint = _safe_squares_line(board, sq, own_color)
+            if hint:
+                lines.append(hint)
     if not found_any:
         lines.append("- (none)")
     return "\n".join(lines)
@@ -253,6 +282,7 @@ def render_position(board: chess.Board, move_cap: int | None = None) -> str:
             board, own_color, opp_color,
             header="",
             action="attacked by",
+            show_safe_squares=True,
         ).lstrip("\n"),
         "",
         "## Opponent pieces you are attacking",
@@ -263,10 +293,47 @@ def render_position(board: chess.Board, move_cap: int | None = None) -> str:
             action="attacked by your",
         ).lstrip("\n"),
     ]
+    # King-net visualisation: only in a minor-piece basic mate (K+2B / K+B+N
+    # vs a lone king), where the whole technique is shrinking the king's free
+    # region toward the right corner — seeing the net is the key aid. `*` marks
+    # squares the bare king can still roam; `T` the target corner.
+    net = _king_net_section(board)
+    if net:
+        out += ["", net]
     radar = render_radar(board, move_cap=move_cap)
     if radar:
         out += ["", radar]
     return "\n".join(out)
+
+
+def _king_net_section(board: chess.Board) -> str | None:
+    """Render the lone king's free-region 'net' when this is a K+2B / K+B+N
+    mate. None otherwise. Pure geometry; see _eval.render_king_net."""
+    for own in (chess.WHITE, chess.BLACK):
+        defender = not own
+        defender_force = sum(
+            len(board.pieces(pt, defender))
+            for pt in (chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT)
+        )
+        majors = sum(len(board.pieces(pt, own)) for pt in (chess.QUEEN, chess.ROOK))
+        bishops = len(board.pieces(chess.BISHOP, own))
+        knights = len(board.pieces(chess.KNIGHT, own))
+        is_minor_mate = majors == 0 and (bishops >= 2 or (bishops >= 1 and knights >= 1))
+        if defender_force == 0 and is_minor_mate:
+            from _eval import bishop_corner_targets, king_free_region, render_king_net
+            corners = bishop_corner_targets(board, own)
+            ek = board.king(defender)
+            target = min(corners, key=lambda c: chess.square_distance(ek, c)) if ek is not None else None
+            size = len(king_free_region(board, defender))
+            return (
+                "## King net (squares the lone king can still reach)\n\n"
+                f"```\n{render_king_net(board, defender, target)}\n```\n"
+                f"The king's free region is **{size}** squares (`*`). The mate is "
+                f"shrinking this net toward the target corner (`T`). A move that "
+                f"reduces the `*` count is progress; one that grows it gives the "
+                f"king room — reject it."
+            )
+    return None
 
 
 def main() -> None:

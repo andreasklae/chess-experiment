@@ -285,5 +285,407 @@ class TestLadderRecipe:
             )
 
 
+class TestLadderFinishHooks:
+    """The compact, board-ADAPTIVE ladder advisor (2026-06-16 rewrite): it
+    prints a SHORT header plus exactly the ONE rule that applies right now —
+    too much text caused the model to drift (game b60f731d laddered correctly
+    then played a junk finish move). Every rule from the verbose version is
+    preserved, surfaced only when relevant, and no concrete move is named."""
+
+    def _drill(self, fen):
+        from _radar import _drill_state_lines
+        return "\n".join(_drill_state_lines(chess.Board(fen), chess.WHITE))
+
+    def _no_named_move(self, out):
+        import re
+        assert not re.search(r"\*\*[RQ][a-h]?[1-8]?x?[a-h][1-8][+#]?\*\*", out)
+
+    def test_output_is_scoped_to_one_rule(self):
+        # Anti-verbosity: the whole drill state for a mid-board ladder is ONE
+        # short line (was 5+ long lines). Keeps the model from drifting.
+        from _radar import _drill_state_lines
+        lines = _drill_state_lines(chess.Board("8/8/3k4/8/8/8/R7/1R4K1 w - - 0 1"), chess.WHITE)
+        assert len(lines) == 1
+        assert len(lines[0]) < 320  # compact
+
+    def test_no_wall_says_build_wall_quietly(self):
+        out = self._drill("8/8/8/3k4/8/8/8/R5RK w - - 0 1")
+        assert "No WALL yet" in out and "quiet" in out and "Not a check" in out
+        self._no_named_move(out)
+
+    def test_finish_capturable_check_demands_waiting_move(self):
+        # Kb8, Ra6, Rh7: every edge check lands adjacent (Kxa8) → WAITING move.
+        out = self._drill("1k6/7R/R7/8/8/8/8/6K1 w - - 8 5")
+        assert "on the edge" in out and "WAITING move" in out
+        self._no_named_move(out)
+
+    def test_finish_mirror_bottom_edge(self):
+        # Vertical mirror (Kb1) — same WAITING-move finish, transposed.
+        out = self._drill("6K1/8/8/8/8/R7/7R/1k6 w - - 0 1")
+        assert "on the edge (rank 1)" in out and "WAITING move" in out
+
+    def test_hanging_rook_says_slide_to_different_cross_line_first(self):
+        # The user's rule: a capturable rook is moved to safety FIRST, onto a
+        # file the OTHER rook is not on (so they don't block each other).
+        out = self._drill("8/8/8/k7/1R6/8/8/R5K1 w - - 0 1")
+        assert "can be captured" in out and "slide it to safety FIRST" in out
+        assert "the other rook is NOT on" in out and "Safe squares" in out
+        self._no_named_move(out)
+
+    def test_queen_guarded_rook_not_flagged_as_hanging(self):
+        # Queen guards the attacked rook (SEE) → no relocate hint.
+        out = self._drill("8/8/8/k7/1R6/2Q5/8/6K1 w - - 0 1")
+        assert "can be captured" not in out
+
+    def test_rooks_same_file_says_move_to_different_file(self):
+        out = self._drill("8/8/3k4/R7/8/8/R7/6K1 w - - 0 1")
+        assert "share a file" in out and "DIFFERENT file" in out
+        self._no_named_move(out)
+
+    def test_self_block_when_kings_share_the_edge_line(self):
+        out = self._drill("8/8/8/8/8/7R/5R2/2k3K1 w - - 24 13")
+        assert "your OWN king is on" in out and "away from your king" in out.lower()
+        self._no_named_move(out)
+
+    def test_queen_rook_drives_like_two_rooks(self):
+        # Q+R uses the same ladder; the queen caution appears on a driving turn.
+        out = self._drill("8/8/4k3/8/8/8/1Q6/R5K1 w - - 0 1")
+        assert "Ladder" in out
+        self._no_named_move(out)
+
+    def test_ladder_fires_when_opponent_has_no_major(self):
+        assert self._drill("8/8/2k2n2/8/8/2p2p2/R7/1R4K1 w - - 0 1")  # K+N+pawns
+        assert not self._drill("8/8/2k1r3/8/8/8/R7/1R4K1 w - - 0 1")  # opp has a rook
+
+    def test_single_major_drill_fires_king_plus_pawns_not_pieces(self):
+        # The K+R/K+Q confine drill now fires when the opponent is reduced to
+        # king + PAWNS only (most realistic conversions leave a pawn) — gating
+        # on a strictly bare king dropped the drill mid-conversion (game
+        # 541b95da). An enemy PIECE still gates it out (it changes the technique).
+        assert self._drill("8/8/3k4/8/8/8/8/R3K3 w - - 0 1")        # bare king
+        assert self._drill("8/5p2/3k4/8/8/8/8/R3K3 w - - 0 1")      # king + pawn: now fires
+        assert not self._drill("8/5n2/3k4/8/8/8/8/R3K3 w - - 0 1")  # king + knight: gated out
+
+    def test_single_major_drill_flags_promotion_threat(self):
+        # King + a pawn one push from promoting: flag the promotion as the
+        # priority before the squeeze (find a balance), but not for a far pawn.
+        out = self._drill("8/8/8/8/3RK3/2k5/7p/8 w - - 0 1")   # black h2, h1=Q next
+        assert "Deal with the promotion" in out
+        out2 = self._drill("8/8/8/7p/3RK3/2k5/8/8 w - - 0 1")  # black h5, far
+        assert "Deal with the promotion" not in out2
+
+    def test_promotion_threat_interrupts_the_ladder(self):
+        # Don't tunnel-vision on the mate while the opponent queens: a Black
+        # pawn one push from promoting must trigger a STOP interrupt instead of
+        # ladder advice (game 912d0f7f: agent laddered while ...c2-c1=Q+).
+        out = self._drill("8/8/2k5/R7/1R2n3/2p5/2p5/6K1 w - - 0 1")
+        assert "Eliminate the opponent's threat" in out
+        assert "promote next move" in out and "Handle it FIRST" in out
+        self._no_named_move(out)
+
+    def test_pawn_two_ranks_away_does_not_interrupt(self):
+        out = self._drill("8/8/2k5/R7/1R2n3/2p5/8/6K1 w - - 0 1")
+        assert "Eliminate the opponent's threat" not in out
+
+    def test_mate_in_one_beats_promotion_threat(self):
+        # If we can mate this move, do it — promotion never happens.
+        out = self._drill("1k6/8/1K6/8/8/8/2p5/R7 w - - 0 1")
+        assert "Eliminate the opponent's threat" not in out
+
+    def test_driving_turn_names_safe_checking_lines(self):
+        # On a wall-up driving turn, the advisor names safe checking files so
+        # the agent skips dead (capturable) checks.
+        out = self._drill("8/8/3k4/8/1R6/8/R7/6K1 w - - 0 1")
+        # Either building the wall or checking; both stay one short line, fair.
+        assert "Ladder" in out and len(out) < 320
+        self._no_named_move(out)
+
+
+class TestKingRookRecipe:
+    """The single-rook (K+R) drill must let a recipe-faithful agent FINISH —
+    the user's observed failure was reaching the edge then making useless
+    checks while the king escaped sideways (2026-06-16). The advisor now
+    teaches: mate on the EDGE (no corner needed), FOLLOW a sideways dodge
+    with the king, never check without opposition or with the fence rook.
+    This test proves the recipe is followable to mate from the standard drill
+    starting positions (the ones the puzzle suite uses) and stays
+    recipe-discipline (no concrete move named). It is a sanity check on the
+    advisor TEXT, not a perfect K+R engine — the broad "finds mate, not by
+    luck" guarantee comes from the live puzzle validation, where the real
+    model reads this page and uses imagine_move's mobility report."""
+
+    KR_FENS = [
+        # The puzzle-suite start (scripts/run_puzzles.py kr-basic).
+        "8/8/4k3/8/8/8/8/R3K3 w - - 0 1",
+        "4k3/8/8/8/8/8/8/R3K3 w - - 0 1",   # king on the back rank already
+        "8/8/4k3/8/8/8/R7/4K3 w - - 0 1",   # king centre, drive to a rank edge
+        "8/4k3/8/8/8/8/R7/4K3 w - - 0 1",
+    ]
+
+    def test_advisor_names_no_concrete_move(self):
+        import re
+        from _radar import _drill_state_lines
+        for fen in self.KR_FENS:
+            lines = _drill_state_lines(chess.Board(fen), chess.WHITE)
+            assert lines, fen
+            assert not re.search(r"\*\*[RQ][a-h]?[1-8]?x?[a-h][1-8]", lines[0]), (
+                f"advisor named a concrete move in {fen}: {lines[0]}"
+            )
+
+    def test_following_the_recipe_mates(self):
+        """A recipe-faithful K+R agent mates a fleeing-and-dodging king within
+        the cap. The agent reads the advisor's invariant — keep the fence, make
+        progress, check only in opposition — and applies the SELF-CHECK the
+        advisor names: imagine_move reports enemy-king mobility, a good move
+        shrinks it (a check drops it sharply). We encode exactly that loop: of
+        the safe legal moves, take any mate, never check without opposition or
+        with the fence rook, and otherwise pick the move that most shrinks the
+        enemy king's box (ties broken toward keeping/forming the fence and
+        marching the king up). No engine, no search — the same one-ply
+        mobility signal the agent gets from imagine_move. Black both flees to
+        the centre and, once on an edge, dodges sideways (the live-failure
+        case)."""
+
+        def enemy_mobility(board_after):
+            """Enemy king's legal-move count after our move — the number
+            imagine_move prints as 'Enemy king mobility: before -> after'."""
+            b = board_after
+            if b.is_checkmate():
+                return -1            # mate is the floor
+            opp = chess.BLACK
+            if b.turn != opp:
+                b = b.copy(stack=False); b.push(chess.Move.null())
+            ks = b.king(opp)
+            return sum(1 for m in b.legal_moves if m.from_square == ks)
+
+        def recipe_move(board):
+            legal = list(board.legal_moves)
+            ksq = board.king(chess.BLACK)
+            myk = board.king(chess.WHITE)
+            rook = next(iter(board.pieces(chess.ROOK, chess.WHITE)))
+            kf, kr = chess.square_file(ksq), chess.square_rank(ksq)
+            myf, myr = chess.square_file(myk), chess.square_rank(myk)
+
+            def safe(mv):
+                a = _pushed(board, mv)
+                if a.is_stalemate():
+                    return False
+                if a.is_attacked_by(chess.BLACK, mv.to_square) and not \
+                        a.is_attacked_by(chess.WHITE, mv.to_square):
+                    return False
+                return True
+
+            cands = [m for m in legal if safe(m)]
+            # 1. Always take an available mate.
+            for m in cands:
+                if _pushed(board, m).is_checkmate():
+                    return m
+
+            # Drive toward the nearer rank edge, sticky once a fence exists.
+            fence_below = chess.square_rank(rook) == kr - 1
+            fence_above = chess.square_rank(rook) == kr + 1
+            if fence_below and not fence_above:
+                drive_up = True
+            elif fence_above and not fence_below:
+                drive_up = False
+            else:
+                drive_up = (7 - kr) <= kr
+            fence_rank = kr - 1 if drive_up else kr + 1
+            far_file = 0 if kf >= 4 else 7
+
+            # 2. Rook attacked by the king → slide it far along the fence rank.
+            if chess.square_distance(rook, ksq) == 1 and board.is_attacked_by(
+                    chess.BLACK, rook):
+                slides = [m for m in cands if m.from_square == rook
+                          and chess.square_rank(m.to_square) == chess.square_rank(rook)]
+                if slides:
+                    return max(slides, key=lambda m: chess.square_distance(m.to_square, ksq))
+
+            # 3. No fence behind the king → build it (quiet move, far file).
+            if chess.square_rank(rook) != fence_rank:
+                fences = [m for m in cands if m.from_square == rook
+                          and chess.square_rank(m.to_square) == fence_rank
+                          and not _pushed(board, m).is_check()]
+                if fences:
+                    return min(fences, key=lambda m: abs(chess.square_file(m.to_square) - far_file))
+
+            opposition = (chess.square_file(myk) == kf
+                          and abs(myr - kr) == 2)
+
+            # 4. Opposition → check on the king's rank, far from the king.
+            if opposition:
+                checks = [m for m in cands if m.from_square == rook
+                          and chess.square_rank(m.to_square) == kr
+                          and _pushed(board, m).is_check()]
+                if checks:
+                    return max(checks, key=lambda m: chess.square_distance(m.to_square, ksq))
+
+            # The square our king wants: directly facing the enemy king
+            # (same file), one rank short of the fence on our side.
+            stand_rank = max(0, min(7, fence_rank - 1 if drive_up else fence_rank + 1))
+
+            # 5. March the king UP to the stand_rank (the rank one short of the
+            #    fence), keeping it near the enemy king's file. Crucially we do
+            #    NOT chase the enemy's file once already on the stand_rank —
+            #    mirroring a sideways-stepping king on the same rank is the
+            #    oscillation trap (it never reaches opposition). We advance the
+            #    rank, and stay roughly in front (closing the file gap only
+            #    while ALSO advancing). Once on the stand_rank, rule 6 hands the
+            #    move to Black so IT must break the standoff.
+            on_stand = myr == stand_rank
+            if not on_stand:
+                kmoves = [m for m in cands if m.from_square == myk
+                          and not _pushed(board, m).is_check()
+                          and (chess.square_rank(m.to_square) < fence_rank if drive_up
+                               else chess.square_rank(m.to_square) > fence_rank)]
+                # Advance the rank toward stand_rank; among those, keep nearest
+                # the enemy file; tie-break by enemy mobility.
+                def kkey(m):
+                    f, r = chess.square_file(m.to_square), chess.square_rank(m.to_square)
+                    return (abs(r - stand_rank), abs(f - kf),
+                            enemy_mobility(_pushed(board, m)))
+                if kmoves:
+                    best = min(kmoves, key=kkey)
+                    if abs(chess.square_rank(best.to_square) - stand_rank) < abs(myr - stand_rank):
+                        return best
+
+            # 6. King on the stand_rank → rook WAITING move along the fence,
+            #    far from the king, to hand the move to Black. Black must step:
+            #    toward us (rule 4 mates next), sideways (we then follow with
+            #    the king on the next turn since we will be off the stand_rank
+            #    only if we choose — here we simply re-wait until it walks into
+            #    opposition or back a rank, shrinking the box). Prefer a wait
+            #    that, after Black's forced reply, can reach opposition.
+            waits = [m for m in cands if m.from_square == rook
+                     and chess.square_rank(m.to_square) == chess.square_rank(rook)
+                     and not _pushed(board, m).is_check()]
+            if waits:
+                return max(waits, key=lambda m: chess.square_distance(m.to_square, ksq))
+            # Fallback: the safe move that shrinks the box most.
+            return min(cands, key=lambda m: enemy_mobility(_pushed(board, m))) \
+                if cands else legal[0]
+
+        for fen in self.KR_FENS:
+            board = chess.Board(fen)
+            for ply in range(120):
+                if board.is_game_over():
+                    break
+                if board.turn == chess.WHITE:
+                    board.push(recipe_move(board))
+                else:
+                    # Black flees toward the centre; once on an edge it dodges
+                    # sideways (max distance from our king) — the hard case.
+                    def flee(m):
+                        a = _pushed(board, m)
+                        k = a.king(chess.BLACK)
+                        centre = (min(chess.square_file(k), 7 - chess.square_file(k))
+                                  + min(chess.square_rank(k), 7 - chess.square_rank(k)))
+                        return (centre, chess.square_distance(k, a.king(chess.WHITE)))
+                    board.push(max(board.legal_moves, key=flee))
+            assert board.is_checkmate(), (
+                f"K+R recipe failed to mate from {fen}; reached {board.fen()} "
+                f"after {ply} plies"
+            )
+
+
 def _pushed(board, move):
     b = board.copy(); b.push(move); return b
+
+
+# ── K+Q / K+R box-method advisor (2026-06-17) ──────────────────────────────
+
+
+def test_kq_central_gives_box_fact_and_an_instruction():
+    out = radar("8/8/8/4k3/8/8/8/3QK3 w - - 0 1")
+    assert "K+Q method" in out
+    # confine-or-march: either move the queen tighter or step the king
+    assert ("MOVE THE QUEEN" in out) or ("STEP YOUR KING" in out)
+
+
+def test_kq_king_on_edge_but_king_far_says_march():
+    """The exact failure mode: enemy king boxed on an edge, own king far —
+    the advisor must say MARCH YOUR KING, not keep moving the queen."""
+    out = radar("4k3/8/8/3Q4/8/8/8/4K3 w - - 0 1")
+    # queen already on its tightest defensible square, kings far -> step the king
+    assert "STEP YOUR KING" in out
+
+
+def test_kq_one_legal_move_warns_stalemate():
+    out = radar("4k3/8/4K3/3Q4/8/8/8/8 w - - 0 1")
+    # enemy king has very few squares; advisor must surface stalemate danger
+    assert "STALEMATE DANGER" in out or "stalemate" in out.lower()
+
+
+def test_kr_shows_box_and_king_distance():
+    out = radar("8/8/8/8/4k3/8/8/R3K3 w - - 0 1")
+    assert "K+R method" in out
+    assert "kings are" in out
+
+
+def test_kq_advisor_names_no_concrete_move():
+    """Fairness: the advisor names the recipe STEP, never a searched best move
+    (no 'play Qd5' style concrete-move output)."""
+    out = radar("8/8/8/4k3/8/8/8/3QK3 w - - 0 1")
+    # It may mention piece letters (Q) and squares as facts, but must not issue
+    # an imperative concrete move like 'play Qd5' / 'best move is'.
+    low = out.lower()
+    assert "best move" not in low
+    assert "play q" not in low
+
+
+# ── K+Q unified onto the K+R drill (2026-06-17) ────────────────────────────
+
+
+def test_kq_uses_unified_rook_drill_wording():
+    """A lone queen flows through the single-major (rook) advisor: it should
+    fence like a rook and the advice should mention the queen, not box-phases."""
+    out = radar("8/8/8/8/4k3/8/8/3QK3 w - - 0 1")
+    # The advice mentions the queen (unified rook drill), never the old box-phase
+    assert "queen" in out.lower()
+    assert "Drill state" in out
+
+
+def test_kq_and_kr_both_keep_kings_close():
+    """Both basic mates lead with the keep-kings-close efficiency principle."""
+    for fen in ("8/8/8/8/4k3/8/8/R3K3 w - - 0 1",
+                "8/8/8/8/4k3/8/8/3QK3 w - - 0 1"):
+        out = radar(fen)
+        assert "together" in out  # king and major stay together
+
+
+def test_kr_marches_king_when_kings_far_with_fence():
+    """The 49-ply-grind fix: fence set but kings far -> advisor says march the
+    king, not move the rook."""
+    # Fence on rank 6 (rook a6) behind a king on f7-ish, white king far on rank 1.
+    out = radar("8/5k2/R7/8/8/8/8/4K3 w - - 0 1")
+    # rook already on its tightest defensible square, kings far -> step the king
+    assert "STEP YOUR KING" in out
+
+
+# ── imagine_move confinement facts (2026-06-17) ────────────────────────────
+
+
+def test_imagine_confinement_reports_box_and_king_distance():
+    import importlib, sys
+    sys.path.insert(0, str(SCRIPTS))
+    import imagine_move; importlib.reload(imagine_move)
+    import chess
+    b = chess.Board("8/8/8/8/4k3/8/8/R3K3 w - - 0 1")
+    m = b.parse_san("Ra5")
+    b2 = b.copy(); b2.push(m)
+    lines = imagine_move._confinement_lines(b, b2, m)
+    text = "\n".join(lines)
+    assert "Confinement" in text
+    assert "49 → 28" in text          # box shrinks
+    assert "tighter" in text.lower()
+
+
+def test_imagine_confinement_silent_when_not_basic_mate():
+    import importlib, sys
+    sys.path.insert(0, str(SCRIPTS))
+    import imagine_move; importlib.reload(imagine_move)
+    import chess
+    b = chess.Board()  # full board, not a lone-king ending
+    m = b.parse_san("e4")
+    b2 = b.copy(); b2.push(m)
+    assert imagine_move._confinement_lines(b, b2, m) == []

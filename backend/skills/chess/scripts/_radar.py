@@ -21,17 +21,25 @@ Not exposed as a tool (underscore prefix): show_position embeds the output.
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import chess
 
+# Sibling import of _eval (SEE helpers for the ladder safe-square hints).
+# The script may be imported from arbitrary cwd; ensure our dir is on path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _eval  # noqa: E402
+
 # Wiki pages the radar may point to. Paths relative to references/.
-_PAGE_LADDER = "patterns/mating-patterns/ladder-mate.md"
-_PAGE_KQ = "patterns/mating-patterns/king-queen-mate.md"
-_PAGE_KR = "patterns/mating-patterns/king-rook-mate.md"
-_PAGE_BACK_RANK = "patterns/mating-patterns/back-rank-mate.md"
-_PAGE_CONVERT = "strategic-thinking/convert-advantage.md"
+_PAGE_LADDER = "mates/two-rook-ladder-mate.md"
+_PAGE_KQ = "mates/king-queen-mate.md"
+_PAGE_KR = "mates/king-rook-mate.md"
+_PAGE_BACK_RANK = "mates/back-rank-mate.md"
+_PAGE_CONVERT = "strategy/convert-advantage.md"
 _PAGE_KP = "endgames/king-pawn-endings.md"
+_PAGE_KBB = "mates/king-two-bishops-mate.md"
+_PAGE_KBN = "mates/king-bishop-knight-mate.md"
 
 
 def _material(board: chess.Board, color: bool) -> dict[int, int]:
@@ -90,23 +98,42 @@ def _mating_material_lines(board: chess.Board, own: bool) -> list[str]:
             f"- King + queen vs king is a forced mate (under ~10 moves) — "
             f"read `{_PAGE_KQ}`."
         )
-        lines += _drill_excerpt(_PAGE_KQ)
+        # The live per-turn drill advisor is emitted by _drill_state_lines.
     elif own_mat[chess.ROOK] == 1:
         lines.append(
             f"- King + rook vs king is a forced mate — read `{_PAGE_KR}`."
         )
-        lines += _drill_excerpt(_PAGE_KR)
+        # The live per-turn drill advisor is emitted by _drill_state_lines.
     elif own_mat[chess.BISHOP] >= 2:
+        if own_mat[chess.PAWN] > 0:
+            lines.append(
+                "- Two bishops can force mate, but promoting a pawn to a queen "
+                f"first is simpler and faster — read `{_PAGE_CONVERT}`."
+            )
+        else:
+            lines.append(
+                "- King + two bishops is a FORCED mate (≤19 moves): drive the "
+                "king into a CORNER with the bishops side by side on adjacent "
+                f"diagonals, king marching up — read `{_PAGE_KBB}`."
+            )
+    elif own_mat[chess.BISHOP] >= 1 and own_mat[chess.KNIGHT] >= 1:
+        if own_mat[chess.PAWN] > 0:
+            lines.append(
+                "- Bishop+knight can force mate but it is the hardest basic mate; "
+                f"if you have a pawn, promote it and mate with the queen instead — "
+                f"read `{_PAGE_KP}`."
+            )
+        else:
+            lines.append(
+                "- King + bishop + knight is a FORCED mate (≤33 moves) but the "
+                "HARDEST one: the king can only be mated in the corner matching "
+                f"your BISHOP's colour — read `{_PAGE_KBN}`."
+            )
+    elif own_mat[chess.KNIGHT] >= 2 and own_mat[chess.BISHOP] == 0:
         lines.append(
-            "- Two bishops + king can force mate, but it is slow technique. "
-            f"If you still have a pawn, promoting it first is simpler — "
-            f"read `{_PAGE_CONVERT}`."
-        )
-    elif own_mat[chess.BISHOP] + own_mat[chess.KNIGHT] >= 2:
-        lines.append(
-            "- Bishop+knight mate is very hard, and two knights cannot force "
-            f"mate. If you have a pawn, promote it and mate with the queen — "
-            f"read `{_PAGE_KP}`."
+            "- Two knights + king CANNOT force mate against a bare king (it is a "
+            "draw with best defence). If the opponent has a pawn, different rules "
+            f"apply; otherwise the best result is a draw."
         )
     if own_mat[chess.PAWN] > 0 and majors == 0:
         lines.append(
@@ -175,6 +202,336 @@ def _pawn_escort_lines(board: chess.Board, own: bool, psq: int) -> list[str]:
             "the pawn ONE step (never two) as a waiting move."]
 
 
+def _ladder_lines(board, own, opp, majors, own_mat, ksq, opp_bare):
+    """The two-major (R+R / Q+R) ladder advisor — board-ADAPTIVE and minimal.
+
+    Earlier this emitted the whole method plus 6-8 caveats every turn, which
+    drowned the model and caused drift (it laddered correctly then played a
+    junk move at the finish, game b60f731d). Now it picks the ONE rule that
+    applies right now and prints a short header + that rule. Tool-fair: it
+    states which line to wall/check and which squares are dead — facts about
+    the board — and never names the move to play.
+
+    The drive axis is RANK or FILE, whichever edge the king is nearest; all
+    the geometry below is written in terms of that axis (k = the king's coord
+    on the driving axis, the wall sits one step behind it). This is the
+    file↔rank transposition done once, not duplicated.
+    """
+    has_q = own_mat[chess.QUEEN] >= 1
+    kf, kr = chess.square_file(ksq), chess.square_rank(ksq)
+    my_k = board.king(own)
+
+    # ── PRIORITY 0: eliminate the opponent's threats before going for the
+    # mate. Tunnel-visioning on a mating drill loses won positions to enemy
+    # counterplay. The sharpest, most ladder-specific case is a pawn about to
+    # promote: laddering lets it queen and the new MAJOR breaks the mate (game
+    # 912d0f7f: the agent laddered through ...c2-c1=Q+). We trigger on that
+    # concrete, detectable threat but state the GENERAL principle. (Other
+    # threats — a hanging rook, a check — are handled by the SEE/safe-square
+    # logic and the rules of the game.) We never fire if we can mate THIS move
+    # (mate ends it before any threat matters). Fact, not a move.
+    have_mate_now = any(
+        (lambda a: (a.push(m), a.is_checkmate())[1])(board.copy(stack=False))
+        for m in board.legal_moves
+    )
+    if not have_mate_now:
+        # The enemy promotes on its FAR rank: White on rank 8 (idx 7), Black on
+        # rank 1 (idx 0). One push away is that rank ∓1.
+        promo_rank = 7 if opp == chess.WHITE else 0
+        step_rank = 6 if opp == chess.WHITE else 1
+        threats = []
+        for psq in board.pieces(chess.PAWN, opp):
+            if chess.square_rank(psq) == step_rank:
+                # can it actually advance or capture to the back rank next move?
+                pf = chess.square_file(psq)
+                targets = [chess.square(pf, promo_rank)]
+                for df in (-1, 1):
+                    if 0 <= pf + df <= 7:
+                        targets.append(chess.square(pf + df, promo_rank))
+                if any(board.piece_at(t) is None or
+                       (board.piece_at(t) and board.piece_at(t).color == own)
+                       for t in targets):
+                    threats.append(psq)
+        if threats:
+            names = ", ".join(chess.square_name(s) for s in threats)
+            return ["- **Eliminate the opponent's threat before mating.** The "
+                    f"enemy pawn(s) on {names} promote next move — a new major "
+                    "would break your mating net. Handle it FIRST (capture the "
+                    "pawn, block/cover its promotion square, or play a faster "
+                    "forcing mate), then resume the mate. Verify with "
+                    "imagine_move."]
+
+    # Pick the driving axis = the edge the king is closest to. dist to each of
+    # the 4 edges; the smallest wins. axis "rank" drives toward rank 1/8;
+    # axis "file" drives toward the a/h-file. A wall already on one side of the
+    # king locks the axis+direction (the committed structure persists it).
+    def coord(sq, axis):
+        return chess.square_rank(sq) if axis == "rank" else chess.square_file(sq)
+    wall_locks = []
+    for axis in ("rank", "file"):
+        k = kr if axis == "rank" else kf
+        below = any(coord(sq, axis) == k - 1 for sq in majors)
+        above = any(coord(sq, axis) == k + 1 for sq in majors)
+        if below ^ above:
+            # The wall sits on the side the king came FROM (away from the target
+            # edge). So a wall BELOW the king means we are driving it UP (toward
+            # the high edge); a wall ABOVE means driving DOWN.
+            wall_locks.append((axis, below))
+    if wall_locks:
+        axis, to_high = wall_locks[0]
+    else:
+        # nearest edge: min of (7-kr, kr, 7-kf, kf)
+        dtop, dbot, dright, dleft = 7 - kr, kr, 7 - kf, kf
+        m = min(dtop, dbot, dright, dleft)
+        if m in (dtop, dbot):
+            axis, to_high = "rank", (dtop <= dbot)
+        else:
+            axis, to_high = "file", (dright <= dleft)
+
+    k = kr if axis == "rank" else kf          # king's coord on the drive axis
+    line_word = "rank" if axis == "rank" else "file"
+    cross_word = "file" if axis == "rank" else "rank"
+    def name_of(c):                            # 1-indexed rank, or file letter
+        return str(c + 1) if axis == "rank" else "abcdefgh"[c]
+    king_line = name_of(k)
+    edge_c = 7 if to_high else 0
+    edge_name = name_of(edge_c)
+    wall_c = k - 1 if to_high else k + 1
+    on_edge = (k == edge_c)
+
+    def on_line(sq, c):                         # rook on the drive-axis line c
+        return coord(sq, axis) == c
+    king_line_majors = [s for s in majors if on_line(s, k)]
+    wall_majors = [s for s in majors if 0 <= wall_c <= 7 and on_line(s, wall_c)]
+    names = lambda sqs: ", ".join(chess.square_name(s) for s in sqs) or "none"
+
+    pre = "- **Ladder** "
+    if not opp_bare:
+        pre += "(opp has no major — run the king down, watch its minors/pawns can't grab a rook) "
+
+    # ── PRIORITY 1: a rook is hanging / would self-block. The user's rule:
+    # if a rook is capturable, OR two rooks share the drive line so they block,
+    # slide that rook sideways FIRST — to a CROSS-line the other rook is NOT on.
+    # SEE considers all enemy pieces, so this also covers minors/pawns.
+    losing = [s for s in majors if _eval.is_losing_on_square(board, s, own)]
+    # Two rooks blocking: they sit on the same CROSS line (e.g. same file while
+    # we drive along ranks) so one can't pass the other to reach the next line.
+    cross = lambda sq: coord(sq, "file" if axis == "rank" else "rank")
+    block_pair = None
+    for i in range(len(majors)):
+        for j in range(i + 1, len(majors)):
+            if cross(majors[i]) == cross(majors[j]):
+                block_pair = (majors[i], majors[j]); break
+        if block_pair:
+            break
+
+    if losing:
+        hsq = losing[0]
+        safe = _eval.safe_destination_squares(board, hsq, own)
+        # prefer squares that KEEP the line this rook cuts off, AND are on a
+        # cross-line the OTHER rook is not on (so they don't block each other).
+        other_cross = {cross(s) for s in majors if s != hsq}
+        keep = [s for s in safe if (on_line(s, coord(hsq, axis)) or cross(s) == cross(hsq))
+                and cross(s) not in other_cross]
+        chosen = keep or [s for s in safe if cross(s) not in other_cross] or safe
+        chosen = sorted(chosen, key=lambda s: -chess.square_distance(s, ksq))[:6]
+        return [pre + f"your rook on {chess.square_name(hsq)} can be captured — "
+                f"slide it to safety FIRST, to a {cross_word} the other rook is "
+                f"NOT on so they don't block each other. Safe squares: "
+                f"{names(chosen)}. (A queen beside a rook already guards it — "
+                f"then no need; verify with imagine_move.)"]
+
+    if block_pair:
+        a, b = block_pair
+        return [pre + f"your rooks on {chess.square_name(a)} and "
+                f"{chess.square_name(b)} share a {cross_word}, so they block "
+                f"each other. Move one to a DIFFERENT {cross_word} (keep one on "
+                f"the king's {line_word} {king_line}, one on the {line_word} "
+                f"behind) so each can slide freely."]
+
+    # ── Self-block: our own king on the king's drive line blocks the check.
+    if my_k is not None and on_edge and coord(my_k, axis) == k:
+        return [pre + f"your OWN king is on {line_word} {king_line} with the "
+                f"enemy king, so a check along it is blocked by your king. Mate "
+                f"from the side AWAY from your king, or step your king off "
+                f"{line_word} {king_line} first."]
+
+    # ── Compute the safe vs dead CHECK squares along the king's drive line.
+    bad, safe_ch = [], []
+    wall_set = set(wall_majors)
+    for mv in board.legal_moves:
+        if board.piece_type_at(mv.from_square) not in (chess.ROOK, chess.QUEEN):
+            continue
+        if mv.from_square in wall_set:
+            continue
+        if coord(mv.to_square, axis) != k or not board.gives_check(mv):
+            continue
+        a = board.copy(stack=False); a.push(mv)
+        (safe_ch if not _eval.is_losing_on_square(a, mv.to_square, own) else bad)\
+            .append(mv.to_square)
+    safe_cross = sorted({name_of(cross(s)) for s in safe_ch})
+
+    # ── PRIORITY 2: no wall yet → build it (a QUIET move, not a check).
+    if not wall_majors and 0 <= wall_c <= 7:
+        return [pre + f"king on {line_word} {king_line}, driving to {line_word} "
+                f"{edge_name}. No WALL yet — make a quiet rook move onto "
+                f"{line_word} {name_of(wall_c)} (the {line_word} just behind the "
+                f"king, away from {line_word} {edge_name}), far from the king. "
+                f"Not a check. Your other rook then checks along {line_word} "
+                f"{king_line}."]
+
+    # ── PRIORITY 3: king already on the edge → FINISH.
+    if on_edge:
+        if safe_cross:
+            return [pre + f"king on the edge ({line_word} {king_line}), wall on "
+                    f"{line_word} {name_of(wall_c)} ✓. CHECK along {line_word} "
+                    f"{king_line} from a {cross_word} ≥2 from the king "
+                    f"({cross_word}s {', '.join(safe_cross)} are safe) — that "
+                    f"check is mate. Confirm `gives checkmate` with imagine_move."]
+        return [pre + f"king on the edge ({line_word} {king_line}) but every "
+                f"check would land next to it (captured). Make a WAITING move: "
+                f"slide the WALL rook sideways along {line_word} "
+                f"{name_of(wall_c)}, far from the king. The king must step "
+                f"toward the corner, then the check is mate. Verify with "
+                f"imagine_move (watch for stalemate)."]
+
+    # ── PRIORITY 4: wall is up, king not on edge → CHECK to push it one line.
+    msg = (pre + f"wall on {line_word} {name_of(wall_c)} ✓. CHECK along the "
+           f"king's {line_word} {king_line} with the OTHER rook, from a "
+           f"{cross_word} far from the king, to push it toward {line_word} "
+           f"{edge_name}.")
+    if safe_cross:
+        msg += f" Safe checking {cross_word}s (rook stays uncapturable): {', '.join(safe_cross)}."
+    if bad:
+        msg += (f" A check on {', '.join(chess.square_name(s) for s in sorted(set(bad)))}"
+                f" hangs the rook — avoid it.")
+    if has_q:
+        msg += (" QUEEN: keep it ≥2 from the king unless a rook guards it; a "
+                "quiet move to 0 king-squares is stalemate.")
+    return [msg]
+
+
+def _minor_mate_lines(board: chess.Board, own: bool) -> list[str]:
+    """Advisor for the two minor-piece forced mates (K+2B, K+B+N) vs a bare king.
+
+    Both drive the king to a CORNER (K+2B: any corner; K+B+N: only the corner of
+    the bishop's colour). The state comes from `_eval.minor_confine_state` — pure
+    geometry that classifies 'reposition a piece' vs 'march the king' without
+    naming a move (tool-fairness: facts about the board, not the move to play).
+    The agent picks and verifies with imagine_move."""
+    bishops = list(board.pieces(chess.BISHOP, own))
+    knights = list(board.pieces(chess.KNIGHT, own))
+    is_kbb = len(bishops) >= 2
+    page = _PAGE_KBB if is_kbb else _PAGE_KBN
+
+    # Same-coloured two bishops cannot force mate — rare (double promotion), but
+    # state it honestly rather than send the agent on an impossible drill.
+    if is_kbb and len({(chess.square_file(b) + chess.square_rank(b)) % 2 for b in bishops}) == 1:
+        return ["- Your two bishops are on the SAME colour — they cannot force "
+                "mate against a bare king (it is a draw). Aim only to avoid "
+                "losing; promote a pawn if you have one."]
+
+    corners = _eval.bishop_corner_targets(board, own)
+    cs = _eval.minor_confine_state(board, own, corners)
+    ksq = board.king(not own)
+    kd = _eval.kings_distance(board)
+
+    # mate available now?
+    has_mate = any(
+        (board.push(mv), board.is_checkmate(), board.pop())[1]
+        for mv in list(board.legal_moves)
+    )
+    out = []
+    name = "K+2B" if is_kbb else "K+B+N"
+    if has_mate:
+        return [f"- {name}: there is a CHECKMATE this move — scan "
+                f"chess__list_legal_moves for the `checkmate` flag and play it."]
+
+    if cs is None:
+        return [f"- {name} is a forced mate — read `{page}` and drive the king "
+                f"to the corner."]
+
+    corner = cs["target_corner"]
+    ekm = cs["enemy_king_moves"]
+    region = cs["region_size"]
+    best_region = cs["best_region"]
+    if is_kbb:
+        corner_clause = f"any corner (nearest: **{corner}**)"
+        piece_clause = ("the two bishops as a moving wall on ADJACENT diagonals "
+                        "(side by side) — together they cut a barrier the king "
+                        "cannot cross")
+    else:
+        corner_clause = (f"the **{corner}** corner (ONLY a corner of your "
+                         "BISHOP's colour can mate — the other two corners can't, "
+                         "do not waste moves driving there)")
+        piece_clause = ("the bishop on the long diagonal and the knight to seal "
+                        "the OTHER-coloured squares the bishop can't cover")
+    out.append(
+        f"- {name} method (read `{page}`): drive the enemy king to {corner_clause}. "
+        f"The king's **free region is {region} squares** (the `*` net in the board "
+        f"above); your kings are **{kd}** apart. The whole mate is SHRINKING that "
+        f"net toward the corner: keep your king close to lead, and use "
+        f"{piece_clause}."
+    )
+
+    # Stalemate guard — minors near a cornered king stalemate easily.
+    if ekm <= 1:
+        out.append(
+            "- **STALEMATE DANGER:** the enemy king has "
+            f"{ekm} legal move(s). Do NOT make a quiet move that leaves it zero "
+            "moves without check — give a check, or march your king. Confirm "
+            "`gives checkmate` (never `stalemate`) in imagine_move."
+        )
+        return out
+
+    if cs["can_tighten"] and best_region < region:
+        out.append(
+            f"- A piece move SHRINKS the net (from {region} to {best_region} "
+            "squares) without hanging — find it with imagine_move (try bishop/"
+            "knight moves; pick the one that most reduces the king's free region "
+            "toward the target corner and is not stalemate). Keep pieces defended "
+            "and coordinated; never park a bishop next to the king undefended."
+        )
+    else:
+        out.append(
+            "- No piece move shrinks the net right now — STEP YOUR KING one "
+            "square toward the enemy king (toward the target corner). The king "
+            "must lead; the pieces hold the wall and seal the next line after."
+        )
+    out.append(
+        "- To plan the maneuver, use chess__imagine_line to play several of your "
+        "own moves ahead and watch the net shrink (it reports the king's region "
+        "after each move) — these mates are won by a multi-move plan, not one move."
+    )
+    return out
+
+
+def _promotion_threat_squares(board: chess.Board, opp: bool, own: bool) -> list[int]:
+    """Enemy pawn squares that can promote on the opponent's NEXT move — by
+    advancing to, or capturing onto, their back rank. Pure rules-of-chess
+    geometry. Used to make the basic-mate advisors defer to a queening pawn
+    (a new enemy piece would break the mating net)."""
+    promo_rank = 7 if opp == chess.WHITE else 0
+    step_rank = 6 if opp == chess.WHITE else 1
+    out: list[int] = []
+    for psq in board.pieces(chess.PAWN, opp):
+        if chess.square_rank(psq) != step_rank:
+            continue
+        pf = chess.square_file(psq)
+        targets = [chess.square(pf, promo_rank)]
+        for df in (-1, 1):
+            if 0 <= pf + df <= 7:
+                targets.append(chess.square(pf + df, promo_rank))
+        for t in targets:
+            tp = board.piece_at(t)
+            # advance to an empty square, or capture an own (winning-side) piece
+            if (t == chess.square(pf, promo_rank) and tp is None) or \
+               (t != chess.square(pf, promo_rank) and tp is not None and tp.color == own):
+                out.append(psq)
+                break
+    return out
+
+
 def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
     """Which numbered rule of the basic-mate drill applies RIGHT NOW.
 
@@ -186,19 +543,51 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
     """
     opp = not own
     opp_mat = _material(board, opp)
-    if sum(opp_mat.values()) > 0:
-        return []
     own_mat = _material(board, own)
     majors = [
         sq for pt in (chess.QUEEN, chess.ROOK) for sq in board.pieces(pt, own)
     ]
-    if not majors:
-        # K+P vs K: the escort drill. Fires only for the single-pawn case
-        # (the multi-pawn endgame has too many shapes for a one-line rule).
-        pawns = list(board.pieces(chess.PAWN, own))
-        if len(pawns) == 1:
-            return _pawn_escort_lines(board, own, pawns[0])
-        return []
+    opp_has_major = opp_mat[chess.QUEEN] > 0 or opp_mat[chess.ROOK] > 0
+    opp_bare = sum(opp_mat.values()) == 0
+
+    # The TWO-MAJOR ladder is a real winning plan even when the opponent still
+    # has MINOR pieces / pawns (we run the king down with the rooks; stray
+    # enemy pieces are handled by the SEE safe-square logic below). So it fires
+    # whenever we have 2+ majors and the opponent has NO major of its own —
+    # not only against a bare king. The single-major (K+R / K+Q) and K+P
+    # escort drills are precise techniques that DO require a bare king (enemy
+    # pieces change them), so those keep the strict gate.
+    if len(majors) >= 2:
+        if opp_has_major:
+            return []
+    else:
+        if not majors:
+            # No major piece. The minor-piece mates (K+2B / K+B+N) and the K+P
+            # escort drill are precise techniques that assume a BARE king (an
+            # enemy pawn changes them), so they keep the strict gate.
+            if not opp_bare:
+                return []
+            bishops = len(board.pieces(chess.BISHOP, own))
+            knights = len(board.pieces(chess.KNIGHT, own))
+            if bishops >= 2 or (bishops >= 1 and knights >= 1):
+                return _minor_mate_lines(board, own)
+            pawns = list(board.pieces(chess.PAWN, own))
+            if len(pawns) == 1:
+                return _pawn_escort_lines(board, own, pawns[0])
+            return []
+        # Exactly one major (K+R / K+Q). The confine drill fires whenever the
+        # opponent is reduced to KING + PAWNS ONLY (no piece) — not just a bare
+        # king. Most realistic conversions leave the loser a pawn; gating on
+        # 'bare' silently dropped the drill exactly when the agent was mopping
+        # up, so it flailed — moving its king when the rook should confine
+        # (game 541b95da). confine_state already tolerates enemy pawns; an
+        # enemy pawn near promotion is handled by the promotion-threat note in
+        # the single-major renderer below. An enemy PIECE changes the technique,
+        # so that stays gated out.
+        opp_nonpawn = (opp_mat[chess.QUEEN] + opp_mat[chess.ROOK]
+                       + opp_mat[chess.BISHOP] + opp_mat[chess.KNIGHT])
+        if opp_nonpawn > 0:
+            return []
 
     ksq = board.king(opp)
     my_k = board.king(own)
@@ -230,16 +619,45 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
         elif fence_above and not fence_below:
             edge = "rank-bottom"
         else:
-            edge = "rank-top" if (7 - kr) <= kr else "rank-bottom"
+            # No fence committed yet: drive toward the rank edge AWAY from our
+            # own king, so the friendly king never blocks the mating check on
+            # the final rank (the self-block that stalled game 8909ef13 when
+            # the king was driven onto White's own back rank). Fall back to the
+            # nearest edge only when our king is mid-board (no clear far side).
+            my_k = board.king(own)
+            my_kr = chess.square_rank(my_k) if my_k is not None else None
+            if my_kr is not None and my_kr <= 2:
+                edge = "rank-top"        # our king is low → drive the enemy up
+            elif my_kr is not None and my_kr >= 5:
+                edge = "rank-bottom"     # our king is high → drive it down
+            else:
+                edge = "rank-top" if (7 - kr) <= kr else "rank-bottom"
     else:
-        fenced = {
-            "rank-top": any(chess.square_rank(sq) == kr - 1 for sq in majors),
-            "rank-bottom": any(chess.square_rank(sq) == kr + 1 for sq in majors),
-            "file-h": any(chess.square_file(sq) == kf - 1 for sq in majors),
-            "file-a": any(chess.square_file(sq) == kf + 1 for sq in majors),
-        }
-        existing = [e for e, ok in fenced.items() if ok]
-        edge = min(existing, key=dists.get) if existing else min(dists, key=dists.get)
+        # Single major (K+R / K+Q): the drive direction MUST be consistent with
+        # the white king's side, or the rook check pushes the enemy king the
+        # WRONG way and the mate thrashes (game 4a211a2a, 2026-06-17: fence on
+        # rank 5 above the king while the white king sat below, so Rh4+ shoved
+        # the king UP through the vacated rank). The enemy king must be driven
+        # to the edge the WHITE KING is NOT blocking — i.e. the white king ends
+        # on the centre side, shouldering the king toward the edge.
+        mf = chess.square_file(my_k) if my_k is not None else 4
+        mr = chess.square_rank(my_k) if my_k is not None else 4
+        # For each candidate edge, the white king is "on the centre side" (good)
+        # when it sits between the enemy king and the board centre along that
+        # axis — i.e. NOT beyond the enemy king toward that edge.
+        def king_blocks(e: str) -> bool:
+            if e == "rank-bottom":   # driving toward rank 1: king must be above
+                return mr < kr
+            if e == "rank-top":      # driving toward rank 8: king must be below
+                return mr > kr
+            if e == "file-a":        # driving toward a-file: king must be right
+                return mf < kf
+            return mf > kf            # file-h: king must be left
+        # Prefer the nearest edge whose drive the king supports; fall back to
+        # nearest overall if the king blocks them all (it will reposition).
+        ordered = sorted(dists, key=dists.get)
+        supported = [e for e in ordered if not king_blocks(e)]
+        edge = supported[0] if supported else ordered[0]
     if edge.startswith("rank"):
         fence_line = kr - 1 if edge == "rank-top" else kr + 1
         on_fence = [sq for sq in majors if chess.square_rank(sq) == fence_line]
@@ -281,150 +699,125 @@ def _drill_state_lines(board: chess.Board, own: bool) -> list[str]:
                 f"far side from the king — e.g. {tgt}")
 
     out = []
-    pre = "- **Drill state** (vs bare king): "
-    # Lone queen: the K+Q drill is knight's-move shadowing, NOT a fence.
-    if own_mat[chess.QUEEN] == 1 and own_mat[chess.ROOK] == 0:
-        qsq = next(iter(board.pieces(chess.QUEEN, own)))
-        if touchable:
-            return [pre + f"your queen on {chess.square_name(qsq)} is adjacent "
-                    f"to the enemy king and UNPROTECTED — it can simply be "
-                    f"captured. Move it to safety (a knight's-move from the "
-                    f"king) NOW."]
-        on_edge = kf in (0, 7) or kr in (0, 7)
-        knight_dist = chess.square_distance(qsq, ksq) == 2 and (
-            abs(chess.square_file(qsq) - kf), abs(chess.square_rank(qsq) - kr)
-        ) in ((1, 2), (2, 1))
-        if not on_edge:
-            msg = (pre + f"phase 1 (shrink): keep the queen a KNIGHT'S-MOVE "
-                   f"from the enemy king and MIRROR its moves — no checks "
-                   f"needed. Mirror means copy the king's last move "
-                   f"DIRECTION (king went toward a rank/file, queen steps "
-                   f"the same way), not just restore the distance on a "
-                   f"different side. NEVER place the queen adjacent to the "
-                   f"king unless protected (the king just takes it).")
-            if not knight_dist:
-                msg += (f" The queen on {chess.square_name(qsq)} is not at "
-                        f"knight's-move distance now.")
-            # Direction of the king's last step, read off the move stack —
-            # the concrete fact the mirror rule needs.
-            if board.move_stack:
-                last = board.move_stack[-1]
-                if last.to_square == ksq:
-                    df = chess.square_file(ksq) - chess.square_file(last.from_square)
-                    dr = chess.square_rank(ksq) - chess.square_rank(last.from_square)
-                    ew = "kingside (h)" if df > 0 else ("queenside (a)" if df < 0 else "")
-                    ns = "up (rank 8)" if dr > 0 else ("down (rank 1)" if dr < 0 else "")
-                    direction = " and ".join(x for x in (ew, ns) if x)
-                    if direction:
-                        msg += (f" The king's last step went {direction} — "
-                                f"shift the queen one square the same way.")
-            # Anti-oscillation: returning the queen to the square she just
-            # left is the no-progress loop that draws by repetition.
-            if len(board.move_stack) >= 2:
-                prev_own = board.move_stack[-2]
-                if prev_own.to_square == qsq:
-                    msg += (f" Your queen just came FROM "
-                            f"{chess.square_name(prev_own.from_square)} — do "
-                            f"NOT move her back there. If no mirroring square "
-                            f"makes progress, leave the queen and march YOUR "
-                            f"king one square toward the enemy king instead.")
-            return [msg]
-        if chess.square_distance(my_k, ksq) > 2:
-            return [pre + "phase 2 (march): the enemy king is on the edge — "
-                    "STOP moving the queen (one more shadow step risks "
-                    "stalemate); walk YOUR king one square toward the enemy "
-                    "king instead."]
-        return [pre + "phase 3 (mate): your king is close — look for the "
-                "queen check along the edge (protected by your king or from "
-                "distance). Verify `gives checkmate` with imagine_move and "
-                "watch for `stalemate`."]
-
+    pre = ("- **Drill state** (vs bare king): " if opp_bare
+           else "- **Drill state** (opponent has no major piece — run the king "
+                "down with the ladder): ")
     if len(majors) >= 2:
-        # PRINCIPLES, not a prescribed move. Earlier versions tried to name
-        # the exact rook/square each turn and kept being wrong (the safe
-        # check is sometimes the fence rook, the free rook is sometimes
-        # boxed, the far wing flips) — geometry too position-specific to
-        # state as one rule. Instead we give the model the invariant a
-        # correct ladder move satisfies and the SELF-CHECK it already has:
-        # imagine_move prints "Enemy king mobility: before -> after". The
-        # model reasons out the move and verifies the number went DOWN (or
-        # the move is check). This is the fair, board-independent level.
-        edge_word = "rank" if edge.startswith("rank") else "file"
+        out += _ladder_lines(board, own, opp, majors, own_mat, ksq, opp_bare)
+        return out
+
+    # ── Single major: K+R AND K+Q share ONE drill. The queen IS a rook for the
+    #    purposes of fencing, opposition, and the edge mate — it just also cuts
+    #    diagonals (so it confines faster) and is easier to stalemate with.
+    #    Verified against Capablanca: both keep the kings within ~3 the whole
+    #    mate, fence the king onto fewer lines, and mate in opposition on the
+    #    edge. So the queen flows through the same rules below, with "queen"
+    #    wording and a stalemate guard up front.
+    lone_queen = own_mat[chess.QUEEN] == 1 and own_mat[chess.ROOK] == 0
+    piece_noun = "queen" if lone_queen else "rook"
+
+    # Stalemate guard (mechanics: enemy-king legal-move count). The queen
+    # controls many squares, so a careless quiet move can leave the lone king
+    # with zero moves and no check = draw. Fires before any rule that might
+    # suggest such a move.
+    _probe = board.copy(stack=False)
+    if _probe.turn == own:
+        try:
+            _probe.push(chess.Move.null())
+        except (AssertionError, ValueError):
+            pass
+    _ek_moves = sum(1 for m in _probe.legal_moves if m.from_square == ksq)
+    if lone_queen and _ek_moves <= 1:
+        return [
+            pre + f"the enemy king has only {_ek_moves} legal move(s) — "
+            "STALEMATE DANGER. Do NOT play a quiet queen move that removes its "
+            "last square; give check, or march your king. Confirm the move "
+            "says `gives checkmate` (never `stalemate`) in imagine_move."
+        ]
+    # ── Single major (K+R): needs king support, so the rules stay
+    #    position-specific but are still applied by the model. Lead with the
+    #    box + king-distance fact (pure geometry): K+R is a forced mate but the
+    #    agent plays it slowly when it does not bring its king in (game
+    #    efbdd8ce, 2026-06-17: 49 plies). The box must shrink AND the king must
+    #    close to ~2 squares before the edge check mates.
+    # ── The K+R / K+Q method as Capablanca states it, encoded as ONE
+    #    deterministic rule (replaces the brittle fence/opposition machine and
+    #    the priority-list that both produced shuffles and wrong-way checks —
+    #    games 4a211a2a, f923a018, 1403f9cc, 8063c239). The geometry is computed
+    #    by `confine_state` (a structural fact, like "is there a back-rank
+    #    weakness" — it does NOT name a move); the agent executes the branch
+    #    with chess__imagine_move, which reports each candidate's box + whether
+    #    the major stays defensible.
+    _w, _h, _area = _eval.confinement_box(board, opp)
+    _kd = _eval.kings_distance(board)
+    on_edge = kf in (0, 7) or kr in (0, 7)
+
+    # 0) A mate this move? (scanning legal moves for checkmate is rules.)
+    has_mate_in_1 = any(
+        (board.push(mv), board.is_checkmate(), board.pop())[1]
+        for mv in list(board.legal_moves)
+    )
+    if has_mate_in_1:
         out.append(
-            pre + f"two rooks vs lone king — drive it to the {edge_word} edge "
-            f"by the LADDER. The whole method is two ideas you APPLY by "
-            f"reading the board (use imagine_move to test candidates):\n"
-            f"  1. FENCE: one rook sits on the {edge_word} (or file) just "
-            f"BEHIND the king so it cannot retreat. A fence move is quiet, "
-            f"not a check.\n"
-            f"  2. CHECK with the OTHER rook along the king's {edge_word} to "
-            f"shove it one step toward the edge — keeping BOTH rooks far "
-            f"from the king (opposite wing) so it can never capture one.\n"
-            f"  SELF-CHECK every candidate with imagine_move: a correct "
-            f"driving move makes **Enemy king mobility** go DOWN or gives "
-            f"check; if mobility goes UP you broke the fence — pick another. "
-            f"Avoid `repeats!`/`stalemate`. The fence and checker swap roles "
-            f"as the king is pushed back (leapfrog)."
+            pre + f"there is a CHECKMATE available this move — scan "
+            f"chess__list_legal_moves for the `checkmate` flag and play it."
         )
-        # Exception rules the model reliably misses. Both are general
-        # conditions ("when X, do Y"), not computed moves — the agent still
-        # works out and verifies the actual square.
-        king_on_edge = (
-            chess.square_file(ksq) in (0, 7) or chess.square_rank(ksq) in (0, 7)
-        )
-        harassed = [sq for sq in majors if chess.square_distance(sq, ksq) <= 1]
-        if king_on_edge and harassed:
-            # The finish trap: king driven to the edge, but a rook sits right
-            # next to it — the natural check on the edge would let the king
-            # CAPTURE that rook (this is exactly how game cc55b0b9 stalled at
-            # Rb7/Kc8). Slide the adjacent rook far along its line FIRST,
-            # keeping the cut-off; the very next check is then mate.
-            out.append(
-                f"  FINISH EXCEPTION: the king is on the edge and your rook on "
-                f"{chess.square_name(harassed[0])} is right beside it — a check "
-                f"now would just be captured by the king. FIRST slide that "
-                f"rook far away ALONG ITS CURRENT LINE (keep cutting off that "
-                f"line), so the king stays trapped on the edge but can no "
-                f"longer reach the rook. Then your next check on the edge is "
-                f"checkmate. Verify the slide keeps **Enemy king mobility** "
-                f"low and check the follow-up with imagine_move."
-            )
-        elif harassed:
-            out.append(
-                f"  NOTE: your rook on {chess.square_name(harassed[0])} is "
-                f"right next to the enemy king — move it to safety along its "
-                f"line (far from the king) before anything else, or you lose "
-                f"it."
-            )
-    # ── Single major (K+R / K+Q-as-rook): needs king support, so the rules
-    #    stay position-specific but are still applied by the model. ──
-    elif touchable:
+        return out
+
+    # Balance vs the squeeze: if an enemy pawn can promote next move, a new
+    # piece would break the mating net — flag it as the priority BEFORE the
+    # confine guidance (we already returned above if we can mate now). The
+    # general passed-pawn radar also warns; putting it inside the drill keeps
+    # 'tighten with the rook' from drowning out a queening pawn.
+    promo = _promotion_threat_squares(board, opp, own)
+    if promo:
         out.append(
-            pre + f"the enemy king can capture your piece on "
-            f"{chess.square_name(touchable[0])} — RULE: "
-            f"{_slide_away_text(touchable[0])}. Nothing else this turn."
+            "- **Deal with the promotion threat FIRST.** Enemy pawn(s) on "
+            f"{', '.join(chess.square_name(s) for s in promo)} can promote next "
+            "move; a new queen wrecks your mating net. Capture it, cover/block "
+            "its promotion square, or play a check that also stops it (verify "
+            "with imagine_move) — then resume the squeeze below."
         )
-    elif not on_fence:
+
+    # The single rule: confine tighter with the major on a square the king can
+    # defend in time; if the major is already on its tightest defensible
+    # confining square, step the king closer instead.
+    cs = _eval.confine_state(board, own)
+    out.append(
+        f"- K+{piece_noun[0].upper()} method: the enemy king is boxed in "
+        f"**{_w}x{_h} = {_area} squares**; your kings are **{_kd}** apart. "
+        f"Each move, confine the box TIGHTER with the {piece_noun} on a square "
+        f"your king can defend IN TIME; when the {piece_noun} is already on its "
+        f"tightest defensible square, step the king closer instead. Keep king "
+        f"and {piece_noun} together."
+    )
+    if cs is not None and cs["can_tighten"]:
         out.append(
-            pre + f"no fence — RULE: put your rook on {line_word} "
-            f"{line_name} (one line centre-side of the enemy king), far from "
-            f"the king. The king must never cross it."
-        )
-    elif opposition:
-        out.append(
-            pre + f"fence ✓ and kings in opposition ✓ — RULE: CHECK on "
-            f"{king_line_name} (the enemy king's {line_word}) now — a rook "
-            f"move TO that {line_word}, far from the king; it must retreat. "
-            f"Then re-fence. A check on any other line is a wasted move."
+            pre + f"a tighter {piece_noun} square EXISTS that your king can "
+            f"still defend in time — it shrinks the box from {cs['current_area']} "
+            f"to {cs['best_area']}. MOVE THE {piece_noun.upper()} there (find it "
+            f"with imagine_move: try {piece_noun} moves, pick the one with the "
+            f"SMALLEST box whose confinement line says 'protectable in time' and "
+            f"is not stalemate). Do NOT move the king, do NOT check for its own "
+            f"sake, do NOT loosen the box."
         )
     else:
         out.append(
-            pre + f"fence on {line_word} {line_name} ✓, kings NOT in "
-            f"opposition — RULE: step YOUR king one square toward the enemy "
-            f"king (stay on your side of the fence). Do not move the fence "
-            f"piece; do not check yet. If the enemy king just stepped aside "
-            f"to dodge, make a one-square waiting move along the fence "
-            f"instead."
+            pre + f"your {piece_noun} is already on its tightest defensible "
+            f"confining square (box {_area}; no tighter defensible square "
+            f"exists yet). STEP YOUR KING one square toward the enemy king to "
+            f"take more squares and let the {piece_noun} confine tighter next "
+            f"move. Do NOT move the {piece_noun}."
+        )
+    if opp_mat[chess.PAWN] > 0:
+        out.append(
+            "- **The box/region above counts only piece lines — NOT the enemy "
+            "pawn(s).** A pawn can block your "
+            f"{piece_noun}'s cut or shield the king, so the real confinement may "
+            "differ — verify the actual squares with imagine_move. Simplest plan: "
+            f"win or trade off the enemy pawn(s) (use your {piece_noun} and king "
+            "to round them up; trade pieces, not pawns) to reduce to a clean "
+            f"K+{piece_noun[0].upper()} vs K mate."
         )
     return out
 
@@ -597,7 +990,29 @@ def _passed_pawn_lines(board: chess.Board, own: bool) -> list[str]:
             f"by its king promotes — read `{_PAGE_KP}`."
         )
     if theirs:
-        lines.append(f"- Opponent passed pawn(s): {', '.join(theirs)} — do not let them run.")
+        # Categorize opponent pawns by urgency: 2 moves away, 1 move away, or already promoting
+        critical = []
+        warning = []
+        for pawn_desc in theirs:
+            if "0 move(s)" in pawn_desc:
+                critical.append(pawn_desc)
+            elif "1 move(s)" in pawn_desc:
+                warning.append(pawn_desc)
+
+        if critical:
+            lines.append(
+                f"- **CRITICAL: Opponent pawn(s) {', '.join(critical)} promote THIS TURN.** "
+                f"You MUST block/capture the promotion square or give check NOW, or they win."
+            )
+        elif warning:
+            lines.append(
+                f"- **WARNING: Opponent pawn(s) {', '.join(warning)} promote in 1 move.** "
+                f"Your next move MUST deal with this threat (block, capture, or check) or "
+                f"you will face a new queen. If you can deliver checkmate in 1, do it — "
+                f"otherwise stop the pawns first."
+            )
+        else:
+            lines.append(f"- Opponent passed pawn(s): {', '.join(theirs)} — do not let them run.")
     return lines
 
 

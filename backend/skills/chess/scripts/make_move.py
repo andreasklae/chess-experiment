@@ -126,6 +126,31 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | No
                 True,
             )
 
+    # A move that merely RECREATES an earlier position (its second occurrence)
+    # is not yet a claimable draw — but when you are WINNING AGAINST A BARE KING
+    # it is pure anti-progress and the on-ramp to a repetition draw: the
+    # opponent completes the threefold on ITS move, which this gate (seeing only
+    # your move) cannot block later. So forbid feeding the repetition at all
+    # during a basic-mate conversion. Observed: game 987fc4c7 (K+R+N vs bare K)
+    # drew exactly this way — White played Kc7 then Nb4+, each recreating a
+    # prior position, and Black's reply claimed the threefold. Pure rules:
+    # position recurrence + material count; never fires when the move is mate.
+    if board.move_stack and opp_has_no_pieces and not after.is_checkmate() \
+            and after.is_repetition(2):
+        my_mat = sum(MATERIAL[p.piece_type] for p in board.piece_map().values()
+                     if p.color == mover and p.piece_type != chess.KING)
+        their_mat = sum(MATERIAL[p.piece_type] for p in board.piece_map().values()
+                        if p.color != mover and p.piece_type != chess.KING)
+        if my_mat > their_mat:
+            return (
+                "this move RECREATES a position already seen this game. You are "
+                "winning against a bare king, so repeating makes NO progress and "
+                "walks toward a draw by repetition (the opponent claims it on "
+                "its move). Pick a move that makes progress — shrink the enemy "
+                "king's box or mobility, drive it toward the edge/corner.",
+                True,
+            )
+
     # Losing trades, via static exchange evaluation on the moved piece's
     # square. SEE plays out the forced recapture sequence on that one square
     # and returns the material the OPPONENT nets if they initiate captures
@@ -397,29 +422,31 @@ def main() -> None:
             gate = _blunder_gate(board, candidate)
     except (SystemExit, Exception):
         gate = None  # endpoint is the authoritative validator
-    if gate is not None:
-        warning, hard = gate
-        if hard:
-            print(json.dumps({
-                "ok": False,
-                "error": (
-                    f"SAFETY CHECK (cannot override) — move NOT committed: "
-                    f"{warning} This loses the game outright, so confirm=true "
-                    f"will not force it. Pick a move that keeps the win."
-                ),
-            }))
-            sys.exit(1)
-        if not args.confirm:
-            print(json.dumps({
-                "ok": False,
-                "error": (
-                    f"SAFETY CHECK — move NOT committed: {warning} "
-                    f"If this is intentional (a real sacrifice), call "
-                    f"chess__make_move again with the same move and "
-                    f"confirm=true. Otherwise pick a different move."
-                ),
-            }))
-            sys.exit(1)
+    if gate is not None and not args.confirm:
+        warning, severe = gate
+        # Advisory-only: the gate never REFUSES a legal move (that would be the
+        # tool making the decision, not the agent — unfair, and it deadlocks
+        # when every legal move trips a rule). It warns; the agent commits by
+        # re-calling with confirm=true. The wording is stronger for the
+        # catastrophic cases (`severe`), but they are equally overridable.
+        # See decisions/2026-06-20-blunder-gate-advisory-only.md.
+        if severe:
+            prefix = (
+                "SAFETY CHECK (severe) — move NOT yet committed: " + warning +
+                " This very likely LOSES or DRAWS the game outright — almost "
+                "never what you want. Only override if you are certain. To play "
+                "it anyway, call chess__make_move again with the same move and "
+                "confirm=true; otherwise pick a move that keeps the win."
+            )
+        else:
+            prefix = (
+                "SAFETY CHECK — move NOT yet committed: " + warning +
+                " If this is intentional (a real sacrifice), call "
+                "chess__make_move again with the same move and confirm=true. "
+                "Otherwise pick a different move."
+            )
+        print(json.dumps({"ok": False, "error": prefix}))
+        sys.exit(1)
 
     # The endpoint caps reasoning at 4000 chars (schemas.AgentCommitRequest).
     # Truncate rather than let the whole commit be rejected for verbosity —

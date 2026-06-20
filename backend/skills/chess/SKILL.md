@@ -15,7 +15,7 @@ You are the white player in a live chess game. **Your only job this turn is to c
 
 **This is not a chess analysis task. You are not writing a report. You are making a move.**
 
-The skill name is `chess`. Calling `use_skill("chess")` ONCE (at the start of the game) reveals the chess tools listed below — they appear in your tool list as `chess__show_position`, `chess__imagine_move`, `chess__list_legal_moves`, `chess__search_wiki`, and `chess__make_move`, and they stay available for the whole game. Do not call `use_skill` again on later turns; these instructions remain in your context.
+The skill name is `chess`. Calling `use_skill("chess")` ONCE (at the start of the game) reveals the chess tools listed below — they appear in your tool list as `chess__show_position`, `chess__imagine_move`, `chess__imagine_line`, `chess__list_legal_moves`, `chess__search_wiki`, and `chess__make_move`, and they stay available for the whole game. Do not call `use_skill` again on later turns; these instructions remain in your context.
 
 Before each tool call, write one sentence on what you are about to do and why. After each result, reflect on what it told you. Keep it brief — this is your reasoning trace, not an essay.
 
@@ -53,7 +53,7 @@ are dead weight. Pass `dismiss_references="<path>[,<path>...]"` (or
 `"all"`) with your move to drop their text from your context from the
 next turn on — you can always `read_reference` them again later.
 
-The FEN in each turn's message is the complete game state, and `chess__show_position`'s radar tracks repetition/draw rules — so the plan is the one thing only *you* can carry forward. **A plan you do not write down is lost at the end of the turn.** **When you start a forced sequence from a wiki page (e.g. the smothered-mate sequence), write the REMAINING moves into `plan` verbatim** (e.g. plan="Forced: now Nf7+, then Nh6+ double check, then Qg8+!! sacrifice, then Nf7#") and on each following turn play the next move of the plan after confirming the opponent replied as forced — order is everything in a forced line. When your memory says "no standing plan" and no tactic decides the move, form one (read `strategic-thinking/make-a-plan.md`) and record it with your move.
+The FEN in each turn's message is the complete game state, and `chess__show_position`'s radar tracks repetition/draw rules — so the plan is the one thing only *you* can carry forward. **A plan you do not write down is lost at the end of the turn.** **When you start a forced sequence from a wiki page (e.g. the smothered-mate sequence), write the REMAINING moves into `plan` verbatim** (e.g. plan="Forced: now Nf7+, then Nh6+ double check, then Qg8+!! sacrifice, then Nf7#") and on each following turn play the next move of the plan after confirming the opponent replied as forced — order is everything in a forced line. When your memory says "no standing plan" and no tactic decides the move, form one (read `strategy/make-a-plan.md`) and record it with your move.
 
 Examples:
 
@@ -99,6 +99,47 @@ enough information is to play. Concretely:
   `chess__imagine_move` to confirm a free queen capture is wasted work. Play
   the move. A `checkmate` flag in `chess__list_legal_moves` is the ultimate
   obviously good move — commit it immediately.
+- **When the best move is not obvious, calculate with `chess__imagine_line` —
+  and lean toward doing this often.** Reach for it freely, not just in sharp
+  tactics. Use it whenever you cannot immediately see the right move, including:
+  - **sharp positions** — a forcing reply, sacrifice, or combination is
+    possible, or a passed pawn is racing;
+  - **quiet-but-tricky positions** — choosing which trade or simplification
+    keeps your advantage, deciding where to put a piece when nothing forces, or
+    forming a multi-move plan (a basic-mate drive, a king march);
+  - **defensive / endgame positions** — how to **hold a pawn**, defend a worse
+    endgame, or stop the opponent's plan over the next few moves. (This is where
+    the agent has quietly lost worse endgames before — calculate, don't drift.)
+  - **the opening too** — openings are tricky and lost games start here. Use it
+    when a line looks forcing, a gambit or sacrifice is offered, you are unsure
+    how to develop, or the opponent's setup looks dangerous.
+
+  **Two feelings are themselves the trigger — do not push them aside, calculate:**
+  - **When you feel THREATENED** — the opponent's last move eyes your king or a
+    weak square (f2/f7, your back rank), or threatens to win material — imagine
+    THEIR threatening move and read what it actually does (the report flips to
+    their side so you see the threat clearly), then find the move that meets it.
+    The agent has walked into opening mates (e.g. Qxf2#) precisely by **not**
+    checking the threat — do not repeat that.
+  - **When you HESITATE** — if you are unsure which move is right or whether a
+    move is safe, that hesitation IS the signal to calculate, not guess.
+
+  In all of these, one ply of `chess__imagine_move` is not enough — play the
+  line out a few moves: add ONE move at a time (your move, the opponent's
+  reply, yours…), read the frontier report, branch/backtrack to compare lines,
+  then commit the first move of the line you trust.
+
+  **Try SEVERAL of the opponent's replies — do not assume they play the one move
+  you hope for.** When it is the opponent's turn in your line, pick their **2–3
+  most probable/dangerous replies** (captures, checks, the move that defends or
+  counter-attacks) and run each as a **separate branch** from the same point.
+  Your move is only good if it works against ALL of their reasonable replies —
+  if any branch refutes it, choose a different move. A line that only works
+  because the opponent cooperates is not calculated; it is hope.
+
+  **Using it several times in a game is normal and good** — it is far cheaper
+  than the blunder or slow loss it prevents. Only skip it when a move is
+  genuinely obvious (a free capture, a flagged `checkmate`, an only-move).
 - **After imagining 2–3 serious candidates, pick the best and commit.**
   The tools cannot tell you more than you already know once you've seen
   the resulting position for each candidate. Past that point, more
@@ -110,24 +151,35 @@ enough information is to play. Concretely:
 - **The harness will warn you when you have used most of your turn's
   tool budget** — when you see that warning, commit the best
   candidate immediately rather than starting another investigation.
+- **Do NOT switch candidates just because a piece is attacked.** When you
+  imagine a move and the tool reports the piece is hanging or attacked,
+  check the opponent's legal replies: if all their replies lose material or
+  get checkmated, the move is sound. Playing around with unnecessary candidate
+  changes is how games drag to a grind. Trust the math: if you checked it,
+  and the opponent has no good reply, play it.
 
-## Your knowledge wiki — READ IT, it is how you play well
+## Your knowledge wiki — READ IT WHEN TRIGGERED, it is how you play well
 
 You have a bundled wiki of chess knowledge — openings, principles,
 strategy, pawn structures, tactical patterns, mating patterns, endgames.
 **It is your own accumulated experience, and reading the relevant page is
 what separates a good move from a guess.** The model's raw chess intuition
-is weak; the wiki is where the actual chess understanding lives. So when
-the position raises a question the page below answers, **read it** — a
-single `read_reference` call is cheap next to losing a piece or drifting
-without a plan. Do not try to play from memory when a page covers exactly
-the situation in front of you.
+is weak; the wiki is where the actual chess understanding lives. **MANDATORY:**
+when the radar or these instructions name a page (e.g., "read `mates/
+two-rook-ladder-mate.md`"), or when the position matches an explicit trigger below,
+you MUST read that page before the next move — do not skip it. A single
+`read_reference` call is cheap next to a blunder or slow technique.
+
+When you open a wiki page and follow its explicit "What to do" section (drills,
+numbered steps, rules), track which page you are reading in your `plan` field
+so future turns can see you consulted it: e.g., `plan="Following two-rook-ladder-mate
+drill: currently executing step 3 (drive king to edge)..."`
 
 Two tools reach the wiki:
 
 - **`read_reference(skill_name="chess", path="<path>")`** → returns a
   page's full text. Paths are relative to the wiki root (e.g.
-  `principles/index.md`, `patterns/mating-patterns/back-rank-mate.md`).
+  `principles/index.md`, `mates/back-rank-mate.md`).
 - **`chess__search_wiki(args=["<keywords>"])`** → finds pages by keyword,
   returns their paths + descriptions (not bodies), each with the exact
   `read_reference` call. Use it when you know a concept but not its path.
@@ -141,30 +193,45 @@ games.
 
 | If the position is… | read this folder's index |
 |---|---|
-| first ~10 moves / opening unclear | `openings/index.md` |
+| the enemy king is matable (basic K+Q/K+R/K+2R drills OR a named mating net) | `mates/index.md` |
+| a tactic is in the air (loose piece, overworked defender, combination) | `tactics/index.md` |
+| few pieces left, no immediate mate (king+pawn, promotion, opposition) | `endgames/index.md` |
 | you need a rule-of-thumb / move sanity check | `principles/index.md` |
-| you need a PLAN ("what am I trying to do here?") | `strategic-thinking/index.md` |
-| a pawn-structure question (isolated/passed/doubled/chain) | `strategic-thinking/pawn-structures/index.md` |
-| a tactic is in the air (loose piece, exposed king, pin, fork) | `patterns/index.md` |
-| the enemy king looks matable | `patterns/mating-patterns/index.md` |
-| few pieces left (endgame technique) | `endgames/index.md` |
+| you need a PLAN ("what am I trying to do here?") or to convert an edge | `strategy/index.md` |
+
+(Openings and per-game analyses have folders but no pages yet.)
 
 ### Explicit read-triggers — when you see X, read Y BEFORE moving
 
-- **You have a basic mate (K+Q, K+R, two rooks vs a lone king)** → read the
-  matching `patterns/mating-patterns/` drill and follow it; do not improvise.
-- **The enemy king is on its back rank / in a corner with few escape
-  squares** → `patterns/mating-patterns/` (back-rank, smothered, etc.).
+**BASIC MATES (lone enemy king) — re-read the right page when material changes.**
+All three live in `mates/`:
+
+- **K+2R (two rooks vs a lone king)** → **ALWAYS read**
+  `read_reference(skill_name="chess", path="mates/two-rook-ladder-mate.md")`.
+  Fence one rank, check with the OTHER rook, leapfrog the king to the edge.
+- **K+R (one rook)** — if material just dropped from K+2R, your two-rook plan
+  is STALE → **re-read** `read_reference(skill_name="chess", path="mates/king-rook-mate.md")`.
+  K+R uses fence-and-opposition, NOT the two-rook ladder. Different technique.
+- **K+Q (king + queen)** →
+  `read_reference(skill_name="chess", path="mates/king-queen-mate.md")`.
+- **A named net is on the board** (back-rank, smothered, …) → open
+  `mates/index.md` and pick by geometry.
+
+**OTHER TRIGGERS:**
+
 - **A `SAFETY CHECK` flagged a losing trade or hanging piece** → if you are
   unsure how to defend it, the four responses are: defend, move, counter-
   check, or make a bigger threat — see `principles/`.
 - **A passed pawn (yours or theirs), or K+P endgames** → `endgames/` for the
   escort/promotion technique before you push.
-- **A quiet position with nothing forcing** → `strategic-thinking/` for a
-  plan (improve your worst piece, open a file for a rook, target a
-  weakness) rather than shuffling.
+- **A quiet position with nothing forcing** → `strategy/` for a plan
+  (improve your worst piece, open a file for a rook, target a weakness)
+  rather than shuffling.
 - **The radar in `chess__show_position` names a page** → read that page; it
   named it because the geometry for it is on the board right now.
+- **Your standing plan no longer applies** — material or position changed
+  fundamentally (e.g., K+2R ladder → K+R fence). Re-read the matching
+  `mates/` page and update your plan.
 
 **When NOT to:** if the move is obvious (free capture, flagged
 `checkmate`, only-move, an opponent threat with one clear answer), just
@@ -177,6 +244,17 @@ A turn proceeds roughly like this. Skip steps when the move is obvious;
 spend more time on them when the position is sharp. Most turns finish
 well under ten tool calls. Between each tool call/step, do some reasoning, think before you do. write down your thoughts.
 
+**MOVE 1 ONLY:**
+0. **Load the skill and read the wiki.** Call `use_skill('chess')` to load the tools.
+1. **Call `chess__show_position`** to see the board and the radar.
+2. **READ THE RADAR.** If the radar names a wiki page (e.g., "read `mates/two-rook-ladder-mate.md`"), **IMMEDIATELY**
+   call `read_reference(skill_name="chess", path="...")` and study the "What to do" section.
+   The wiki page has the exact technique you need for this position.
+3. **Write your plan** (2–3 sentences) citing the page you just read.
+4. **Then proceed to pick candidates and move** (see below).
+
+**EVERY TURN:**
+
 0. **Always check for checkmate first.** Before anything else, ask
    yourself: can I deliver checkmate this turn? In endgame positions
    (few pieces, king close to the edge), call `chess__list_legal_moves`
@@ -184,6 +262,11 @@ well under ten tool calls. Between each tool call/step, do some reasoning, think
    `checkmate`, play it immediately — there is nothing to verify.
    **Do not skip this step in any position where you have a material
    advantage** — the goal is to win, not just to maintain an edge.
+0a. **Passed pawn emergencies.** A pawn one square from promotion is
+   urgent. Check `chess__show_position` for the "Passed pawns" radar line.
+   If you see opponent pawn on rank 7 or closer (or a **PAWN PROMOTION WARNING**
+   in the imagine_move output), prioritize stopping it UNLESS checkmate
+   is forced in your replies. Read the radar warnings carefully.
 0b. **Consult your memory.** Your prior note, standing plan, and current
    goal are shown at the top of the turn. If they still fit the position,
    prefer candidate moves that advance the goal; deviate only for tactics
@@ -243,9 +326,17 @@ well under ten tool calls. Between each tool call/step, do some reasoning, think
 4. **Commit.** Call `chess__make_move(move="<move>", reasoning="<your reasoning>")`.
    The board advances the moment it returns `ok=true`. If it returns
    `ok=false`, pick a different move from the `legal_moves` list and call
-   again. Never commit a move before you have imagined it — do not hang a
-   piece unless you are certain it is a good sacrifice or trade. The
-   reasoning text is your memory for next turn; write something useful.
+   again. 
+   
+   **HARD CONSTRAINT: You MUST call `chess__imagine_move` on your move
+   BEFORE calling `chess__make_move`. There are NO exceptions.** Every move—
+   whether it looks obvious, tactical, or quiet — must be imagined first.
+   This is your only defence against blunders. A move that "feels safe" or
+   "looks obvious" can still hang a piece or walk into a trap — imagination
+   is how you catch this. **Verify opponent's best reply in `imagine_move`
+   output.** After you imagine your move, read the "Opponent legal replies"
+   section and check that none of them win material or deliver checkmate.
+   The reasoning text is your memory for next turn; write something useful.
 
 ## Tools
 
@@ -387,6 +478,39 @@ An illegal or unparseable move exits nonzero with a categorised error
 (no piece on that square, path blocked, piece pinned, in check, illegal
 castle, missing/extra promotion piece, etc.), so revise and retry.
 
+### `chess__imagine_line`
+
+```
+chess__imagine_line(moves="Kc3")                 # ONE move at a time
+chess__imagine_line(moves="Kc3,Ke5,Bd3")         # extend, having seen Kc3's result
+chess__imagine_line(fen="<fen>", moves="...")    # from a hypothetical position
+```
+
+A **multi-ply** look-ahead for planning a maneuver — where `chess__imagine_move`
+sees one ply, this plays out a short line you supply (your moves AND the
+opponent replies you expect, alternating, starting with yours) on a copy of the
+board. The live game is **not** changed.
+
+**Use it one move at a time.** Do NOT type a whole 5-move line up front: add a
+single move, read the result, decide the next. You may **branch** (change the
+last move and call again) and **backtrack** (drop moves from the end). The line
+is capped at **5 moves (plies) ahead** — that is the planning horizon; beyond
+it, commit a move and re-plan.
+
+For the **last** move of the line it shows the **same full report as
+`chess__imagine_move`** (check/mate, material, the moved piece's safety, newly
+hanging pieces, the legal replies, and the basic-mate confinement facts), with a
+breadcrumb of the line above it. So it covers both general planning and the
+**basic minor-piece mates** (K+2B, K+B+N), which are won by a multi-move plan:
+try a maneuver, read the frontier, then play its first move with
+`chess__make_move`.
+
+**Perspective:** when the last move is the OPPONENT's, the report is shown from
+their side with a clear banner — there, the listed "replies" are **your** next
+options and "enemy king mobility" is **your own** king's (you want it high). It
+searches nothing and recommends nothing — the line is your calculation made
+visible.
+
 ### `chess__list_legal_moves`
 
 ```
@@ -431,7 +555,7 @@ knowledge wiki").
 
 ```
 read_reference(skill_name="chess", path="index.md")
-read_reference(skill_name="chess", path="patterns/mating-patterns/back-rank-mate.md")
+read_reference(skill_name="chess", path="mates/back-rank-mate.md")
 ```
 
 Reads one wiki page and returns its markdown. `path` is relative to the
@@ -481,14 +605,17 @@ The move accepts UCI or SAN; trailing `+` or `#` is stripped.
     ahead** on material.
 
   **Default response: pick a better move** — almost always the warning is
-  right and you simply missed it.
-  - A **soft** warning can be overridden by repeating the call with
-    `confirm=true`, but only when it is a genuine, calculated sacrifice.
+  right and you simply missed it. **But the check is advisory: it never
+  refuses a legal move.** You commit any move by repeating the call with
+  `confirm=true`.
+  - An ordinary **SAFETY CHECK** flags a losing trade or hanging piece —
+    override with `confirm=true` only for a genuine, calculated sacrifice.
     Reflexively confirming is how games are lost — do not do it.
-  - A **SAFETY CHECK (cannot override)** error is **hard**: the move loses
+  - A **SAFETY CHECK (severe)** flags a move that very likely loses or draws
     the game outright (stalemate, a draw while winning, hanging a major to a
-    king with no army, or dropping to insufficient material). `confirm=true`
-    will not force it — find the move that keeps the win.
+    lone king, or dropping to insufficient material). This is almost never
+    what you want — but if you are *certain* (e.g. you are in check and every
+    legal move is equally bad), you may still play it with `confirm=true`.
 
 ## Move format
 

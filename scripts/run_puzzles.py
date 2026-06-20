@@ -23,6 +23,7 @@ import argparse
 import json
 import sys
 import time
+import urllib.error
 import urllib.request
 
 PUZZLES = [
@@ -32,6 +33,28 @@ PUZZLES = [
         "name": "Back-rank mate in 1",
         "fen": "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1",
         "expect": "1-0 immediately (Ra8#). Tests mate-spotting + radar.",
+    },
+    # Sourced back-rank mate-in-2 puzzles from real games (wtharvey.com
+    # m8n2; see knowledge-base/raw/other/2026-06-wtharvey-mate-puzzles.md).
+    # Each is White-to-move, forced, and verified in python-chess. They test
+    # the simple back-rank skill: spot the king trapped behind its pawns and
+    # land a major piece on the open file/rank with mate (one deflecting
+    # check, then the back-rank mate).
+    {
+        "id": "backrank-d-file",
+        "max_plies": 6,
+        "name": "Back-rank mate in 2 (open d-file, wtharvey)",
+        "fen": "4kb1r/p2n1ppp/4q3/4p1B1/4P3/1Q6/PPP2PPP/2KR4 w k - 1 0",
+        "expect": "1-0: 1.Qb8+ Nxb8 2.Rd8#. Deflect the d7 knight, mate on "
+                  "the open d-file.",
+    },
+    {
+        "id": "backrank-e-file",
+        "max_plies": 6,
+        "name": "Back-rank mate in 2 (open e-file, wtharvey)",
+        "fen": "r1b2k1r/ppp1bppp/8/1B1Q4/5q2/2P5/PPP2PPP/R3R1K1 w - - 1 0",
+        "expect": "1-0: 1.Qd8+ Bxd8 2.Re8#. Deflect the e7 bishop, mate on "
+                  "the open e-file.",
     },
     {
         "id": "kq-basic",
@@ -53,6 +76,15 @@ PUZZLES = [
         "name": "Two-rook ladder mate",
         "fen": "8/8/3k4/8/8/8/R7/1R4K1 w - - 0 1",
         "expect": "1-0 in under ~12 plies. Tests ladder-mate page.",
+    },
+    {
+        "id": "qr-ladder",
+        "max_plies": 24,
+        "name": "Queen+rook ladder mate",
+        "fen": "8/8/4k3/8/8/8/1Q6/R5K1 w - - 0 1",
+        "expect": "1-0 in under ~10 plies. Q+R ladder: fence with one major, "
+                  "check with the other, leapfrog to the edge. Tests ladder-mate "
+                  "page applied to queen+rook (not just two rooks).",
     },
     {
         "id": "promote-convert",
@@ -102,12 +134,26 @@ def _get(base: str, path: str) -> dict:
 
 
 def run_puzzle(base: str, puzzle: dict, elo: int, poll_s: float, timeout_s: float) -> dict:
-    state = _post(base, "/api/games", {
+    payload = {
         "white": {"type": "agent"},
         "black": {"type": "maia", "elo": elo},
         "initial_fen": puzzle["fen"],
         "max_half_moves": puzzle.get("max_plies"),
-    })
+    }
+    # The backend owns a single game slot; a prior game still finalising returns
+    # 409 Conflict. That is transient — retry a few times before giving up,
+    # rather than aborting the whole sweep.
+    for attempt in range(6):
+        try:
+            state = _post(base, "/api/games", payload)
+            break
+        except urllib.error.HTTPError as exc:
+            if exc.code == 409 and attempt < 5:
+                print(f"    backend busy (409), retrying in 4s "
+                      f"(attempt {attempt + 1}/6)", flush=True)
+                time.sleep(4)
+                continue
+            raise
     game_id = state["game_id"]
     print(f"  game {game_id[:8]} started", flush=True)
 
@@ -151,14 +197,25 @@ def run_puzzle(base: str, puzzle: dict, elo: int, poll_s: float, timeout_s: floa
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--base", default="http://localhost:8000")
-    ap.add_argument("--elo", type=int, default=1100, help="Maia elo for black")
+    # Forced mates are forced regardless of the defender, so puzzles run
+    # against the STRONGEST Maia (1900) to remove the "won because the
+    # opponent blundered" confound — a clean mate, not a lucky one.
+    ap.add_argument("--elo", type=int, default=1900, help="Maia elo for black")
     ap.add_argument("--only", nargs="*", default=None, help="Puzzle ids to run")
+    ap.add_argument("--suite", default=None,
+                    help="Load puzzles from a JSON suite (e.g. one produced by "
+                         "gen_mate_positions.py) instead of the built-in PUZZLES.")
     ap.add_argument("--poll", type=float, default=5.0)
     ap.add_argument("--timeout", type=float, default=3600.0, help="Per-puzzle wall-clock cap (s)")
     ap.add_argument("--report", default=None, help="Write JSON report to this path")
     args = ap.parse_args()
 
-    suite = [p for p in PUZZLES if args.only is None or p["id"] in args.only]
+    source = PUZZLES
+    if args.suite:
+        with open(args.suite) as f:
+            source = json.load(f)
+        print(f"Loaded {len(source)} puzzles from {args.suite}")
+    suite = [p for p in source if args.only is None or p["id"] in args.only]
     if not suite:
         print(f"No puzzles match {args.only}. Available: {[p['id'] for p in PUZZLES]}")
         sys.exit(1)

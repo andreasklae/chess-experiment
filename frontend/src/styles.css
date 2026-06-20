@@ -146,6 +146,14 @@ select {
   font-weight: 700;
 }
 
+/* Wrapper around the board frame (holds the promo overlay positioned over it).
+   inline-block on desktop so it hugs the square board; full-width block on a
+   phone so the board can fill the screen width (see the phone breakpoint). */
+.board-frame-wrap {
+  position: relative;
+  display: inline-block;
+}
+
 .board-frame {
   width: min(80vh, 100cqw);
   height: min(80vh, 100cqw);
@@ -1127,4 +1135,103 @@ dd {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-size: 0.7rem;
+}
+
+/* ── Phone breakpoint (≤480px) ──────────────────────────────────────────────
+   The ≤820px rule above already stacks the board + agent panel to one column
+   and makes the board full width. This tightens spacing, makes touch targets
+   bigger, and collapses the remaining 2-up grids for a narrow phone screen so
+   games are watchable over the LAN. */
+@media (max-width: 480px) {
+  .app-shell {
+    padding: 8px;
+  }
+
+  /* All the 2-up grids collapse to a single column on a phone. */
+  .player-grid,
+  .game-layout,
+  .lobby-form-grid,
+  .batch-grid,
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  /* Headers wrap instead of overflowing. */
+  .lobby-header,
+  .board-page-header,
+  .app-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* The agent activity feed: cap its height so the board stays visible above
+     it, and let it scroll independently. */
+  .agent-panel {
+    max-height: 55vh;
+    overflow-y: auto;
+  }
+
+  .agent-feed {
+    font-size: 0.82rem;
+  }
+
+  /* Bigger, finger-friendly buttons and selects. */
+  button,
+  select,
+  input {
+    min-height: 40px;
+    font-size: 1rem;
+  }
+
+  .lobby {
+    padding: 14px 12px;
+  }
+
+  /* Reduce big headings so they don't dominate a small screen. */
+  h1 {
+    font-size: 1.4rem;
+  }
+  h2 {
+    font-size: 1.15rem;
+  }
+
+  /* The evaluation needle / board frame already go 100% width via the 820px
+     rule; ensure no horizontal overflow from wide tables in the agent feed. */
+  .agent-result-md table,
+  .agent-result-pre {
+    max-width: 100%;
+    overflow-x: auto;
+    display: block;
+  }
+
+  /* BOARD: fill the phone width. The default min(80vh, 100cqw) lets the
+     viewport HEIGHT cap squeeze the board thin on a tall phone screen; on a
+     phone we want the board to take the full available width and stay square.
+     Drive size from width only and keep it square with aspect-ratio. */
+  .board-frame-wrap {
+    display: block;
+    width: 100%;
+  }
+  .board-frame {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+  .board-panel,
+  .board-with-eval > .board-panel {
+    width: 100%;
+  }
+  /* The eval bar height tracks the (now width-based) square board. */
+  .eval-bar {
+    height: auto;
+    align-self: stretch;
+    margin-top: 0;
+  }
+  /* chessground fills its frame. */
+  .board-frame .cg-wrap,
+  .cg-wrap {
+    width: 100% !important;
+    height: 100% !important;
+  }
 }

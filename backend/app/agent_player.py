@@ -92,7 +92,60 @@ _SYSTEM_PROMPT_EXTRA = (
     "game — do not reload it on later turns unless the chess__ tools are "
     "missing from your tool list. Earlier turns of this game remain in your "
     "context; stale tool outputs from previous turns are pruned and marked "
-    "as such — re-run a tool if you need fresh eyes on the position."
+    "as such — re-run a tool if you need fresh eyes on the position. "
+    "**PAWN WARNINGS:** The position radar will warn you about opponent passed pawns, "
+    "especially ones 1–2 moves from promotion. When imagining your move, if the output says "
+    "'PAWN PROMOTION WARNING', it means opponent CAN promote after your move — examine the "
+    "opponent's legal replies carefully. If they have ANY safe move (not check, not mate for you), "
+    "they promote and you likely lose. Only play moves that allow promotion if it delivers "
+    "checkmate to them or forces mate faster than stopping the pawn. "
+    "**MANDATORY MOVE 1 SEQUENCE (read in exact order or you will blunder):** "
+    "(1) use_skill('chess'); (2) chess__show_position to see the radar; "
+    "(3) SCAN THE RADAR OUTPUT for lines like '- You have two or more major pieces: the **ladder mate** is fully forced — read `mates/two-rook-ladder-mate.md`.'; "
+    "(4) IF THE RADAR NAMES A PAGE, you MUST call read_reference IMMEDIATELY before doing ANYTHING else (before show_position, before imagining moves, before planning). "
+    "For example: read_reference(skill_name=\"chess\", path=\"mates/two-rook-ladder-mate.md\"). "
+    "(5) THEN chess__show_position again to re-read the position with fresh eyes; "
+    "(6) THEN plan the game citing the wiki technique; (7) THEN make your first move. "
+    "The radar's wiki recommendation is your top priority — it overrides all other considerations. "
+    "Do not skip it, do not defer it, do not plan first and read later. Read the wiki page the radar names, or you will make tactical blunders. "
+    "This sequence is non-negotiable on move 1."
+    "**RE-READ WHEN MATERIAL CHANGES - MANDATORY:** Every turn, check your standing plan (shown "
+    "at the start of the turn). If your plan says 'K+2R ladder' but you now have only K+R (one rook), "
+    "your plan is STALE. IMMEDIATELY: (1) call `read_reference(skill_name=\"chess\", "
+    "path=\"mates/king-rook-mate.md\")` to learn K+R technique (fence-and-opposition, completely "
+    "different), (2) update your plan to name the K+R technique, then move. Do NOT skip this step. "
+    "Your instinct says 'I know how to play king and rook', but K+R requires a specific drill "
+    "(opposite corner, then fence). Herding does not work. Wiki pages stay in your context; "
+    "re-reading is FREE. Check your plan every turn — material changes invalidate it. "
+    "**IMPORTANT: On move 1, after reading the wiki page, write a standing plan via the `plan` argument. "
+    "The plan must be 2–3 sentences that name: (1) the mating pattern or "
+    "objective (e.g., 'Ladder mate: drive king to rank 8'), (2) the immediate "
+    "tactical aim for the next 2–3 moves (e.g., 'eliminate passed pawns first, "
+    "then coordinate rooks'), and (3) your target edge/rank for the king. "
+    "Refer to this plan EXPLICITLY on every subsequent move before playing "
+    "(e.g., 'Per my plan: eliminate threats, now playing X'). Update the plan "
+    "each time your position or tactic changes, not just once. Every move "
+    "requires you to write a DETAILED reasoning line (2–3 sentences minimum) "
+    "that cites your plan and explains what threat you are addressing or what "
+    "progress you are making. Write so a reader can verify you knew what you "
+    "were doing. "
+    "**CRITICAL FOR LADDER MATES (two rooks): The pattern is to check the king with "
+    "one rook on a rank, the king steps toward the next rank, then the OTHER rook "
+    "checks on that next rank, driving the king to the edge. THE TRAP: if the rook "
+    "you want to bring to the next rank would land on a square the king can capture "
+    "(king is adjacent), you cannot play it there. The fix is NOT to abandon the "
+    "ladder — it is to FIRST slide that rook FAR AWAY along its current rank (to the "
+    "opposite side of the board, a file far from the king), THEN deliver the check on "
+    "the next rank from that safe distance. So: when the natural ladder move hangs a "
+    "rook to the king, reason: 'ladder needs rook on rank N, but king could take it — "
+    "first move that rook to a far file on its current rank, then check next turn.' "
+    "For a vertical (file-based) ladder, swap rank/file: slide the rook to a far rank "
+    "first. Use imagine_move to confirm the rook's new square is NOT adjacent to the "
+    "enemy king before committing. "
+    "If a move would hang a rook but the opponent's ONLY reply gives check/mate or "
+    "loses material, PLAY IT — do not flinch. Check the opponent's legal replies in "
+    "the imagine_move output; if all replies are bad for them, the hanging piece is "
+    "irrelevant. Hesitating and changing moves turns a 5-move mate into a 50-move grind."
 )
 
 
@@ -255,35 +308,6 @@ def _looks_like_transient_network(exc: Exception) -> bool:
         or "Connection error" in msg
         or "ConnectionResetError" in name
     )
-
-
-def _drill_state_for_prompt(board: chess.Board) -> str:
-    """Drill-state advisor line(s) for the turn prompt, or ''.
-
-    The advisor lives in the skill's _radar.py (it is also embedded in
-    chess__show_position output), but transcripts show the model skips
-    show_position on half its turns and then freestyles out of the drill
-    (game 3a787edc: 8 of 15 turns never saw the drill line). The turn
-    prompt already carries mechanical board facts (FEN, legal moves);
-    the drill state is the same class of fact, so deliver it the same way.
-    Best-effort: any import or compute failure returns ''.
-    """
-    try:
-        import importlib.util
-        global _RADAR_MODULE
-        if "_RADAR_MODULE" not in globals() or _RADAR_MODULE is None:
-            radar_path = SKILLS_DIR / "chess" / "scripts" / "_radar.py"
-            spec = importlib.util.spec_from_file_location("_chess_radar", radar_path)
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            _RADAR_MODULE = module
-        lines = _RADAR_MODULE._drill_state_lines(board, board.turn)
-        return "\n" + "\n".join(lines) if lines else ""
-    except Exception:
-        return ""
-
-
-_RADAR_MODULE = None
 
 
 _BUDGET_REMINDER_TEMPLATE = (
@@ -576,13 +600,18 @@ class AgentPlayer(Player):
                 "chess__show_position."
             )
         )
+        # The turn prompt carries only bare facts (whose move, the FEN, the
+        # legal moves) plus the agent's own standing plan/goal. It deliberately
+        # does NOT analyse the position or hint at moves — all of that (the
+        # mate/draw radar, the basic-mate drill state, threats) comes from the
+        # agent's TOOLS (chess__show_position), so the prompt stays a neutral
+        # "your turn" and the model does the reasoning via the tools.
         base_prompt = (
             (f"Opponent played {last_san}." if last_san else "Game start.")
             + f"\n\nCurrent position (FEN):\n{board.fen()}"
             + f"\nLegal moves: {legal_line}"
             + plan_line
             + goal_line
-            + _drill_state_for_prompt(board)
             + skill_line
         )
 

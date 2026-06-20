@@ -2,7 +2,7 @@
 category: endgames
 description: King-and-pawn ending rules — king in front of its pawn wins, the opposition, counting pawn races, and how to create a passed pawn.
 triggers: [pawn endgame, king and pawn, passed pawn, promotion, pawn race, opposition, few pieces left]
-related_pages: [patterns/mating-patterns/king-queen-mate, strategic-thinking/convert-advantage, principles/avoid-stalemate]
+related_pages: [mates/king-queen-mate, strategy/convert-advantage, principles/avoid-stalemate]
 tags: [endgame, pawn, king, opposition, technique]
 status: draft
 updated: 2026-06-10
@@ -21,7 +21,7 @@ them, not inspiration.
 The king becomes a fighting piece: **the side whose king is more active
 usually wins.** One extra pawn promotes if its king escorts it from in
 front; promotion converts to a won queen ending
-([[patterns/mating-patterns/king-queen-mate]]).
+([[mates/king-queen-mate]]).
 
 ## What to do
 

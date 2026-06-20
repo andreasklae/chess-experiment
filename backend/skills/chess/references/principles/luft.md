@@ -2,7 +2,7 @@
 category: principles
 description: Give your castled king an escape square (luft) with h3 or g3 when your back rank is weak — one tempo that disarms every back-rank mate.
 triggers: [weak back rank, castled king behind pawns, no escape square, enemy rook on open file]
-related_pages: [patterns/mating-patterns/back-rank-mate, patterns/deflection]
+related_pages: [mates/back-rank-mate, tactics/deflection]
 tags: [principle, king-safety, back-rank, prophylaxis]
 status: draft
 updated: 2026-06-10
@@ -21,7 +21,7 @@ rank. Especially urgent when heavy pieces are still on the board.
 "Luft" (air) is a pawn move — usually h3, sometimes g3 — that gives the
 castled king a flight square. Without it, any enemy rook or queen landing on
 your first rank with check is instantly mate
-([[patterns/mating-patterns/back-rank-mate]]). One quiet tempo removes a
+([[mates/back-rank-mate]]). One quiet tempo removes a
 whole family of mates permanently.
 
 ## What to do

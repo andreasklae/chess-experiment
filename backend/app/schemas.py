@@ -53,7 +53,7 @@ class CreateGameRequest(BaseModel):
     # Optional forced-draw ply cap override (default 150). Puzzle runs use a
     # tight cap: a basic mate that takes 100 plies has failed — adjudicate
     # it quickly instead of grinding to the global cap.
-    max_half_moves: Annotated[int | None, Field(default=None, ge=2, le=150)] = None
+    max_half_moves: Annotated[int | None, Field(default=None, ge=2, le=300)] = None
 
     @model_validator(mode="after")
     def validate_sides(self) -> "CreateGameRequest":
@@ -141,7 +141,7 @@ class GameState(BaseModel):
     paused: bool = False
     # Forced-draw ply cap (Game.max_half_moves). Exposed so the chess skill's
     # radar can warn the agent when the budget to convert a win is running out.
-    move_cap: int = 150
+    move_cap: int = 300
     # Starting position of the game (puzzle mode may differ from standard).
     # Consumers replaying uci_moves MUST start from this FEN.
     initial_fen: str = chess.STARTING_FEN
