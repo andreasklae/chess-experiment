@@ -102,3 +102,33 @@ class TestImagineLine:
         r = _run(["--fen", FEN, ""])
         assert r.returncode != 0
         assert "ONE move at a time" in r.stdout
+
+
+class TestImagineLineNudge:
+    """imagine_move (agent_color=None) nudges the agent to calculate the LINE
+    on sharp/forcing/material-changing moves; it stays silent on quiet moves and
+    when imagine_line itself is rendering the frontier (agent_color set)."""
+
+    NUDGE = "Calculate before committing"
+
+    def _out(self, im, fen, san, agent=None):
+        b = chess.Board(fen)
+        return im.render_imagine(b, b.parse_san(san), agent_color=agent)
+
+    def test_trade_nudges(self, im):
+        # Bxc6: capture that is recaptured (bxc6/dxc6) — a trade.
+        fen = "r1bqkbnr/1ppp1ppp/p1n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4"
+        assert self.NUDGE in self._out(im, fen, "Bxc6")
+
+    def test_check_nudges(self, im):
+        out = self._out(im, "4k3/8/8/8/8/8/8/R5K1 w - - 0 1", "Ra8+")
+        assert self.NUDGE in out and "CHECK" in out
+
+    def test_quiet_move_no_nudge(self, im):
+        out = self._out(im, "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", "Nf3")
+        assert self.NUDGE not in out
+
+    def test_no_nudge_inside_imagine_line(self, im):
+        # agent_color set => rendered by imagine_line; must not nudge (no recursion).
+        fen = "r1bqkbnr/1ppp1ppp/p1n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4"
+        assert self.NUDGE not in self._out(im, fen, "Bxc6", agent=chess.WHITE)

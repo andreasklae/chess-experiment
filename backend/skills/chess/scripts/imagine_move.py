@@ -610,6 +610,32 @@ def render_imagine(
         out.append("")
         out.append(render_moves_table(board_after, legal))
 
+    # Nudge: if this move is sharp/forcing/material-changing, one ply is not
+    # enough — tell the agent to calculate the LINE before committing. Only in
+    # the standalone imagine_move tool (agent_color is None); not when
+    # imagine_line itself rendered this frontier. Never on mate (obvious win) or
+    # a clean free capture (nothing to recapture).
+    if agent_color is None and not board_after.is_checkmate() and not board_after.is_stalemate():
+        reasons = []
+        if board_before.is_capture(move) and attacker_chain:
+            reasons.append("a TRADE (your piece can be recaptured here)")
+        if hanging_warning or bad_trade_warning or newly_hanging:
+            reasons.append("a SACRIFICE / material giveaway")
+        if board_after.is_check():
+            reasons.append("a CHECK (a forcing line)")
+        if discoveries:
+            reasons.append("a DISCOVERED ATTACK")
+        if reasons:
+            out.append("")
+            out.append(
+                "**⮕ Calculate before committing.** This move is "
+                + ", and ".join(reasons)
+                + " — a sharp, forcing, or material-changing move where ONE ply "
+                "is not enough. Before `chess__make_move`, play it out with "
+                "`chess__imagine_line` (this move, the opponent's best reply, your "
+                "follow-up — add one move at a time) and confirm the line works."
+            )
+
     return "\n".join(out)
 
 
