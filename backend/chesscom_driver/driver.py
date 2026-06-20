@@ -276,6 +276,34 @@ class ChessComDriver:
             target_elo=target_elo,
         )
 
+    async def _robust_click(self, locator: Any, *, timeout: int = 5_000) -> None:
+        """Click ``locator``, surviving page-level overlays.
+
+        chess.com periodically adds full-page overlays (consent dialogs,
+        logged-out marketing nudges) that intercept pointer events even after
+        the known intro-modal / OneTrust dismissal — Playwright then reports
+        ``<html> ... intercepts pointer events`` and the normal click times
+        out. We first try a real click; on any failure we fall back to a
+        JS-dispatched ``element.click()``, which fires the element's handler
+        regardless of what is painted on top. Last resort: a forced click."""
+        try:
+            await locator.scroll_into_view_if_needed(timeout=timeout)
+        except Exception:
+            pass
+        try:
+            await locator.click(timeout=timeout)
+            return
+        except Exception:
+            pass
+        # Fallback 1: dispatch the click in the page (bypasses overlay hit-test).
+        try:
+            await locator.evaluate("el => el.click()")
+            return
+        except Exception:
+            pass
+        # Fallback 2: forced click (skips actionability/interception checks).
+        await locator.click(timeout=timeout, force=True)
+
     async def _ensure_engine_group_open(self) -> None:
         """Expand the Engine bot accordion if it is collapsed.
 
@@ -310,8 +338,7 @@ class ChessComDriver:
         if await engine_group.locator('input.slider-input').count() > 0:
             return
 
-        await toggle.scroll_into_view_if_needed(timeout=5_000)
-        await toggle.click(timeout=5_000)
+        await self._robust_click(toggle, timeout=5_000)
 
         try:
             await engine_group.locator('input.slider-input').wait_for(
@@ -338,7 +365,7 @@ class ChessComDriver:
         # Multiple possible labels - the Play button is the most reliable.
         play = self._page.get_by_role("button", name=re.compile(r"^Play$", re.I))
         try:
-            await play.first.click(timeout=5_000)
+            await self._robust_click(play.first, timeout=5_000)
         except Exception as exc:  # noqa: BLE001
             raise ChessComSetupError("Could not click the Play button") from exc
 
