@@ -110,6 +110,19 @@ enough information is to play. Concretely:
   - **defensive / endgame positions** — how to **hold a pawn**, defend a worse
     endgame, or stop the opponent's plan over the next few moves. (This is where
     the agent has quietly lost worse endgames before — calculate, don't drift.)
+  - **the opening too** — openings are tricky and lost games start here. Use it
+    when a line looks forcing, a gambit or sacrifice is offered, you are unsure
+    how to develop, or the opponent's setup looks dangerous.
+
+  **Two feelings are themselves the trigger — do not push them aside, calculate:**
+  - **When you feel THREATENED** — the opponent's last move eyes your king or a
+    weak square (f2/f7, your back rank), or threatens to win material — imagine
+    THEIR threatening move and read what it actually does (the report flips to
+    their side so you see the threat clearly), then find the move that meets it.
+    The agent has walked into opening mates (e.g. Qxf2#) precisely by **not**
+    checking the threat — do not repeat that.
+  - **When you HESITATE** — if you are unsure which move is right or whether a
+    move is safe, that hesitation IS the signal to calculate, not guess.
 
   In all of these, one ply of `chess__imagine_move` is not enough — play the
   line out a few moves: add ONE move at a time (your move, the opponent's best
