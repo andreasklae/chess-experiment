@@ -392,13 +392,30 @@ def _moved_piece_hanging_warning(
     )
 
 
-def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
+def render_imagine(
+    board_before: chess.Board, move: chess.Move, agent_color: bool | None = None
+) -> str:
     """Markdown-formatted one-ply look-ahead report for `move` from `board_before`.
-    Caller must have already verified the move is legal."""
+    Caller must have already verified the move is legal.
+
+    The report is MOVER-RELATIVE: "Moved piece status" / "Newly hanging own
+    pieces" describe the side that just moved, and "Opponent legal replies" /
+    "Enemy king mobility" describe the other side. `chess__imagine_move` always
+    imagines the agent's OWN move, so that is unambiguous and it passes
+    ``agent_color=None``.
+
+    `chess__imagine_line` can imagine the OPPONENT's move too. When
+    ``agent_color`` is given and the mover is the opponent (mover ≠
+    agent_color), we keep the single mover-relative rendering but PREPEND an
+    orientation banner and relabel the two most invertible headers, so the agent
+    is never confused about whose pieces are whose."""
     board_after = board_before.copy()
     board_after.push(move)
 
     mover_color = board_before.turn
+    # Opponent-move framing: only when the caller declared the agent's colour
+    # AND the move being shown is the opponent's.
+    opp_move = agent_color is not None and mover_color != agent_color
     moved_piece = board_after.piece_at(move.to_square)
 
     attacker_chain = compute_attack_chain(board_after, not mover_color, move.to_square)
@@ -449,6 +466,21 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
     )
 
     out: list[str] = []
+    if opp_move:
+        you = color_name(agent_color)
+        them = color_name(mover_color)
+        out.append(
+            f"> ⟳ **This is the OPPONENT's ({them}) move** — not yours. Read the "
+            f"perspective carefully:\n"
+            f"> - 'Moved piece status', 'Side-effects', 'Newly hanging' below are "
+            f"about {them.upper()}'s pieces (the opponent's).\n"
+            f"> - **'Replies' are YOUR ({you}) options** — what you can play after "
+            f"this line.\n"
+            f"> - **'Enemy king mobility'** counts YOUR ({you}) king's squares — "
+            f"after the opponent's move you want this HIGH (your king free), the "
+            f"opposite of when imagining your own move."
+        )
+        out.append("")
     out.append(f"## Move: {_move_summary(board_before, move)}")
     out.append("")
     out.append(f"**Check:** {check_text}")
@@ -517,7 +549,10 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
     out.append(f"- **no longer defending:** {_format_squares_with_pieces(board_before, no_longer_defending)}")
     out.append("")
 
-    out.append("## Newly hanging own pieces")
+    out.append(
+        f"## {color_name(mover_color).capitalize()}'s newly hanging pieces (opponent's)"
+        if opp_move else "## Newly hanging own pieces"
+    )
     out.append("")
     if newly_hanging:
         for h in newly_hanging:
@@ -562,7 +597,10 @@ def render_imagine(board_before: chess.Board, move: chess.Move) -> str:
         )
         out.append("")
 
-    out.append("## Opponent legal replies")
+    out.append(
+        f"## Your ({color_name(agent_color)}) replies after this line"
+        if opp_move else "## Opponent legal replies"
+    )
     out.append("")
     legal = list(board_after.legal_moves)
     if not legal:

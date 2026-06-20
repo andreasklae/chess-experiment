@@ -1,34 +1,41 @@
 #!/usr/bin/env python3
-"""Imagine a SEQUENCE of moves and watch the position evolve — a multi-ply
-look-ahead for planning a maneuver, where chess__imagine_move only sees one ply.
+"""Imagine a SHORT LINE of moves and see the position at its end — a multi-ply
+look-ahead for planning, where chess__imagine_move only sees one ply.
 
-You supply the WHOLE line yourself (your moves AND the opponent's replies you
-expect): the tool plays them out on a copy of the board and reports, after each
-move, how the position changed — most importantly the lone king's **free region**
-(its 'net') and mobility, so you can see whether your plan actually shrinks the
-net toward the mating corner. This is calculation YOU drive (the tool searches
-nothing and recommends nothing); it just lets you see several moves ahead at
-once, which is how the bishop-pair and bishop+knight mates are planned.
+Use it ONE MOVE AT A TIME. Do NOT type a whole 5-move line up front: add a
+single move, read the result, then decide the next move. You may **branch**
+(change the last move and call again) and **backtrack** (drop moves from the
+end). The line is at most **5 moves (plies) ahead** — that is the planning
+horizon; beyond it, commit a move and re-plan.
 
-The live game is NOT changed — nothing is committed. Use chess__make_move to
-play the first move of a line you like.
+You supply the moves yourself (yours AND the opponent's replies you expect),
+alternating, starting with YOUR move. The tool plays them on a copy of the
+board and shows, for the LAST move of the line, the SAME full report as
+chess__imagine_move (check/mate, material, the moved piece's safety, newly
+hanging pieces, the legal replies, and basic-mate confinement facts). A
+breadcrumb of the line so far is shown above it.
+
+This is calculation YOU drive — the tool searches nothing and recommends
+nothing. The live game is NOT changed; nothing is committed. When you like a
+line, play its FIRST move with chess__make_move.
+
+Perspective: when the last move of the line is the OPPONENT's, the report is
+shown from their side with a clear banner — 'replies' there are then YOUR
+options, and 'enemy king mobility' is your own king's.
 
 Arguments:
-  moves   Comma-separated moves in UCI or SAN, alternating sides starting with
-          YOURS, e.g. "Bd3,Kg7,Bg5,Kf7" or "f1d3,g8g7,c1g5". Required.
+  moves   Comma/space-separated moves in UCI or SAN, alternating, starting with
+          YOURS. 1-5 plies. e.g. "Bd3,Kg7,Bg5" or "f1d3 g8g7 c1g5".
   --fen   Start from this position instead of the live game (chain from a FEN a
           previous tool returned).
 
 Exposed as chess__imagine_line after use_skill('chess'). Example:
-  chess__imagine_line(moves="Kc3,Ke5,Bd3,Kd5,Ne3,Ke5")
-
-If a move in the line is illegal, the tool reports which one and why, and shows
-the position reached just before it.
+  chess__imagine_line(moves="Kc3")          # one move at a time
+  chess__imagine_line(moves="Kc3,Ke5,Bd3")  # extend, having seen Kc3's result
 """
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -37,52 +44,25 @@ import chess
 _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
-from _eval import (  # noqa: E402
-    bishop_corner_targets,
-    classify_illegal_move,
-    king_free_region,
-    parse_move,
-    render_king_net,
-)
+from _eval import parse_move  # noqa: E402
 from _live import board_with_history, fetch_state  # noqa: E402
+from imagine_move import render_imagine  # noqa: E402
+
+_MAX_PLIES = 5
 
 
-def _lone_king_color(board: chess.Board):
-    """Colour reduced to king (+ pawns) while the other side has pieces, else None."""
-    for color in (chess.WHITE, chess.BLACK):
-        force = sum(len(board.pieces(pt, color))
-                    for pt in (chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT))
-        other = sum(len(board.pieces(pt, not color))
-                    for pt in (chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT))
-        if force == 0 and other > 0:
-            return color
-    return None
-
-
-def _king_mobility(board: chess.Board, color: bool) -> int:
-    b = board.copy(stack=False)
-    if b.turn != color:
-        try:
-            b.push(chess.Move.null())
-        except (AssertionError, ValueError):
-            return 0
-    ksq = board.king(color)
-    return sum(1 for m in b.legal_moves if m.from_square == ksq)
-
-
-def _stats(board: chess.Board) -> str:
-    """One-line geometry readout focused on a lone-king mate: net size, the
-    lone king's mobility, and its distance to the nearest target corner."""
-    lk = _lone_king_color(board)
-    if lk is None:
-        return ""
-    winner = not lk
-    region = len(king_free_region(board, lk))
-    mob = _king_mobility(board, lk)
-    corners = bishop_corner_targets(board, winner)
-    ek = board.king(lk)
-    cd = min(chess.square_distance(ek, c) for c in corners) if ek is not None else "-"
-    return f"net={region} kingmoves={mob} corner_dist={cd}"
+def _flag(board: chess.Board) -> str:
+    if board.is_checkmate():
+        return "#"
+    if board.is_stalemate():
+        return "stalemate"
+    if board.move_stack and (
+        board.can_claim_threefold_repetition() or board.can_claim_fifty_moves()
+    ):
+        return "draw"
+    if board.is_check():
+        return "+"
+    return ""
 
 
 def main() -> None:
@@ -97,7 +77,9 @@ def main() -> None:
         return
     if not args.moves.strip():
         print(json.dumps({"ok": False, "error":
-              "Missing moves. Call e.g. chess__imagine_line(moves=\"Kc3,Ke5,Bd3\")."}))
+              "Missing moves. Imagine ONE move at a time, e.g. "
+              "chess__imagine_line(moves=\"Kc3\"); then extend it move by move "
+              "(max 5 ahead)."}))
         sys.exit(1)
 
     if args.fen:
@@ -108,40 +90,66 @@ def main() -> None:
     else:
         board = board_with_history(fetch_state())
 
+    agent_color = board.turn  # the side to move on the live/start board = you
     tokens = [t.strip() for t in args.moves.replace(" ", ",").split(",") if t.strip()]
-    lines = ["# Imagine line", "", f"Start: `{board.fen()}`", "",
-             f"Start position — {_stats(board) or 'not a lone-king ending'}", ""]
-    rows = ["| # | side | move | net | kmoves | corner_d | flag |",
-            "|---|------|------|-----|--------|----------|------|"]
+
+    if len(tokens) > _MAX_PLIES:
+        print(json.dumps({"ok": False, "error":
+              f"Too many moves ({len(tokens)}). Imagine at most {_MAX_PLIES} "
+              f"ahead, ONE move at a time: add a single move, read the result, "
+              f"then decide the next. Drop moves to backtrack; change the last "
+              f"move to branch."}))
+        sys.exit(1)
+
+    # Apply all but the last move silently; render the LAST move in full.
+    breadcrumb: list[str] = []
+    last_move = None
+    board_before_last = None
     for i, tok in enumerate(tokens, 1):
         try:
             mv = parse_move(board, tok)
         except ValueError as exc:
-            lines.append(f"⚠ move {i} (`{tok}`) is illegal in the position "
-                         f"reached: {exc}")
-            lines.append(f"Position reached before it: `{board.fen()}`")
-            break
+            print("\n".join([
+                "# Imagine line",
+                "",
+                "Breadcrumb: " + (" ".join(breadcrumb) if breadcrumb else "(none)"),
+                "",
+                f"⚠ Move {i} (`{tok}`) is illegal in the position reached: {exc}",
+                f"Position reached before it: `{board.fen()}`",
+                "Fix that move (or backtrack) and call again — one move at a time.",
+            ]))
+            sys.exit(1)
+        side = "W" if board.turn == chess.WHITE else "B"
         san = board.san(mv)
-        mover = "white" if board.turn == chess.WHITE else "black"
+        if i == len(tokens):
+            board_before_last = board.copy()
+            last_move = mv
         board.push(mv)
-        flag = ("mate" if board.is_checkmate() else "stalemate" if board.is_stalemate()
-                else "check" if board.is_check() else "")
-        st = _stats(board)
-        net = mob = cd = "-"
-        if st:
-            parts = dict(p.split("=") for p in st.split())
-            net, mob, cd = parts.get("net", "-"), parts.get("kingmoves", "-"), parts.get("corner_dist", "-")
-        rows.append(f"| {i} | {mover} | {san} | {net} | {mob} | {cd} | {flag} |")
+        breadcrumb.append(f"{i}.{side} {san}{_flag(board)}")
         if board.is_checkmate() or board.is_stalemate():
+            # The line ends here regardless of remaining tokens.
+            if i < len(tokens):
+                breadcrumb.append(f"(line ends — {_flag(board) or 'game over'})")
+            board_before_last = board_before_last if last_move else None
             break
 
-    lines += rows
-    lines += ["", "Final position:", "```", render_king_net(board, _lone_king_color(board), None)
-              if _lone_king_color(board) is not None else board.unicode(), "```",
-              f"FEN: `{board.fen()}`",
-              "", "_Read the net column: it should fall toward the corner. This is your "
-              "own calculation — nothing here is a recommendation._"]
-    print("\n".join(lines))
+    out = [
+        "# Imagine line  (your own calculation — nothing committed)",
+        "",
+        f"Line: {' '.join(breadcrumb)}",
+        "",
+        f"_Showing the full report for the LAST move below. Extend ONE move at a "
+        f"time (max {_MAX_PLIES} ahead); change the last move to branch, drop "
+        f"moves to backtrack._",
+        "",
+        "---",
+        "",
+    ]
+    if last_move is not None and board_before_last is not None:
+        out.append(render_imagine(board_before_last, last_move, agent_color=agent_color))
+    else:
+        out.append("_(no move rendered)_")
+    print("\n".join(out))
 
 
 if __name__ == "__main__":

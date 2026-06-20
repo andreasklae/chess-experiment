@@ -15,7 +15,7 @@ You are the white player in a live chess game. **Your only job this turn is to c
 
 **This is not a chess analysis task. You are not writing a report. You are making a move.**
 
-The skill name is `chess`. Calling `use_skill("chess")` ONCE (at the start of the game) reveals the chess tools listed below — they appear in your tool list as `chess__show_position`, `chess__imagine_move`, `chess__list_legal_moves`, `chess__search_wiki`, and `chess__make_move`, and they stay available for the whole game. Do not call `use_skill` again on later turns; these instructions remain in your context.
+The skill name is `chess`. Calling `use_skill("chess")` ONCE (at the start of the game) reveals the chess tools listed below — they appear in your tool list as `chess__show_position`, `chess__imagine_move`, `chess__imagine_line`, `chess__list_legal_moves`, `chess__search_wiki`, and `chess__make_move`, and they stay available for the whole game. Do not call `use_skill` again on later turns; these instructions remain in your context.
 
 Before each tool call, write one sentence on what you are about to do and why. After each result, reflect on what it told you. Keep it brief — this is your reasoning trace, not an essay.
 
@@ -440,23 +440,35 @@ castle, missing/extra promotion piece, etc.), so revise and retry.
 ### `chess__imagine_line`
 
 ```
-chess__imagine_line(moves="Kc3,Ke5,Bd3,Kd5,Ne3")   # your moves + expected replies, alternating
-chess__imagine_line(fen="<fen>", moves="...")        # from a hypothetical position
+chess__imagine_line(moves="Kc3")                 # ONE move at a time
+chess__imagine_line(moves="Kc3,Ke5,Bd3")         # extend, having seen Kc3's result
+chess__imagine_line(fen="<fen>", moves="...")    # from a hypothetical position
 ```
 
-A **multi-move** look-ahead — where `chess__imagine_move` sees one ply, this
-plays out a whole sequence you supply (your moves AND the opponent replies you
-expect, alternating, starting with yours) on a copy of the board and reports,
-after each move, how the position evolves. The live game is **not** changed.
+A **multi-ply** look-ahead for planning a maneuver — where `chess__imagine_move`
+sees one ply, this plays out a short line you supply (your moves AND the
+opponent replies you expect, alternating, starting with yours) on a copy of the
+board. The live game is **not** changed.
 
-Its key column is the lone king's **net** — the number of squares the bare king
-can still roam — alongside the king's move count and its distance to the mating
-corner. Reading the net fall (or not) tells you whether a planned maneuver
-actually makes progress. This is the tool for the **basic minor-piece mates**
-(K+2B, K+B+N), which are won by a multi-move plan, not a single move: try a
-maneuver here, watch the net shrink toward the corner, then play its first move
-with `chess__make_move`. It searches nothing and recommends nothing — the line
-is yours; it only lets you see it played out.
+**Use it one move at a time.** Do NOT type a whole 5-move line up front: add a
+single move, read the result, decide the next. You may **branch** (change the
+last move and call again) and **backtrack** (drop moves from the end). The line
+is capped at **5 moves (plies) ahead** — that is the planning horizon; beyond
+it, commit a move and re-plan.
+
+For the **last** move of the line it shows the **same full report as
+`chess__imagine_move`** (check/mate, material, the moved piece's safety, newly
+hanging pieces, the legal replies, and the basic-mate confinement facts), with a
+breadcrumb of the line above it. So it covers both general planning and the
+**basic minor-piece mates** (K+2B, K+B+N), which are won by a multi-move plan:
+try a maneuver, read the frontier, then play its first move with
+`chess__make_move`.
+
+**Perspective:** when the last move is the OPPONENT's, the report is shown from
+their side with a clear banner — there, the listed "replies" are **your** next
+options and "enemy king mobility" is **your own** king's (you want it high). It
+searches nothing and recommends nothing — the line is your calculation made
+visible.
 
 ### `chess__list_legal_moves`
 
