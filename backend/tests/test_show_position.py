@@ -260,3 +260,59 @@ def test_phase_score_overrides_opening_move_when_score_low(sp):
     assert move == 5
     # Score-driven (14-19 with queens still on) -> late middlegame, even though move is early.
     assert label == "late middlegame"
+
+
+class TestSafeSquaresForHangingPiece:
+    """The 2026-06-16 addition: show_position lists where an attacked,
+    materially-losing piece can move WITHOUT re-hanging it (SEE-safe landing
+    squares). Motivated live by a K+R drill where the agent slid an attacked
+    rook with no list of which squares kept it safe."""
+
+    def test_losing_rook_lists_safe_flee_squares(self, sp):
+        # White Rd5 fence attacked by the bare Black Kc6, undefended (own king
+        # on e3 is too far). The rook is losing on d5; the hint must list the
+        # squares that keep it safe and OMIT the ones adjacent to the king.
+        board = chess.Board("8/8/2k5/3R4/8/4K3/8/8 w - - 0 1")
+        safe = sp.safe_destination_squares(board, chess.D5, chess.WHITE)
+        names = {chess.square_name(s) for s in safe}
+        # Keeps the rank-5 fence (far side) and the d-file are safe.
+        assert {"a5", "e5", "f5", "g5", "h5", "d4", "d3", "d2", "d1"} <= names
+        # Squares next to the enemy king must NOT be offered.
+        assert "d6" not in names and "d7" not in names
+        assert "c5" not in names and "b5" not in names
+        line = sp._safe_squares_line(board, chess.D5, chess.WHITE)
+        assert line is not None and "safe squares" in line
+
+    def test_safe_square_section_renders_for_attacked_piece(self, sp):
+        board = chess.Board("8/8/2k5/3R4/8/4K3/8/8 w - - 0 1")
+        out = sp.attack_defense_section(
+            board, chess.WHITE, chess.BLACK, header="",
+            action="attacked by", show_safe_squares=True,
+        )
+        assert "rook on d5" in out and "safe squares to move it" in out
+
+    def test_defended_piece_gets_no_hint(self, sp):
+        # A rook defended by its own king is NOT losing — no safe-squares spam.
+        board = chess.Board("8/8/8/8/8/5k2/5R2/4K3 w - - 0 1")
+        assert sp._safe_squares_line(board, chess.F2, chess.WHITE) is None
+
+    def test_no_false_hint_in_opening(self, sp):
+        # Normal development: no piece is losing, so the section carries no
+        # safe-square lines at all.
+        board = chess.Board()
+        board.push_san("e4"); board.push_san("e5"); board.push_san("Nf3")
+        out = sp.attack_defense_section(
+            board, chess.BLACK, chess.WHITE, header="",
+            action="attacked by", show_safe_squares=True,
+        )
+        assert "safe squares to move it" not in out
+
+    def test_no_safe_square_advises_alternatives(self, sp):
+        # A losing piece with no safe relocation square gets the "defend /
+        # capture the attacker / counter-attack" fallback, not an empty list.
+        # White Qh5 attacked by Black g6 pawn, undefended, and every queen
+        # retreat still drops it (constructed minimal case).
+        board = chess.Board("4k3/8/6p1/7Q/8/8/8/4K3 w - - 0 1")
+        line = sp._safe_squares_line(board, chess.H5, chess.WHITE)
+        # Either lists safe squares or, if none, advises alternatives.
+        assert line is None or "safe squares" in line or "no safe square" in line

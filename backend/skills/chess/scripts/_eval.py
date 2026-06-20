@@ -662,6 +662,225 @@ def confine_state(board: chess.Board, own: bool) -> dict | None:
     }
 
 
+# ── Minor-piece basic mates (K+2B, K+B+N): corner targeting ────────────────
+#
+# Unlike the major-piece mates (which mate on any edge), the two-bishop and
+# bishop+knight mates must drive the enemy king into a CORNER — and for B+N,
+# specifically the corner of the bishop's own colour. The helpers below are
+# pure geometry: nearest target corner, its distance, and a confine-state that
+# classifies "advance the king" vs "reposition a piece" the same way
+# confine_state does for K+R/K+Q. They name no move; the agent executes with
+# imagine_move. (See knowledge-base/decisions/2026-06-02-tool-fairness-rulebook.md.)
+
+_ALL_CORNERS = [chess.A1, chess.H1, chess.A8, chess.H8]
+# Square colour: True == light. python-chess: a1 is dark.
+_LIGHT_CORNERS = [sq for sq in _ALL_CORNERS if (chess.square_file(sq) + chess.square_rank(sq)) % 2 == 1]
+_DARK_CORNERS = [sq for sq in _ALL_CORNERS if (chess.square_file(sq) + chess.square_rank(sq)) % 2 == 0]
+
+
+def bishop_corner_targets(board: chess.Board, own: bool) -> list[int]:
+    """The corner squares a bishop+knight mate must aim for: the two corners of
+    the (surviving) bishop's square colour. For two bishops or no bishop, all
+    four corners are valid mating corners. Pure geometry."""
+    bishops = list(board.pieces(chess.BISHOP, own))
+    if len(bishops) == 1:
+        light = (chess.square_file(bishops[0]) + chess.square_rank(bishops[0])) % 2 == 1
+        return _LIGHT_CORNERS if light else _DARK_CORNERS
+    return _ALL_CORNERS
+
+
+def nearest_corner_distance(board: chess.Board, defender: bool,
+                            corners: list[int]) -> tuple[int, int]:
+    """(distance, corner_square) for the corner in ``corners`` nearest the
+    ``defender`` king, by king-move (Chebyshev) distance. Pure geometry."""
+    ek = board.king(defender)
+    if ek is None:
+        return (8, corners[0])
+    best = min(corners, key=lambda c: chess.square_distance(ek, c))
+    return (chess.square_distance(ek, best), best)
+
+
+def _minor_piece_squares(board: chess.Board, own: bool) -> list[int]:
+    """Squares of ``own``'s bishops and knights (the confining pieces in the
+    minor-piece mates)."""
+    return [sq for pt in (chess.BISHOP, chess.KNIGHT) for sq in board.pieces(pt, own)]
+
+
+def king_free_region(board: chess.Board, defender: bool) -> set[int]:
+    """The set of squares the lone ``defender`` king can still roam — its
+    'net'. Flood-fill (king steps) from the king's square over squares that are
+    neither occupied by the winning side nor attacked by any winning-side piece
+    (king included). This is the minor-piece analogue of the major-piece
+    confinement box: the basic-mate goal is to shrink this region toward the
+    target corner until it collapses to a mate. Pure geometry — attack maps and
+    king-step connectivity; no search, no evaluation.
+
+    Note it does not model the defender pushing its own pawns (a bare-king
+    drill assumption); used by the K+2B / K+B+N advisor and the net display."""
+    from collections import deque
+    winner = not defender
+    blocked: set[int] = set()
+    for sq in chess.SQUARES:
+        p = board.piece_at(sq)
+        if p is not None and p.color == winner:
+            blocked.add(sq)
+            blocked |= set(board.attacks(sq))
+    start = board.king(defender)
+    if start is None:
+        return set()
+    seen = {start}
+    dq = deque([start])
+    while dq:
+        s = dq.popleft()
+        for n in chess.SquareSet(chess.BB_KING_ATTACKS[s]):
+            if n not in seen and n not in blocked:
+                seen.add(n)
+                dq.append(n)
+    return seen
+
+
+def render_king_net(board: chess.Board, defender: bool, target: int | None = None) -> str:
+    """ASCII board marking the lone king's free region (its 'net'): `*` for a
+    square the king can still roam to, `k` for the king itself, `T` for the
+    target corner (if given and not inside the region), winning-side pieces by
+    letter. Lets the agent SEE the net it must shrink. Pure rendering."""
+    region = king_free_region(board, defender)
+    ek = board.king(defender)
+    rows = []
+    for rank in range(7, -1, -1):
+        cells = []
+        for file in range(8):
+            sq = chess.square(file, rank)
+            p = board.piece_at(sq)
+            if sq == ek:
+                cells.append("k")
+            elif p is not None:
+                cells.append(p.symbol())
+            elif target is not None and sq == target and sq not in region:
+                cells.append("T")
+            elif sq in region:
+                cells.append("*")
+            else:
+                cells.append(".")
+        rows.append(f"{rank + 1}  " + " ".join(cells))
+    rows.append("   a b c d e f g h")
+    return "\n".join(rows)
+
+
+def minor_confine_state(board: chess.Board, own: bool,
+                        corners: list[int]) -> dict | None:
+    """Confine-and-drive state for the K+2B / K+B+N mates, as a structural fact
+    about the CURRENT position (not a move recommendation).
+
+    The minor-piece mate has no rank/file 'box' (bishops cut diagonals), so the
+    progress signal is the enemy king's FREE REGION (`king_free_region`) — the
+    squares it can still roam — shrunk toward a target corner. Our move never
+    moves the enemy king, so ranking by the king's own corner-distance is
+    near-useless (it barely changes); the region size is what our move actually
+    controls. This ranks every legal non-stalemate move by
+        (free-region size after the move,         # shrink the net
+         kings-distance,                          # bring our king to lead
+         region's distance to the nearest target corner,   # collapse it the right way
+         prefer a KING move on ties)
+    and reports the region size and whether the best move is a piece move
+    (reposition the wall) or a king move (walk it in). Mirrors confine_state for
+    the major mates, with the region in place of the box.
+
+    NOTE this is a heuristic SUB-GOAL signal, not a solver: the K+2B and
+    especially K+B+N mates need real technique (barrier / W-manoeuvre) the agent
+    must supply — a tool that output the exact maneuvering move would be an
+    engine, which the tool-fairness rulebook forbids. So this reports facts
+    (region size, target, march-vs-reposition) and leaves the move to the agent.
+
+    Returns None unless this is a lone-king ending with only minor pieces
+    (the K+2B / K+B+N precondition). Piece moves that hang the piece (SEE) or
+    park a bishop undefended next to the enemy king are excluded. Pure geometry
+    + single-square SEE; no search, no positional scoring, names no move."""
+    defender = not own
+    # Precondition: defender is down to king (+ pawns), and ``own`` has only
+    # minor pieces (no major). lone_king_color() is major-specific, so check
+    # directly here.
+    defender_force = sum(
+        len(board.pieces(pt, defender))
+        for pt in (chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT)
+    )
+    if defender_force > 0:
+        return None
+    pieces = _minor_piece_squares(board, own)
+    majors = [sq for pt in (chess.QUEEN, chess.ROOK) for sq in board.pieces(pt, own)]
+    if majors or not pieces:
+        return None
+
+    cur_dist, target = nearest_corner_distance(board, defender, corners)
+
+    def _ek_moves(bd: chess.Board) -> int:
+        eksq = bd.king(defender)
+        probe = bd
+        if bd.turn != defender:
+            probe = bd.copy(stack=False)
+            try:
+                probe.push(chess.Move.null())
+            except (AssertionError, ValueError):
+                return 0
+        return sum(1 for m in probe.legal_moves if m.from_square == eksq)
+
+    cur_mobility = _ek_moves(board)
+    cur_region = len(king_free_region(board, defender))
+    piece_set = set(pieces)
+    best_key = None
+    best_is_piece = False
+    best_region = cur_region
+    for mv in board.legal_moves:
+        after = board.copy(stack=False)
+        after.push(mv)
+        if after.is_checkmate():
+            continue
+        if after.is_stalemate():
+            continue
+        # never feed a repetition while winning (the make_move gate enforces
+        # this too; keep the advisor's recommendation consistent with it)
+        if board.move_stack and after.is_repetition(2):
+            continue
+        is_piece = mv.from_square in piece_set
+        if is_piece:
+            ek = after.king(defender)
+            # never hang the piece, never sit a bishop next to the king undefended
+            if _eval_is_losing(after, mv.to_square, own):
+                continue
+            if ek is not None and chess.square_distance(ek, mv.to_square) == 1 \
+                    and not after.is_attacked_by(own, mv.to_square):
+                continue
+        region = king_free_region(after, defender)
+        rsize = len(region)
+        # how far the region still extends from the target corner: the nearest
+        # region square to the nearest target corner (0 = corner already netted)
+        region_to_corner = min(
+            (min(chess.square_distance(s, c) for c in corners) for s in region),
+            default=8,
+        )
+        mk, ek = after.king(own), after.king(defender)
+        kd = chess.square_distance(mk, ek) if (mk is not None and ek is not None) else 8
+        tie = 1 if is_piece else 0
+        key = (rsize, kd, region_to_corner, tie)
+        if best_key is None or key < best_key:
+            best_key = key
+            best_is_piece = is_piece
+            best_region = rsize
+    return {
+        "corner_distance": cur_dist,
+        "target_corner": chess.square_name(target),
+        "enemy_king_moves": cur_mobility,
+        "region_size": cur_region,
+        "best_region": best_region,
+        "can_tighten": best_is_piece,   # True -> move a piece; False -> step the king
+    }
+
+
+def _eval_is_losing(board: chess.Board, square: int, own_color: bool) -> bool:
+    """Local alias kept for readability inside minor_confine_state."""
+    return is_losing_on_square(board, square, own_color)
+
+
 def parse_move(board: chess.Board, raw: str) -> chess.Move:
     """Parse a move string in UCI or SAN form on the given board.
 

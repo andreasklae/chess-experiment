@@ -126,6 +126,31 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | No
                 True,
             )
 
+    # A move that merely RECREATES an earlier position (its second occurrence)
+    # is not yet a claimable draw — but when you are WINNING AGAINST A BARE KING
+    # it is pure anti-progress and the on-ramp to a repetition draw: the
+    # opponent completes the threefold on ITS move, which this gate (seeing only
+    # your move) cannot block later. So forbid feeding the repetition at all
+    # during a basic-mate conversion. Observed: game 987fc4c7 (K+R+N vs bare K)
+    # drew exactly this way — White played Kc7 then Nb4+, each recreating a
+    # prior position, and Black's reply claimed the threefold. Pure rules:
+    # position recurrence + material count; never fires when the move is mate.
+    if board.move_stack and opp_has_no_pieces and not after.is_checkmate() \
+            and after.is_repetition(2):
+        my_mat = sum(MATERIAL[p.piece_type] for p in board.piece_map().values()
+                     if p.color == mover and p.piece_type != chess.KING)
+        their_mat = sum(MATERIAL[p.piece_type] for p in board.piece_map().values()
+                        if p.color != mover and p.piece_type != chess.KING)
+        if my_mat > their_mat:
+            return (
+                "this move RECREATES a position already seen this game. You are "
+                "winning against a bare king, so repeating makes NO progress and "
+                "walks toward a draw by repetition (the opponent claims it on "
+                "its move). Pick a move that makes progress — shrink the enemy "
+                "king's box or mobility, drive it toward the edge/corner.",
+                True,
+            )
+
     # Losing trades, via static exchange evaluation on the moved piece's
     # square. SEE plays out the forced recapture sequence on that one square
     # and returns the material the OPPONENT nets if they initiate captures

@@ -200,7 +200,10 @@ class BatchRunner:
         state = None
         for attempt in (1, 2, 3):
             try:
-                state = await self._games.create_game(request)
+                # force=True: the batch owns the game lifecycle and only
+                # reaches here after the prior game finished, so it bypasses
+                # the one-game-at-a-time guard meant for ad-hoc HTTP creates.
+                state = await self._games.create_game(request, force=True)
                 last_exc = None
                 break
             except Exception as exc:

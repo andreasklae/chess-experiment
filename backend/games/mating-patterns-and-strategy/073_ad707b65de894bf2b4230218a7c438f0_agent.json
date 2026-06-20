@@ -1,0 +1,136 @@
+{
+  "game_id": "ad707b65de894bf2b4230218a7c438f0",
+  "model": "google/gemma-4-31B-it",
+  "turns": [
+    {
+      "move_number": 1,
+      "prompt": "Game start.\n\nCurrent position (FEN):\n1k6/7R/R7/8/8/8/8/6K1 w - - 0 1",
+      "events": [
+        {
+          "type": "prompt",
+          "content": "Game start.\n\nCurrent position (FEN):\n1k6/7R/R7/8/8/8/8/6K1 w - - 0 1\nLegal moves: Rh8+, Rg7, Rf7, Re7, Rd7, Rc7, Rb7+, Rha7, Rhh6, Rh5, Rh4, Rh3, Rh2, Rh1, Ra8+, Raa7, Rah6, Rg6, Rf6, Re6, Rd6, Rc6, Rb6+, Ra5, Ra4, Ra3, Ra2, Ra1, Kh2, Kg2, Kf2, Kh1, Kf1\n- **Drill state** (vs bare king): two rooks \u2014 the king is on the edge (rank 8). FINISH: one major holds rank 7 (the rank just inside) as the wall; the OTHER major checks along rank 8 from far away \u2014 that check is MATE. Keep your own king off rank 8 so it doesn't block the check. Verify `gives checkmate` with imagine_move (a quiet move to 0 squares would be stalemate).\n  Right now: enemy king on rank 8 (the edge); wall on rank 7: h7; major(s) free to check rank 8: a6. Work out the checking move and confirm `gives checkmate` with imagine_move.\n  CHECK FROM A DISTANCE: a check that lands on a square next to the king (same rank, adjacent file) is just captured (e.g. a rook to a8 with the king on b8). Deliver the edge check from a file at least TWO away from the king's file. If no safe mating check is available yet, make a WAITING move \u2014 slide the WALL rook (the one on rank 7) sideways to the far end of its rank, away from the king; the king is in zugzwang and must step toward the corner, then your check is mate. Test both with imagine_move.\n  AVOID dead checks: a check landing on a8 loses the rook (the king captures it there); NO safe check exists yet \u2014 make a WAITING move (slide the wall rook sideways, far from the king) so the king must step, then check."
+        },
+        {
+          "type": "provider_error_recovered",
+          "message": "Connection error."
+        },
+        {
+          "type": "retry",
+          "attempt": 2
+        },
+        {
+          "type": "prompt",
+          "content": "Game start.\n\nCurrent position (FEN):\n1k6/7R/R7/8/8/8/8/6K1 w - - 0 1\nLegal moves: Rh8+, Rg7, Rf7, Re7, Rd7, Rc7, Rb7+, Rha7, Rhh6, Rh5, Rh4, Rh3, Rh2, Rh1, Ra8+, Raa7, Rah6, Rg6, Rf6, Re6, Rd6, Rc6, Rb6+, Ra5, Ra4, Ra3, Ra2, Ra1, Kh2, Kg2, Kf2, Kh1, Kf1\n- **Drill state** (vs bare king): two rooks \u2014 the king is on the edge (rank 8). FINISH: one major holds rank 7 (the rank just inside) as the wall; the OTHER major checks along rank 8 from far away \u2014 that check is MATE. Keep your own king off rank 8 so it doesn't block the check. Verify `gives checkmate` with imagine_move (a quiet move to 0 squares would be stalemate).\n  Right now: enemy king on rank 8 (the edge); wall on rank 7: h7; major(s) free to check rank 8: a6. Work out the checking move and confirm `gives checkmate` with imagine_move.\n  CHECK FROM A DISTANCE: a check that lands on a square next to the king (same rank, adjacent file) is just captured (e.g. a rook to a8 with the king on b8). Deliver the edge check from a file at least TWO away from the king's file. If no safe mating check is available yet, make a WAITING move \u2014 slide the WALL rook (the one on rank 7) sideways to the far end of its rank, away from the king; the king is in zugzwang and must step toward the corner, then your check is mate. Test both with imagine_move.\n  AVOID dead checks: a check landing on a8 loses the rook (the king captures it there); NO safe check exists yet \u2014 make a WAITING move (slide the wall rook sideways, far from the king) so the king must step, then check."
+        },
+        {
+          "type": "provider_error_recovered",
+          "message": "Connection error."
+        },
+        {
+          "type": "retry",
+          "attempt": 3
+        },
+        {
+          "type": "prompt",
+          "content": "Game start.\n\nCurrent position (FEN):\n1k6/7R/R7/8/8/8/8/6K1 w - - 0 1\nLegal moves: Rh8+, Rg7, Rf7, Re7, Rd7, Rc7, Rb7+, Rha7, Rhh6, Rh5, Rh4, Rh3, Rh2, Rh1, Ra8+, Raa7, Rah6, Rg6, Rf6, Re6, Rd6, Rc6, Rb6+, Ra5, Ra4, Ra3, Ra2, Ra1, Kh2, Kg2, Kf2, Kh1, Kf1\n- **Drill state** (vs bare king): two rooks \u2014 the king is on the edge (rank 8). FINISH: one major holds rank 7 (the rank just inside) as the wall; the OTHER major checks along rank 8 from far away \u2014 that check is MATE. Keep your own king off rank 8 so it doesn't block the check. Verify `gives checkmate` with imagine_move (a quiet move to 0 squares would be stalemate).\n  Right now: enemy king on rank 8 (the edge); wall on rank 7: h7; major(s) free to check rank 8: a6. Work out the checking move and confirm `gives checkmate` with imagine_move.\n  CHECK FROM A DISTANCE: a check that lands on a square next to the king (same rank, adjacent file) is just captured (e.g. a rook to a8 with the king on b8). Deliver the edge check from a file at least TWO away from the king's file. If no safe mating check is available yet, make a WAITING move \u2014 slide the WALL rook (the one on rank 7) sideways to the far end of its rank, away from the king; the king is in zugzwang and must step toward the corner, then your check is mate. Test both with imagine_move.\n  AVOID dead checks: a check landing on a8 loses the rook (the king captures it there); NO safe check exists yet \u2014 make a WAITING move (slide the wall rook sideways, far from the king) so the king must step, then check."
+        },
+        {
+          "type": "provider_error_recovered",
+          "message": "Connection error."
+        },
+        {
+          "type": "retry",
+          "attempt": 4
+        },
+        {
+          "type": "prompt",
+          "content": "Game start.\n\nCurrent position (FEN):\n1k6/7R/R7/8/8/8/8/6K1 w - - 0 1\nLegal moves: Rh8+, Rg7, Rf7, Re7, Rd7, Rc7, Rb7+, Rha7, Rhh6, Rh5, Rh4, Rh3, Rh2, Rh1, Ra8+, Raa7, Rah6, Rg6, Rf6, Re6, Rd6, Rc6, Rb6+, Ra5, Ra4, Ra3, Ra2, Ra1, Kh2, Kg2, Kf2, Kh1, Kf1\n- **Drill state** (vs bare king): two rooks \u2014 the king is on the edge (rank 8). FINISH: one major holds rank 7 (the rank just inside) as the wall; the OTHER major checks along rank 8 from far away \u2014 that check is MATE. Keep your own king off rank 8 so it doesn't block the check. Verify `gives checkmate` with imagine_move (a quiet move to 0 squares would be stalemate).\n  Right now: enemy king on rank 8 (the edge); wall on rank 7: h7; major(s) free to check rank 8: a6. Work out the checking move and confirm `gives checkmate` with imagine_move.\n  CHECK FROM A DISTANCE: a check that lands on a square next to the king (same rank, adjacent file) is just captured (e.g. a rook to a8 with the king on b8). Deliver the edge check from a file at least TWO away from the king's file. If no safe mating check is available yet, make a WAITING move \u2014 slide the WALL rook (the one on rank 7) sideways to the far end of its rank, away from the king; the king is in zugzwang and must step toward the corner, then your check is mate. Test both with imagine_move.\n  AVOID dead checks: a check landing on a8 loses the rook (the king captures it there); NO safe check exists yet \u2014 make a WAITING move (slide the wall rook sideways, far from the king) so the king must step, then check."
+        },
+        {
+          "type": "provider_error_recovered",
+          "message": "Connection error."
+        },
+        {
+          "type": "retry",
+          "attempt": 5
+        },
+        {
+          "type": "prompt",
+          "content": "Game start.\n\nCurrent position (FEN):\n1k6/7R/R7/8/8/8/8/6K1 w - - 0 1\nLegal moves: Rh8+, Rg7, Rf7, Re7, Rd7, Rc7, Rb7+, Rha7, Rhh6, Rh5, Rh4, Rh3, Rh2, Rh1, Ra8+, Raa7, Rah6, Rg6, Rf6, Re6, Rd6, Rc6, Rb6+, Ra5, Ra4, Ra3, Ra2, Ra1, Kh2, Kg2, Kf2, Kh1, Kf1\n- **Drill state** (vs bare king): two rooks \u2014 the king is on the edge (rank 8). FINISH: one major holds rank 7 (the rank just inside) as the wall; the OTHER major checks along rank 8 from far away \u2014 that check is MATE. Keep your own king off rank 8 so it doesn't block the check. Verify `gives checkmate` with imagine_move (a quiet move to 0 squares would be stalemate).\n  Right now: enemy king on rank 8 (the edge); wall on rank 7: h7; major(s) free to check rank 8: a6. Work out the checking move and confirm `gives checkmate` with imagine_move.\n  CHECK FROM A DISTANCE: a check that lands on a square next to the king (same rank, adjacent file) is just captured (e.g. a rook to a8 with the king on b8). Deliver the edge check from a file at least TWO away from the king's file. If no safe mating check is available yet, make a WAITING move \u2014 slide the WALL rook (the one on rank 7) sideways to the far end of its rank, away from the king; the king is in zugzwang and must step toward the corner, then your check is mate. Test both with imagine_move.\n  AVOID dead checks: a check landing on a8 loses the rook (the king captures it there); NO safe check exists yet \u2014 make a WAITING move (slide the wall rook sideways, far from the king) so the king must step, then check."
+        },
+        {
+          "type": "provider_error_recovered",
+          "message": "Connection error."
+        },
+        {
+          "type": "retry",
+          "attempt": 6
+        },
+        {
+          "type": "prompt",
+          "content": "Game start.\n\nCurrent position (FEN):\n1k6/7R/R7/8/8/8/8/6K1 w - - 0 1\nLegal moves: Rh8+, Rg7, Rf7, Re7, Rd7, Rc7, Rb7+, Rha7, Rhh6, Rh5, Rh4, Rh3, Rh2, Rh1, Ra8+, Raa7, Rah6, Rg6, Rf6, Re6, Rd6, Rc6, Rb6+, Ra5, Ra4, Ra3, Ra2, Ra1, Kh2, Kg2, Kf2, Kh1, Kf1\n- **Drill state** (vs bare king): two rooks \u2014 the king is on the edge (rank 8). FINISH: one major holds rank 7 (the rank just inside) as the wall; the OTHER major checks along rank 8 from far away \u2014 that check is MATE. Keep your own king off rank 8 so it doesn't block the check. Verify `gives checkmate` with imagine_move (a quiet move to 0 squares would be stalemate).\n  Right now: enemy king on rank 8 (the edge); wall on rank 7: h7; major(s) free to check rank 8: a6. Work out the checking move and confirm `gives checkmate` with imagine_move.\n  CHECK FROM A DISTANCE: a check that lands on a square next to the king (same rank, adjacent file) is just captured (e.g. a rook to a8 with the king on b8). Deliver the edge check from a file at least TWO away from the king's file. If no safe mating check is available yet, make a WAITING move \u2014 slide the WALL rook (the one on rank 7) sideways to the far end of its rank, away from the king; the king is in zugzwang and must step toward the corner, then your check is mate. Test both with imagine_move.\n  AVOID dead checks: a check landing on a8 loses the rook (the king captures it there); NO safe check exists yet \u2014 make a WAITING move (slide the wall rook sideways, far from the king) so the king must step, then check."
+        },
+        {
+          "type": "provider_error_recovered",
+          "message": "Connection error."
+        },
+        {
+          "type": "retry",
+          "attempt": 7
+        },
+        {
+          "type": "prompt",
+          "content": "Game start.\n\nCurrent position (FEN):\n1k6/7R/R7/8/8/8/8/6K1 w - - 0 1\nLegal moves: Rh8+, Rg7, Rf7, Re7, Rd7, Rc7, Rb7+, Rha7, Rhh6, Rh5, Rh4, Rh3, Rh2, Rh1, Ra8+, Raa7, Rah6, Rg6, Rf6, Re6, Rd6, Rc6, Rb6+, Ra5, Ra4, Ra3, Ra2, Ra1, Kh2, Kg2, Kf2, Kh1, Kf1\n- **Drill state** (vs bare king): two rooks \u2014 the king is on the edge (rank 8). FINISH: one major holds rank 7 (the rank just inside) as the wall; the OTHER major checks along rank 8 from far away \u2014 that check is MATE. Keep your own king off rank 8 so it doesn't block the check. Verify `gives checkmate` with imagine_move (a quiet move to 0 squares would be stalemate).\n  Right now: enemy king on rank 8 (the edge); wall on rank 7: h7; major(s) free to check rank 8: a6. Work out the checking move and confirm `gives checkmate` with imagine_move.\n  CHECK FROM A DISTANCE: a check that lands on a square next to the king (same rank, adjacent file) is just captured (e.g. a rook to a8 with the king on b8). Deliver the edge check from a file at least TWO away from the king's file. If no safe mating check is available yet, make a WAITING move \u2014 slide the WALL rook (the one on rank 7) sideways to the far end of its rank, away from the king; the king is in zugzwang and must step toward the corner, then your check is mate. Test both with imagine_move.\n  AVOID dead checks: a check landing on a8 loses the rook (the king captures it there); NO safe check exists yet \u2014 make a WAITING move (slide the wall rook sideways, far from the king) so the king must step, then check."
+        },
+        {
+          "type": "provider_error_recovered",
+          "message": "Connection error."
+        },
+        {
+          "type": "retry",
+          "attempt": 8
+        },
+        {
+          "type": "prompt",
+          "content": "Game start.\n\nCurrent position (FEN):\n1k6/7R/R7/8/8/8/8/6K1 w - - 0 1\nLegal moves: Rh8+, Rg7, Rf7, Re7, Rd7, Rc7, Rb7+, Rha7, Rhh6, Rh5, Rh4, Rh3, Rh2, Rh1, Ra8+, Raa7, Rah6, Rg6, Rf6, Re6, Rd6, Rc6, Rb6+, Ra5, Ra4, Ra3, Ra2, Ra1, Kh2, Kg2, Kf2, Kh1, Kf1\n- **Drill state** (vs bare king): two rooks \u2014 the king is on the edge (rank 8). FINISH: one major holds rank 7 (the rank just inside) as the wall; the OTHER major checks along rank 8 from far away \u2014 that check is MATE. Keep your own king off rank 8 so it doesn't block the check. Verify `gives checkmate` with imagine_move (a quiet move to 0 squares would be stalemate).\n  Right now: enemy king on rank 8 (the edge); wall on rank 7: h7; major(s) free to check rank 8: a6. Work out the checking move and confirm `gives checkmate` with imagine_move.\n  CHECK FROM A DISTANCE: a check that lands on a square next to the king (same rank, adjacent file) is just captured (e.g. a rook to a8 with the king on b8). Deliver the edge check from a file at least TWO away from the king's file. If no safe mating check is available yet, make a WAITING move \u2014 slide the WALL rook (the one on rank 7) sideways to the far end of its rank, away from the king; the king is in zugzwang and must step toward the corner, then your check is mate. Test both with imagine_move.\n  AVOID dead checks: a check landing on a8 loses the rook (the king captures it there); NO safe check exists yet \u2014 make a WAITING move (slide the wall rook sideways, far from the king) so the king must step, then check."
+        },
+        {
+          "type": "provider_error_recovered",
+          "message": "Connection error."
+        },
+        {
+          "type": "retry",
+          "attempt": 9
+        },
+        {
+          "type": "prompt",
+          "content": "Game start.\n\nCurrent position (FEN):\n1k6/7R/R7/8/8/8/8/6K1 w - - 0 1\nLegal moves: Rh8+, Rg7, Rf7, Re7, Rd7, Rc7, Rb7+, Rha7, Rhh6, Rh5, Rh4, Rh3, Rh2, Rh1, Ra8+, Raa7, Rah6, Rg6, Rf6, Re6, Rd6, Rc6, Rb6+, Ra5, Ra4, Ra3, Ra2, Ra1, Kh2, Kg2, Kf2, Kh1, Kf1\n- **Drill state** (vs bare king): two rooks \u2014 the king is on the edge (rank 8). FINISH: one major holds rank 7 (the rank just inside) as the wall; the OTHER major checks along rank 8 from far away \u2014 that check is MATE. Keep your own king off rank 8 so it doesn't block the check. Verify `gives checkmate` with imagine_move (a quiet move to 0 squares would be stalemate).\n  Right now: enemy king on rank 8 (the edge); wall on rank 7: h7; major(s) free to check rank 8: a6. Work out the checking move and confirm `gives checkmate` with imagine_move.\n  CHECK FROM A DISTANCE: a check that lands on a square next to the king (same rank, adjacent file) is just captured (e.g. a rook to a8 with the king on b8). Deliver the edge check from a file at least TWO away from the king's file. If no safe mating check is available yet, make a WAITING move \u2014 slide the WALL rook (the one on rank 7) sideways to the far end of its rank, away from the king; the king is in zugzwang and must step toward the corner, then your check is mate. Test both with imagine_move.\n  AVOID dead checks: a check landing on a8 loses the rook (the king captures it there); NO safe check exists yet \u2014 make a WAITING move (slide the wall rook sideways, far from the king) so the king must step, then check."
+        },
+        {
+          "type": "provider_error_recovered",
+          "message": "Connection error."
+        },
+        {
+          "type": "retry",
+          "attempt": 10
+        },
+        {
+          "type": "prompt",
+          "content": "Game start.\n\nCurrent position (FEN):\n1k6/7R/R7/8/8/8/8/6K1 w - - 0 1\nLegal moves: Rh8+, Rg7, Rf7, Re7, Rd7, Rc7, Rb7+, Rha7, Rhh6, Rh5, Rh4, Rh3, Rh2, Rh1, Ra8+, Raa7, Rah6, Rg6, Rf6, Re6, Rd6, Rc6, Rb6+, Ra5, Ra4, Ra3, Ra2, Ra1, Kh2, Kg2, Kf2, Kh1, Kf1\n- **Drill state** (vs bare king): two rooks \u2014 the king is on the edge (rank 8). FINISH: one major holds rank 7 (the rank just inside) as the wall; the OTHER major checks along rank 8 from far away \u2014 that check is MATE. Keep your own king off rank 8 so it doesn't block the check. Verify `gives checkmate` with imagine_move (a quiet move to 0 squares would be stalemate).\n  Right now: enemy king on rank 8 (the edge); wall on rank 7: h7; major(s) free to check rank 8: a6. Work out the checking move and confirm `gives checkmate` with imagine_move.\n  CHECK FROM A DISTANCE: a check that lands on a square next to the king (same rank, adjacent file) is just captured (e.g. a rook to a8 with the king on b8). Deliver the edge check from a file at least TWO away from the king's file. If no safe mating check is available yet, make a WAITING move \u2014 slide the WALL rook (the one on rank 7) sideways to the far end of its rank, away from the king; the king is in zugzwang and must step toward the corner, then your check is mate. Test both with imagine_move.\n  AVOID dead checks: a check landing on a8 loses the rook (the king captures it there); NO safe check exists yet \u2014 make a WAITING move (slide the wall rook sideways, far from the king) so the king must step, then check."
+        },
+        {
+          "type": "provider_error_recovered",
+          "message": "Connection error."
+        }
+      ],
+      "move_chosen": null,
+      "evals": {
+        "stockfish_cp_before": null,
+        "stockfish_cp_after": null,
+        "static_cp_before": null,
+        "static_cp_after": null,
+        "move_time_ms": null
+      }
+    }
+  ]
+}

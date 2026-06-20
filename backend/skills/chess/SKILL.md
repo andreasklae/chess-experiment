@@ -437,6 +437,27 @@ An illegal or unparseable move exits nonzero with a categorised error
 (no piece on that square, path blocked, piece pinned, in check, illegal
 castle, missing/extra promotion piece, etc.), so revise and retry.
 
+### `chess__imagine_line`
+
+```
+chess__imagine_line(moves="Kc3,Ke5,Bd3,Kd5,Ne3")   # your moves + expected replies, alternating
+chess__imagine_line(fen="<fen>", moves="...")        # from a hypothetical position
+```
+
+A **multi-move** look-ahead — where `chess__imagine_move` sees one ply, this
+plays out a whole sequence you supply (your moves AND the opponent replies you
+expect, alternating, starting with yours) on a copy of the board and reports,
+after each move, how the position evolves. The live game is **not** changed.
+
+Its key column is the lone king's **net** — the number of squares the bare king
+can still roam — alongside the king's move count and its distance to the mating
+corner. Reading the net fall (or not) tells you whether a planned maneuver
+actually makes progress. This is the tool for the **basic minor-piece mates**
+(K+2B, K+B+N), which are won by a multi-move plan, not a single move: try a
+maneuver here, watch the net shrink toward the corner, then play its first move
+with `chess__make_move`. It searches nothing and recommends nothing — the line
+is yours; it only lets you see it played out.
+
 ### `chess__list_legal_moves`
 
 ```

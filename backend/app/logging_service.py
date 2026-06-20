@@ -171,6 +171,44 @@ class LoggingService:
         latest.static_eval_cp_after = static_cp_after
         latest.move_time_ms = move_time_ms
 
+    def flush_agent_log(self, game_id: str, model: str, subfolder: str) -> None:
+        """Write accumulated agent turns to disk immediately (not waiting for game finish).
+        This enables incremental log writes so reasoning is visible mid-game."""
+        turns = self._agent_turns.get(game_id, [])
+        if not turns:
+            return
+
+        payload = {
+            "game_id": game_id,
+            "model": model,
+            "turns": [
+                {
+                    "move_number": t.move_number,
+                    "prompt": t.prompt,
+                    "events": t.events,
+                    "move_chosen": t.move_chosen,
+                    "evals": {
+                        "stockfish_cp_before": t.stockfish_eval_cp_before,
+                        "stockfish_cp_after": t.stockfish_eval_cp_after,
+                        "static_cp_before": t.static_eval_cp_before,
+                        "static_cp_after": t.static_eval_cp_after,
+                        "move_time_ms": t.move_time_ms,
+                    },
+                }
+                for t in turns
+            ],
+        }
+        folder_dir = self._games_dir / subfolder if subfolder else self._games_dir
+        folder_dir.mkdir(parents=True, exist_ok=True)
+        if subfolder and subfolder != _BASELINE_FOLDER:
+            seq = _next_sequence_number(folder_dir)
+            filename = f"{seq:03d}_{game_id}_agent.json"
+        else:
+            filename = f"{game_id}_agent.json"
+        path = folder_dir / filename
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2)
+
     # ── CSV record ───────────────────────────────────────────────────────
 
     def record_game(

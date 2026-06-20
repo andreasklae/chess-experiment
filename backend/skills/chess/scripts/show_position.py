@@ -293,10 +293,47 @@ def render_position(board: chess.Board, move_cap: int | None = None) -> str:
             action="attacked by your",
         ).lstrip("\n"),
     ]
+    # King-net visualisation: only in a minor-piece basic mate (K+2B / K+B+N
+    # vs a lone king), where the whole technique is shrinking the king's free
+    # region toward the right corner — seeing the net is the key aid. `*` marks
+    # squares the bare king can still roam; `T` the target corner.
+    net = _king_net_section(board)
+    if net:
+        out += ["", net]
     radar = render_radar(board, move_cap=move_cap)
     if radar:
         out += ["", radar]
     return "\n".join(out)
+
+
+def _king_net_section(board: chess.Board) -> str | None:
+    """Render the lone king's free-region 'net' when this is a K+2B / K+B+N
+    mate. None otherwise. Pure geometry; see _eval.render_king_net."""
+    for own in (chess.WHITE, chess.BLACK):
+        defender = not own
+        defender_force = sum(
+            len(board.pieces(pt, defender))
+            for pt in (chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT)
+        )
+        majors = sum(len(board.pieces(pt, own)) for pt in (chess.QUEEN, chess.ROOK))
+        bishops = len(board.pieces(chess.BISHOP, own))
+        knights = len(board.pieces(chess.KNIGHT, own))
+        is_minor_mate = majors == 0 and (bishops >= 2 or (bishops >= 1 and knights >= 1))
+        if defender_force == 0 and is_minor_mate:
+            from _eval import bishop_corner_targets, king_free_region, render_king_net
+            corners = bishop_corner_targets(board, own)
+            ek = board.king(defender)
+            target = min(corners, key=lambda c: chess.square_distance(ek, c)) if ek is not None else None
+            size = len(king_free_region(board, defender))
+            return (
+                "## King net (squares the lone king can still reach)\n\n"
+                f"```\n{render_king_net(board, defender, target)}\n```\n"
+                f"The king's free region is **{size}** squares (`*`). The mate is "
+                f"shrinking this net toward the target corner (`T`). A move that "
+                f"reduces the `*` count is progress; one that grows it gives the "
+                f"king room — reject it."
+            )
+    return None
 
 
 def main() -> None:

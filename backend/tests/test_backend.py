@@ -112,14 +112,28 @@ def test_get_current_game_returns_404_before_creation(tmp_path) -> None:
     assert response.json()["detail"] == "No game has been created."
 
 
-def test_creating_new_game_replaces_current_game(tmp_path) -> None:
+def test_creating_new_game_while_one_active_is_rejected(tmp_path) -> None:
+    # One game at a time: a second create while the first is still in progress
+    # is refused (409), so a new game can't tear a running one down mid-move
+    # (which starved the shared eX3 server and aborted both, 2026-06-16).
+    with client(tmp_path) as test_client:
+        first = test_client.post("/api/games", json={"white": {"type": "human"}, "black": {"type": "human"}})
+        assert first.status_code == 200
+        second = test_client.post("/api/games", json={"white": {"type": "human"}, "black": {"type": "human"}})
+        assert second.status_code == 409
+        # The original game is untouched and still current.
+        current = test_client.get("/api/game").json()
+        assert current["game_id"] == first.json()["game_id"]
+
+
+def test_cancelling_active_game_allows_a_new_one(tmp_path) -> None:
+    # After deleting the active game, a new game is allowed.
     with client(tmp_path) as test_client:
         first = test_client.post("/api/games", json={"white": {"type": "human"}, "black": {"type": "human"}}).json()
-        second = test_client.post("/api/games", json={"white": {"type": "human"}, "black": {"type": "human"}}).json()
-        current = test_client.get("/api/game").json()
-
-    assert current["game_id"] == second["game_id"]
-    assert first["game_id"] != second["game_id"]
+        test_client.delete(f"/api/games/{first['game_id']}")
+        second = test_client.post("/api/games", json={"white": {"type": "human"}, "black": {"type": "human"}})
+        assert second.status_code == 200
+        assert second.json()["game_id"] != first["game_id"]
 
 
 def test_create_human_vs_maia_game_with_mocked_engine(tmp_path) -> None:
@@ -178,9 +192,16 @@ async def test_sse_subscription_emits_initial_state(tmp_path) -> None:
 
 
 def test_list_games_returns_all_persisted_games(tmp_path) -> None:
+    # One game at a time: the first must FINISH before the second can start
+    # (a back-rank mate-in-1 finishes game 1), then both persist to disk.
+    mate_fen = "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1"
     with client(tmp_path) as test_client:
-        test_client.post("/api/games", json={"white": {"type": "human"}, "black": {"type": "human"}})
-        test_client.post("/api/games", json={"white": {"type": "human"}, "black": {"type": "human"}})
+        g1 = test_client.post("/api/games", json={
+            "white": {"type": "human"}, "black": {"type": "human"},
+            "initial_fen": mate_fen}).json()
+        test_client.post(f"/api/games/{g1['game_id']}/moves", json={"move": "a1a8"})
+        second = test_client.post("/api/games", json={"white": {"type": "human"}, "black": {"type": "human"}})
+        assert second.status_code == 200
         response = test_client.get("/api/games")
 
     assert response.status_code == 200
@@ -198,8 +219,14 @@ def test_delete_game_removes_it_from_list(tmp_path) -> None:
 
 
 def test_load_game_makes_it_current(tmp_path) -> None:
+    # Finish the first game (back-rank mate) so the second can start; then
+    # loading the first makes it current again.
+    mate_fen = "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1"
     with client(tmp_path) as test_client:
-        first = test_client.post("/api/games", json={"white": {"type": "human"}, "black": {"type": "human"}}).json()
+        first = test_client.post("/api/games", json={
+            "white": {"type": "human"}, "black": {"type": "human"},
+            "initial_fen": mate_fen}).json()
+        test_client.post(f"/api/games/{first['game_id']}/moves", json={"move": "a1a8"})
         test_client.post("/api/games", json={"white": {"type": "human"}, "black": {"type": "human"}})
         load_response = test_client.post(f"/api/games/{first['game_id']}/load")
         current = test_client.get("/api/game").json()

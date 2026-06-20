@@ -26,9 +26,14 @@ pawn first and then mate with the queen (see
 | **two rooks** (K+2R) | [two-rook-ladder-mate](two-rook-ladder-mate.md) | fence one rank, check with the OTHER rook, leapfrog the king to the edge |
 | **king + queen** (K+Q) | [king-queen-mate](king-queen-mate.md) | knight's-move shadow the king to the edge, bring your king, mate |
 | **king + rook** (K+R) | [king-rook-mate](king-rook-mate.md) | fence behind the king, take opposition with your king, then check on the edge |
+| **two bishops** (K+2B) | [king-two-bishops-mate](king-two-bishops-mate.md) | opposite-coloured bishops wall adjacent diagonals; march the king and drive the enemy king into ANY corner |
+| **bishop + knight** (K+B+N) | [king-bishop-knight-mate](king-bishop-knight-mate.md) | hardest mate; drive the king to the corner of the BISHOP's colour (W-manoeuvre with the knight), then mate |
 
 *(Queen+rook and two-queen ladders run on the two-rook rhythm but have
-their own traps — pages added when seeded.)*
+their own traps — pages added when seeded. Two knights vs a bare king is a
+draw — it cannot be forced. With more material than this, you do not need a
+specific page: shrink the enemy king's mobility toward an edge/corner with
+`chess__imagine_move` and mate.)*
 
 ## Named attacking mates (king still has defenders) — pick by geometry
 

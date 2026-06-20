@@ -357,9 +357,22 @@ class TestLadderFinishHooks:
         assert self._drill("8/8/2k2n2/8/8/2p2p2/R7/1R4K1 w - - 0 1")  # K+N+pawns
         assert not self._drill("8/8/2k1r3/8/8/8/R7/1R4K1 w - - 0 1")  # opp has a rook
 
-    def test_single_major_drill_still_requires_bare_king(self):
-        assert not self._drill("8/5p2/3k4/8/8/8/8/R3K3 w - - 0 1")
-        assert self._drill("8/8/3k4/8/8/8/8/R3K3 w - - 0 1")  # bare king: fires
+    def test_single_major_drill_fires_king_plus_pawns_not_pieces(self):
+        # The K+R/K+Q confine drill now fires when the opponent is reduced to
+        # king + PAWNS only (most realistic conversions leave a pawn) — gating
+        # on a strictly bare king dropped the drill mid-conversion (game
+        # 541b95da). An enemy PIECE still gates it out (it changes the technique).
+        assert self._drill("8/8/3k4/8/8/8/8/R3K3 w - - 0 1")        # bare king
+        assert self._drill("8/5p2/3k4/8/8/8/8/R3K3 w - - 0 1")      # king + pawn: now fires
+        assert not self._drill("8/5n2/3k4/8/8/8/8/R3K3 w - - 0 1")  # king + knight: gated out
+
+    def test_single_major_drill_flags_promotion_threat(self):
+        # King + a pawn one push from promoting: flag the promotion as the
+        # priority before the squeeze (find a balance), but not for a far pawn.
+        out = self._drill("8/8/8/8/3RK3/2k5/7p/8 w - - 0 1")   # black h2, h1=Q next
+        assert "Deal with the promotion" in out
+        out2 = self._drill("8/8/8/7p/3RK3/2k5/8/8 w - - 0 1")  # black h5, far
+        assert "Deal with the promotion" not in out2
 
     def test_promotion_threat_interrupts_the_ladder(self):
         # Don't tunnel-vision on the mate while the opponent queens: a Black
