@@ -106,9 +106,11 @@ class TestGameEndingTraps:
 
 
 class TestHardVsSoft:
-    """Catastrophic losses are HARD (confirm cannot override); ordinary free
-    gifts are soft. Game ab02f31d: agent reflexively confirm=true'd Rb6+??
-    Kxb6 hanging a rook to the bare king on move 2 of a ladder."""
+    """The gate's second tuple element marks CATASTROPHIC losses (severe
+    wording) vs ordinary free gifts. As of 2026-06-20 this is wording only —
+    the commit boundary is advisory and EVERYTHING is overridable with
+    confirm=true (decisions/2026-06-20-blunder-gate-advisory-only.md). These
+    tests pin the severity flag the gate computes, not a refusal."""
 
     def test_hang_rook_to_bare_king_is_hard(self, mm):
         # Bare black king on c6; Rb6+?? Kxb6 hangs the rook with no army to
@@ -130,6 +132,22 @@ class TestHardVsSoft:
         # flags it but leaves it overridable with confirm.
         res = _gate_full(mm, "8/8/2k5/R7/8/8/8/1R5n w - - 2 2", "b1b6")
         assert res is not None and res[1] is False
+
+    def test_no_commit_deadlock_when_every_move_is_flagged(self, mm):
+        # Live game (agent vs chesscom-850, 2026-06-20): Ke5 in check from Rg5,
+        # Rb5 hanging; ALL five legal king moves drop the rook into K+B-vs-K
+        # (insufficient material). The old HARD gate refused every one, so the
+        # agent could never commit and looped to exhaustion. The gate still
+        # FLAGS them (severe), but the commit boundary is now advisory — so the
+        # agent can confirm=true and the game reaches its true result (a draw).
+        # This test pins the deadlock CONDITION (every legal move flagged); the
+        # advisory override lives in make_move.main().
+        board = chess.Board("8/8/3B4/1R2K1r1/8/8/2k5/8 w - - 8 86")
+        legal = list(board.legal_moves)
+        assert legal, "test setup: position has legal moves"
+        assert all(mm._blunder_gate(board, mv) is not None for mv in legal), (
+            "every legal move should be flagged — the deadlock condition"
+        )
 
 
 class TestSEELosingTrades:

@@ -552,14 +552,17 @@ The move accepts UCI or SAN; trailing `+` or `#` is stripped.
     ahead** on material.
 
   **Default response: pick a better move** — almost always the warning is
-  right and you simply missed it.
-  - A **soft** warning can be overridden by repeating the call with
-    `confirm=true`, but only when it is a genuine, calculated sacrifice.
+  right and you simply missed it. **But the check is advisory: it never
+  refuses a legal move.** You commit any move by repeating the call with
+  `confirm=true`.
+  - An ordinary **SAFETY CHECK** flags a losing trade or hanging piece —
+    override with `confirm=true` only for a genuine, calculated sacrifice.
     Reflexively confirming is how games are lost — do not do it.
-  - A **SAFETY CHECK (cannot override)** error is **hard**: the move loses
+  - A **SAFETY CHECK (severe)** flags a move that very likely loses or draws
     the game outright (stalemate, a draw while winning, hanging a major to a
-    king with no army, or dropping to insufficient material). `confirm=true`
-    will not force it — find the move that keeps the win.
+    lone king, or dropping to insufficient material). This is almost never
+    what you want — but if you are *certain* (e.g. you are in check and every
+    legal move is equally bad), you may still play it with `confirm=true`.
 
 ## Move format
 

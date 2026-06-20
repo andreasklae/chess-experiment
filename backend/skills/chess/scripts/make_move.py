@@ -422,29 +422,31 @@ def main() -> None:
             gate = _blunder_gate(board, candidate)
     except (SystemExit, Exception):
         gate = None  # endpoint is the authoritative validator
-    if gate is not None:
-        warning, hard = gate
-        if hard:
-            print(json.dumps({
-                "ok": False,
-                "error": (
-                    f"SAFETY CHECK (cannot override) — move NOT committed: "
-                    f"{warning} This loses the game outright, so confirm=true "
-                    f"will not force it. Pick a move that keeps the win."
-                ),
-            }))
-            sys.exit(1)
-        if not args.confirm:
-            print(json.dumps({
-                "ok": False,
-                "error": (
-                    f"SAFETY CHECK — move NOT committed: {warning} "
-                    f"If this is intentional (a real sacrifice), call "
-                    f"chess__make_move again with the same move and "
-                    f"confirm=true. Otherwise pick a different move."
-                ),
-            }))
-            sys.exit(1)
+    if gate is not None and not args.confirm:
+        warning, severe = gate
+        # Advisory-only: the gate never REFUSES a legal move (that would be the
+        # tool making the decision, not the agent — unfair, and it deadlocks
+        # when every legal move trips a rule). It warns; the agent commits by
+        # re-calling with confirm=true. The wording is stronger for the
+        # catastrophic cases (`severe`), but they are equally overridable.
+        # See decisions/2026-06-20-blunder-gate-advisory-only.md.
+        if severe:
+            prefix = (
+                "SAFETY CHECK (severe) — move NOT yet committed: " + warning +
+                " This very likely LOSES or DRAWS the game outright — almost "
+                "never what you want. Only override if you are certain. To play "
+                "it anyway, call chess__make_move again with the same move and "
+                "confirm=true; otherwise pick a move that keeps the win."
+            )
+        else:
+            prefix = (
+                "SAFETY CHECK — move NOT yet committed: " + warning +
+                " If this is intentional (a real sacrifice), call "
+                "chess__make_move again with the same move and confirm=true. "
+                "Otherwise pick a different move."
+            )
+        print(json.dumps({"ok": False, "error": prefix}))
+        sys.exit(1)
 
     # The endpoint caps reasoning at 4000 chars (schemas.AgentCommitRequest).
     # Truncate rather than let the whole commit be rejected for verbosity —
