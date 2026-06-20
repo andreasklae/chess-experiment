@@ -132,3 +132,28 @@ class TestImagineLineNudge:
         # agent_color set => rendered by imagine_line; must not nudge (no recursion).
         fen = "r1bqkbnr/1ppp1ppp/p1n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4"
         assert self.NUDGE not in self._out(im, fen, "Bxc6", agent=chess.WHITE)
+
+
+class TestBranchingFooter:
+    """imagine_line must push the agent to test SEVERAL opponent replies, not
+    assume one. The footer differs by who moved last in the line."""
+
+    F = "r1bqkbnr/1ppp1ppp/p1n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4"
+
+    def test_line_ending_on_own_move_prompts_branching(self):
+        r = _run(["--fen", self.F, "Bxc6"])  # White move; opponent to reply
+        assert r.returncode == 0, r.stderr
+        assert "Branch over the opponent's replies" in r.stdout
+        # names concrete testing replies (the recaptures)
+        assert "dxc6" in r.stdout or "bxc6" in r.stdout
+
+    def test_line_ending_on_opponent_move_names_alternatives(self):
+        r = _run(["--fen", self.F, "Bxc6,bxc6"])  # opponent reply supplied
+        assert r.returncode == 0, r.stderr
+        assert "You assumed the opponent plays bxc6" in r.stdout
+        assert "dxc6" in r.stdout  # an alternative reply
+
+    def test_no_branching_footer_on_mate(self):
+        r = _run(["--fen", "4k3/8/4K3/8/8/8/8/7R w - - 0 1", "Rh8"])  # Rh8#
+        assert r.returncode == 0, r.stderr
+        assert "Branch over" not in r.stdout and "You assumed" not in r.stdout

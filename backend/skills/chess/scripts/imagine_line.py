@@ -51,6 +51,20 @@ from imagine_move import render_imagine  # noqa: E402
 _MAX_PLIES = 5
 
 
+def _testing_replies(board: chess.Board, exclude: chess.Move | None = None,
+                     k: int = 3) -> list[str]:
+    """Up to k of the side-to-move's most TESTING replies (checks first, then
+    captures, then the rest) as SAN — the moves worth branching into. Pure
+    rules: check/capture flags only, no evaluation."""
+    moves = [m for m in board.legal_moves if m != exclude]
+
+    def rank(m: chess.Move) -> int:
+        return -((2 if board.gives_check(m) else 0) + (1 if board.is_capture(m) else 0))
+
+    moves.sort(key=rank)
+    return [board.san(m) for m in moves[:k]]
+
+
 def _flag(board: chess.Board) -> str:
     if board.is_checkmate():
         return "#"
@@ -147,6 +161,40 @@ def main() -> None:
     ]
     if last_move is not None and board_before_last is not None:
         out.append(render_imagine(board_before_last, last_move, agent_color=agent_color))
+        # Branching nudge: do NOT trust a single line. Push the agent to test
+        # the opponent's OTHER reasonable replies. (Skip when the line ended the
+        # game.) Two cases by who moved last.
+        if not (board.is_checkmate() or board.is_stalemate()):
+            last_was_agent = board_before_last.turn == agent_color
+            if last_was_agent:
+                # Opponent is to move now — branch over THEIR replies.
+                opts = _testing_replies(board, k=3)
+                if len(opts) >= 2:
+                    out += [
+                        "",
+                        "---",
+                        "",
+                        "**⮕ Branch over the opponent's replies — don't assume one.** "
+                        "It is the opponent's move now; their most testing replies "
+                        f"are **{', '.join(opts)}** (checks/captures first). Re-run "
+                        "`chess__imagine_line` continuing this line with EACH of them "
+                        "and confirm your move holds against all — a move that only "
+                        "works against one reply is not calculated.",
+                    ]
+            else:
+                # You supplied ONE opponent reply — name the alternatives.
+                alts = _testing_replies(board_before_last, exclude=last_move, k=3)
+                if alts:
+                    played = board_before_last.san(last_move)
+                    out += [
+                        "",
+                        "---",
+                        "",
+                        f"**⮕ You assumed the opponent plays {played}.** Their other "
+                        f"testing replies are **{', '.join(alts)}**. Re-run "
+                        "`chess__imagine_line` with each instead of "
+                        f"{played} — your move is only good if it holds against all.",
+                    ]
     else:
         out.append("_(no move rendered)_")
     print("\n".join(out))
