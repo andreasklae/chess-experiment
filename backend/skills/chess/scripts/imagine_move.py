@@ -392,6 +392,43 @@ def _moved_piece_hanging_warning(
     )
 
 
+def _material_loss(board_before: chess.Board, board_after: chess.Board,
+                   move: chess.Move) -> tuple[int, str | None]:
+    """Largest single-square material loss this move causes (centipawns) and
+    the piece lost, via SEE — the moved piece on its new square (net of what it
+    captured) OR a different own piece it left hanging. (loss_cp, piece_name);
+    (0, None) if nothing loses material or the move is mate. Same arithmetic as
+    make_move's gate, surfaced here so imagine_move can shout about a blunder."""
+    if board_after.is_checkmate():
+        return 0, None
+    mover = board_before.turn
+    # Moved piece, net of its capture.
+    opp_gain = static_exchange_eval(board_after, move.to_square, not mover)
+    my_gain = 0
+    if board_before.is_capture(move):
+        victim = board_before.piece_at(move.to_square)
+        my_gain = MATERIAL.get(victim.piece_type, 0) if victim else MATERIAL[chess.PAWN]
+    moved = board_after.piece_at(move.to_square)
+    loss = max(0, opp_gain - my_gain)
+    piece = PIECE_NAMES[moved.piece_type] if moved else None
+    # Other own pieces left hanging (safe before, losing after).
+    for psq in chess.SQUARES:
+        if psq == move.to_square:
+            continue
+        p = board_after.piece_at(psq)
+        if p is None or p.color != mover:
+            continue
+        bp = board_before.piece_at(psq)
+        if bp is None or bp.color != mover:
+            continue
+        if static_exchange_eval(board_before, psq, not mover) >= 150:
+            continue  # not safe before this move
+        l = static_exchange_eval(board_after, psq, not mover)
+        if l > loss:
+            loss, piece = l, PIECE_NAMES[p.piece_type]
+    return loss, piece
+
+
 def render_imagine(
     board_before: chess.Board, move: chess.Move, agent_color: bool | None = None
 ) -> str:
@@ -465,7 +502,27 @@ def render_imagine(
         f"({king_sign}{abs(king_delta)} squares)"
     )
 
+    # Blunder severity: does this move lose a whole piece (minor or more)? If
+    # so we lead LOUD and suppress the positive framing below, so a queen-grab
+    # cannot look attractive (the 2026-06-20 ranked batch lost won games exactly
+    # this way). Only for the agent's OWN move (not when imagining the opponent's).
+    loss_cp, loss_piece = (0, None)
+    if not opp_move:
+        loss_cp, loss_piece = _material_loss(board_before, board_after, move)
+    blunder = loss_cp >= 300
+
     out: list[str] = []
+    if blunder:
+        out.append(
+            f"> ⛔ **BLUNDER — this move LOSES your {loss_piece} (~{loss_cp // 100} "
+            f"pawns).** After the opponent's best recapture you are DOWN about "
+            f"{loss_cp} centipawns of material. This is almost certainly a losing "
+            f"move; the 'check', 'king mobility', and capture details below do NOT "
+            f"make up for losing a {loss_piece}. Play it ONLY if it is forced "
+            f"checkmate, or you have calculated the exact line that wins the "
+            f"material back (use chess__imagine_line). Otherwise pick a safe move."
+        )
+        out.append("")
     if opp_move:
         you = color_name(agent_color)
         them = color_name(mover_color)
@@ -500,17 +557,26 @@ def render_imagine(
                 "**Draw warning:** this move recreates a position that has "
                 "already occurred — one more repetition is an automatic draw."
             )
-    out.append(king_mobility_line)
-    out.append("")
+    if not blunder:                       # positive framing — hide it on a blunder
+        out.append(king_mobility_line)
+        out.append("")
     if hanging_warning:
         out.append(hanging_warning)
         out.append("")
     if bad_trade_warning:
         out.append(bad_trade_warning)
         out.append("")
-    out.append(f"**{render_eval_delta_line(board_before, board_after)}**")
-    out.append(EVAL_WARNING)
-    out.append("")
+    if blunder:
+        out.append(
+            f"**Material after the opponent recaptures: you are DOWN about "
+            f"{loss_cp // 100} pawn(s).** (The capture's raw +centipawns ignore "
+            f"the recapture — it is not a gain.)"
+        )
+        out.append("")
+    else:
+        out.append(f"**{render_eval_delta_line(board_before, board_after)}**")
+        out.append(EVAL_WARNING)
+        out.append("")
     out.append("```")
     out.append(render_ascii(board_after))
     out.append("```")
@@ -524,14 +590,15 @@ def render_imagine(
     # placed near the king stays defensible. Numbers + words, no ASCII art.
     out.extend(_confinement_lines(board_before, board_after, move))
 
-    out.append("## Discovered attacks")
-    out.append("")
-    if discoveries:
-        for d in discoveries:
-            out.append(f"- {d}")
-    else:
-        out.append("- (none)")
-    out.append("")
+    if not blunder:                       # positive framing — hide it on a blunder
+        out.append("## Discovered attacks")
+        out.append("")
+        if discoveries:
+            for d in discoveries:
+                out.append(f"- {d}")
+        else:
+            out.append("- (none)")
+        out.append("")
 
     out.append(f"## Moved piece status ({moved_label})")
     out.append("")

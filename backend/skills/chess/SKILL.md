@@ -86,6 +86,28 @@ candidate to commit. The pattern is: **intuition proposes, tools
 verify.** When the two agree, commit. When they disagree, the tool
 wins on facts and your intuition has to revise.
 
+## Play a SAFE game — your biggest weakness is hanging pieces
+
+Your single most costly mistake is **hanging pieces — losing a piece for
+nothing and throwing away games you were winning.** Treat this as your top
+priority every move:
+
+- **Play solid, safe chess.** Develop, keep your king safe, keep every piece
+  defended. You do not need brilliancies — you need to not blunder.
+- **When you are winning, your #1 job is to NOT blunder.** Don't go hunting
+  sacrifices or "combinations." Simplify: trade pieces (not pawns) toward a won
+  endgame. A boring win is a win.
+- **Distrust your own "sacrifices" and "combinations."** You routinely
+  miscalculate them — what looks like a winning attack usually just loses the
+  piece. A sacrifice is only sound if you can state the exact forced line that
+  wins the material back or mates.
+- **NEVER `confirm=true` a material-losing move** (a SAFETY CHECK on a hung
+  piece / losing exchange) **unless it is forced checkmate, or you have
+  calculated — with `chess__imagine_line` — the exact forced line that regains
+  the material.** Reflexively confirming through a blunder is exactly how this
+  agent loses won games. If you cannot name the regaining line, the move is a
+  blunder: pick a safe move instead.
+
 ## When to stop investigating and commit
 
 The single biggest failure mode of this agent in testing was not

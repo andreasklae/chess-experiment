@@ -273,13 +273,16 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | No
                  move.promotion)
 
     if worst is not None and worst[0] >= 150:
-        # Hard (unconfirmable) when it throws the win away outright, or hands
-        # a rook/queen to a king with no army to support a sacrifice.
-        hard = (
-            worst[0] >= 10_000
-            or (opp_has_no_pieces and worst[2] in (chess.ROOK, chess.QUEEN))
-        )
-        return worst[1], hard
+        # `severe` controls the LOUDNESS of the (advisory) warning and the
+        # friction on overriding it — it is NOT a block (the gate is advisory;
+        # see decisions/2026-06-20-blunder-gate-advisory-only.md). A move that
+        # loses a whole PIECE (minor or major) or throws the win away outright
+        # is severe; losing only a pawn (or a sub-piece amount) stays ordinary.
+        # The ranked batch on 2026-06-20 showed the agent confidently
+        # confirm=true'ing queen-hangs that were merely "ordinary" warnings —
+        # losing easily-won games — so every piece-level blunder must read loud.
+        severe = worst[2] != chess.PAWN or worst[0] >= 10_000
+        return worst[1], severe
 
     # Rescuable hanging piece (SOFT only): the move doesn't CAUSE a loss, but
     # after it one of your pieces is still losing-by-value AND a different
@@ -432,11 +435,15 @@ def main() -> None:
         # See decisions/2026-06-20-blunder-gate-advisory-only.md.
         if severe:
             prefix = (
-                "SAFETY CHECK (severe) — move NOT yet committed: " + warning +
-                " This very likely LOSES or DRAWS the game outright — almost "
-                "never what you want. Only override if you are certain. To play "
-                "it anyway, call chess__make_move again with the same move and "
-                "confirm=true; otherwise pick a move that keeps the win."
+                "⛔ SAFETY CHECK (severe) — move NOT committed: " + warning +
+                " This hangs a PIECE / throws the game away — it is almost "
+                "certainly a losing blunder, and blundering pieces is the #1 way "
+                "this agent loses won games. The default is to PICK A DIFFERENT, "
+                "SAFE MOVE. You may override with confirm=true ONLY if it is a "
+                "forced checkmate, OR you can state in `reasoning` the exact "
+                "forced line (move by move, with the opponent's replies) that "
+                "WINS THE MATERIAL BACK or mates. If you cannot name that line, "
+                "do NOT override — choose a move that keeps your pieces."
             )
         else:
             prefix = (

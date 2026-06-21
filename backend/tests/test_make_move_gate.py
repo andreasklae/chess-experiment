@@ -106,19 +106,19 @@ class TestGameEndingTraps:
 
 
 class TestHardVsSoft:
-    """The gate's second tuple element marks CATASTROPHIC losses (severe
-    wording) vs ordinary free gifts. As of 2026-06-20 this is wording only —
-    the commit boundary is advisory and EVERYTHING is overridable with
-    confirm=true (decisions/2026-06-20-blunder-gate-advisory-only.md). These
-    tests pin the severity flag the gate computes, not a refusal."""
+    """The gate's second tuple element marks SEVERE losses (loud warning +
+    justification-demanded override) vs ordinary ones. As of 2026-06-20 this is
+    wording/friction only — the commit boundary is advisory and EVERYTHING is
+    overridable with confirm=true. Policy updated after the 2026-06-20 ranked
+    batch (the agent confirm=true'd queen-hangs that were merely 'ordinary'):
+    **losing any whole PIECE (minor or major) is now severe**; only a pawn-level
+    loss stays ordinary. These tests pin the severity flag, not a refusal."""
 
-    def test_hang_rook_to_bare_king_is_hard(self, mm):
-        # Bare black king on c6; Rb6+?? Kxb6 hangs the rook with no army to
-        # justify any sacrifice.
+    def test_hang_rook_to_bare_king_is_severe(self, mm):
         res = _gate_full(mm, "8/8/2k5/R7/8/8/8/1R4K1 w - - 2 2", "b1b6")
         assert res is not None and res[1] is True
 
-    def test_draw_while_ahead_is_hard(self, mm):
+    def test_draw_while_ahead_is_severe(self, mm):
         board = chess.Board("k7/8/2K5/8/8/8/8/R7 w - - 0 1")
         for uci in ("a1a2", "a8b8", "a2a1", "b8a8", "a1a2", "a8b8",
                     "a2a1", "b8a8", "a1a2", "a8b8"):
@@ -126,12 +126,17 @@ class TestHardVsSoft:
         res = mm._blunder_gate(board, chess.Move.from_uci("a2a1"))
         assert res is not None and res[1] is True
 
-    def test_ordinary_free_gift_is_soft(self, mm):
-        # Same rook-hang geometry as the hard case, but the opponent still has
-        # a piece (a knight) — so a gift COULD be a real sacrifice; the gate
-        # flags it but leaves it overridable with confirm.
+    def test_hanging_a_piece_is_severe_even_when_opp_has_army(self, mm):
+        # Rook gift while the opponent still has a knight — under the old policy
+        # this was "soft" (could be a sacrifice); now losing a whole piece is
+        # SEVERE regardless. This is the exact class that lost won games on
+        # 2026-06-20 (queen-hangs read as ordinary and were confirm=true'd).
         res = _gate_full(mm, "8/8/2k5/R7/8/8/8/1R5n w - - 2 2", "b1b6")
-        assert res is not None and res[1] is False
+        assert res is not None and res[1] is True
+
+    def test_safe_move_not_flagged(self, mm):
+        # A normal safe move loses nothing — the gate does not fire at all.
+        assert _gate_full(mm, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "e2e4") is None
 
     def test_no_commit_deadlock_when_every_move_is_flagged(self, mm):
         # Live game (agent vs chesscom-850, 2026-06-20): Ke5 in check from Rg5,

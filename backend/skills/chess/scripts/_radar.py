@@ -71,6 +71,30 @@ def _drill_excerpt(page_rel: str) -> list[str]:
         return []
 
 
+_PIECE_VALUE = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3,
+                chess.ROOK: 5, chess.QUEEN: 9}
+
+
+def _winning_safety_lines(board: chess.Board, own: bool) -> list[str]:
+    """When ``own`` is clearly ahead on material, lead the radar with a
+    don't-blunder reminder. Pure material count. The 2026-06-20 ranked batch
+    lost easily-won games by hanging pieces from winning positions; a contextual
+    'you are winning, play safe' nudge (which works far better than prose) is the
+    cheap counter."""
+    own_mat = _material(board, own)
+    opp_mat = _material(board, not own)
+    lead = sum(_PIECE_VALUE[pt] * (own_mat[pt] - opp_mat[pt]) for pt in own_mat)
+    if lead < 3:
+        return []
+    return [
+        f"- **You are winning (+{lead} material). Your #1 job now is to NOT "
+        f"blunder.** No sacrifices; keep EVERY piece defended; trade pieces "
+        f"(not pawns) to simplify toward a won endgame. Before any non-obvious "
+        f"move, imagine it (chess__imagine_move) and confirm it does not hang "
+        f"material — a single hung piece throws the win away."
+    ]
+
+
 def _mating_material_lines(board: chess.Board, own: bool) -> list[str]:
     """When the opponent is down to king (+ pawns), name the basic mate the
     agent's material supports and the wiki page that teaches it."""
@@ -1050,6 +1074,7 @@ def render_radar(board: chess.Board, move_cap: int | None = None) -> str | None:
     """
     own = board.turn
     lines: list[str] = []
+    lines += _winning_safety_lines(board, own)
     lines += _mating_material_lines(board, own)
     lines += _drill_state_lines(board, own)
     lines += _king_geometry_lines(board, own)
