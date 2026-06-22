@@ -153,29 +153,28 @@ def pick_opponent_elo(
     streak: int,
     pool: OpponentPool,
 ) -> int:
-    """Choose the next opponent's ELO from the given pool.
+    """Choose the next opponent's ELO from the given pool: the pool rating
+    CLOSEST to the agent's current ELO (ties round down).
 
-    Strategy:
-    - The agent's current ELO is anchored to the nearest pool rating
-      (ties round down). That's the "where we are now" position.
-    - `step_from_streak(streak)` says how many grid notches to move from
-      that anchor: positive for wins, negative for losses, zero after a
-      draw that nulled the streak.
-    - First game of a batch (streak=0, never played) anchors at the
-      nearest rating.
+    Post-baseline policy (decisions/2026-06-21-closest-elo-matchmaking.md):
+    play whoever is nearest your rating — the most informative game for a
+    precise Elo estimate. ``streak`` is accepted for signature compatibility
+    but NO LONGER used for opponent selection; the old win-up/loss-down step
+    (``step_from_streak``) is retired because, once the level was found, it
+    oscillated the opponent around on the compressed low end instead of
+    concentrating games where they inform the estimate.
 
-    Clamps to the pool's floor/ceiling.
+    Clamps to the pool's floor/ceiling (the nearest grid point is always
+    in-range).
     """
     ratings = MAIA_ELOS if pool == "maia" else CHESSCOM_ELOS
     sorted_ratings = sorted(ratings)
-    # Anchor to the nearest grid point.
+    # Nearest grid point to the agent's current Elo (ties round down).
     anchor_idx = min(
         range(len(sorted_ratings)),
         key=lambda i: (abs(sorted_ratings[i] - agent_elo), sorted_ratings[i]),
     )
-    step = step_from_streak(streak)
-    new_idx = max(0, min(len(sorted_ratings) - 1, anchor_idx + step))
-    return sorted_ratings[new_idx]
+    return sorted_ratings[anchor_idx]
 
 
 # ── Persistent state ─────────────────────────────────────────────────────────
