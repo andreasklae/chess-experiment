@@ -673,9 +673,53 @@ def render_imagine(
     if not legal:
         out.append(f"_None — game over ({check_text})._")
     else:
-        out.append(f"_{len(legal)} legal replies_:")
+        # Rank replies by the MATERIAL the side-to-move wins (SEE), mates first.
+        # The agent kept misreading a hang as an even "trade"; sorting the
+        # opponent's replies by what they win, and labelling each, makes the
+        # refutation impossible to miss.
+        replier = board_after.turn
+        ranked = []
+        for mv in legal:
+            gain = (static_exchange_eval(board_after, mv.to_square, replier)
+                    if board_after.is_capture(mv) else 0)
+            a = board_after.copy(stack=False); a.push(mv)
+            flag = "mate" if a.is_checkmate() else ("check" if a.is_check() else "")
+            cap = board_after.piece_at(mv.to_square)
+            capn = PIECE_NAMES[cap.piece_type] if cap is not None else ""
+            ranked.append((mv, gain, flag, capn, board_after.san(mv)))
+        ranked.sort(key=lambda r: (-(r[2] == "mate"), -r[1], -(r[2] == "check")))
+        top = ranked[0]
+        # Headline the refutation when the replies are the OPPONENT's and their
+        # best reply wins a piece (or mates) — i.e. THIS move loses material.
+        if not opp_move and (top[2] == "mate" or top[1] >= 300):
+            if top[2] == "mate":
+                out.append(f"**⛔ The opponent has CHECKMATE in reply: {top[4]}. This move loses on the spot.**")
+            else:
+                out.append(
+                    f"**⛔ The opponent's strongest reply, {top[4]}, WINS your "
+                    f"{top[3]} (about {top[1]} cp / ~{top[1] // 100} pawns). This "
+                    f"move is NOT an even trade — after {top[4]} you are down "
+                    f"material. Do not play it expecting a fair exchange.**"
+                )
+            out.append("")
+        out.append(
+            f"_{len(legal)} legal replies, sorted by the material the "
+            f"{color_name(replier)} side wins (its best/most-damaging replies "
+            f"first):_"
+        )
         out.append("")
-        out.append(render_moves_table(board_after, legal))
+        rows = ["| SAN    | UCI    | Wins for them      | Flag  |",
+                "|--------|--------|--------------------|-------|"]
+        for mv, gain, flag, capn, san in ranked:  # full list, dangerous first
+            win = f"+{gain}cp ({capn})" if gain > 0 else "—"
+            rows.append(f"| {san:<6} | {mv.uci():<6} | {win:<18} | {flag:<5} |")
+        out.extend(rows)
+        out.append("")
+        out.append(
+            "_Don't assume one reply — play the line after the TOP 1–3 replies "
+            "with chess__imagine_line. If any of them wins material off you, "
+            "this move is a blunder; choose another._"
+        )
 
     # Nudge: if this move is sharp/forcing/material-changing, one ply is not
     # enough — tell the agent to calculate the LINE before committing. Only in
