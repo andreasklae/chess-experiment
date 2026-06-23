@@ -121,7 +121,17 @@ class ChessComDriver:
     # ----- lifecycle -----
 
     async def launch(self) -> None:
-        """Start Playwright, open the persistent Chrome profile, navigate."""
+        """Start Playwright, open a fresh Chrome profile, navigate.
+
+        The host adapter (``backend/app/players.py``) hands each game its own
+        ephemeral ``user_data_dir`` (a temp dir wiped on close), so every game
+        starts from a clean, logged-out browser with no restored session and
+        no in-progress game to resume — the proven design that keeps the bot
+        picker reachable on every launch. The launch is still retried with
+        backoff (and any stale lock cleared) to ride out transient Chromium
+        start failures; on total failure we tear down whatever was partially
+        started so the caller's retry begins clean.
+        """
         if self._page is not None:
             return
 
@@ -130,14 +140,42 @@ class ChessComDriver:
         from playwright.async_api import async_playwright
 
         self._user_data_dir.mkdir(parents=True, exist_ok=True)
+        self._clear_stale_singleton_lock()
 
         self._playwright = await async_playwright().start()
-        self._context = await self._playwright.chromium.launch_persistent_context(
-            user_data_dir=str(self._user_data_dir),
-            headless=self._headless,
-            channel=self._chrome_channel,
-            viewport={"width": 1280, "height": 900},
-        )
+
+        # Retry the persistent-context launch: a profile still held by a dying
+        # prior Chrome throws here ("ProcessSingleton"/"SingletonLock"/profile
+        # in use). Back off and clear the lock between attempts.
+        last_exc: Exception | None = None
+        for attempt in (1, 2, 3):
+            try:
+                self._context = await self._playwright.chromium.launch_persistent_context(
+                    user_data_dir=str(self._user_data_dir),
+                    headless=self._headless,
+                    channel=self._chrome_channel,
+                    viewport={"width": 1280, "height": 900},
+                )
+                last_exc = None
+                break
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                logger.warning(
+                    "chromium launch_persistent_context failed (attempt %d/3): %s",
+                    attempt, exc,
+                )
+                self._context = None
+                if attempt < 3:
+                    await asyncio.sleep(2.0 * attempt)
+                    self._clear_stale_singleton_lock()
+        if last_exc is not None or self._context is None:
+            # Don't leak the Playwright driver process on a failed launch.
+            await self.close()
+            raise ChessComSetupError(
+                f"Failed to launch Chrome on the chess.com profile after 3 "
+                f"attempts: {last_exc}"
+            ) from last_exc
+
         if self._context.pages:
             self._page = self._context.pages[0]
         else:
@@ -215,6 +253,25 @@ class ChessComDriver:
         except Exception:
             pass
 
+    def _clear_stale_singleton_lock(self) -> None:
+        """Remove a leftover Chrome SingletonLock from the profile dir.
+
+        Chrome writes ``SingletonLock`` (a symlink) while running and removes
+        it on a clean exit. A crashed or force-killed prior Chrome can leave it
+        behind, which makes ``launch_persistent_context`` refuse the dir. With
+        the ephemeral per-game temp dir this is normally a no-op (a fresh dir
+        has no lock), but it makes the launch robust if the dir is ever reused
+        or a prior process died uncleanly. Only called right before launching,
+        when no Chrome is using the dir.
+        """
+        for name in ("SingletonLock", "SingletonCookie", "SingletonSocket"):
+            p = self._user_data_dir / name
+            try:
+                if p.is_symlink() or p.exists():
+                    p.unlink()
+            except OSError:
+                pass
+
     async def close(self) -> None:
         """Tear down Playwright. Idempotent."""
         if self._context is not None:
@@ -265,8 +322,12 @@ class ChessComDriver:
 
         await self._click_play()
 
-        # Settle and enable auto-promote on the running game.
+        # Settle and enable auto-promote on the running game. BOARD_READY only
+        # confirms the board element + game object exist; the interactive layer
+        # (drag handlers) needs a brief extra moment before the first move's
+        # pointer events will land. submit_move also re-fires as a backstop.
         await self._page.wait_for_function(_js.BOARD_READY, timeout=15_000)
+        await asyncio.sleep(1.0)
         await self._page.evaluate(_js.SET_AUTO_PROMOTE)
         self._last_seen_move_signature = None
 
@@ -324,18 +385,32 @@ class ChessComDriver:
         except Exception:
             pass
 
-        engine_group = self._page.locator('[data-cy="bot-group-Engine"]')
-        toggle = engine_group.locator('[data-cy="bot-group-Engine-toggle"]')
+        # chess.com dropped the `data-cy="bot-group-Engine"` hooks in mid-2026;
+        # the bot groups are now class-based accordions. Locate the Engine group
+        # by its section-title text and click its toggle area to expand. The
+        # slider markup inside (`input.slider-input`) is unchanged.
+        engine_group = self._page.locator(
+            "div.bot-group-accordion-component"
+        ).filter(
+            has=self._page.locator(
+                "div.bot-group-accordion-sectionTitle", has_text="Engine"
+            )
+        )
+        toggle = engine_group.locator(
+            "div.bot-group-accordion-toggleClickArea, div.bot-group-accordion-topText"
+        ).first
 
         try:
-            await toggle.wait_for(state="attached", timeout=10_000)
+            await engine_group.locator(
+                "div.bot-group-accordion-sectionTitle"
+            ).wait_for(state="attached", timeout=10_000)
         except Exception as exc:  # noqa: BLE001
             raise ChessComSetupError(
                 "Could not find the Engine bot group on /play/computer"
             ) from exc
 
         # If the slider is already visible inside the Engine group, it's open.
-        if await engine_group.locator('input.slider-input').count() > 0:
+        if await engine_group.locator("input.slider-input").count() > 0:
             return
 
         await self._robust_click(toggle, timeout=5_000)
@@ -353,9 +428,12 @@ class ChessComDriver:
         assert self._page is not None
         if position not in POSITION_TO_RATING:
             raise ValueError(f"Slider position out of range: {position}")
+        # The Engine slider is the only `input.slider-input` on the page once
+        # the Engine group is expanded (other bot groups have no slider). The
+        # `data-cy="bot-group-Engine"` scope was removed by chess.com mid-2026.
         ok = await self._page.evaluate(
             _js.SET_RANGE_VALUE,
-            ['[data-cy="bot-group-Engine"] input.slider-input', position],
+            ["input.slider-input", position],
         )
         if not ok:
             raise ChessComSetupError("Failed to find slider input element")
@@ -414,18 +492,27 @@ class ChessComDriver:
         state_before = await self.get_state()
         sig_before = _move_signature(state_before.get("lastMove"))
 
-        await self._page.evaluate(_js.SUBMIT_MOVE, uci)
-
-        # Wait briefly for our own move to register.
-        deadline = asyncio.get_event_loop().time() + 5.0
+        # Re-dispatch the move until it registers. The pointer-event simulation
+        # can silently miss — most reliably on the very first move of a freshly
+        # loaded game, when the board element exists (BOARD_READY) but its drag
+        # handlers aren't fully wired yet. One miss used to abort the whole
+        # game; instead we re-fire SUBMIT_MOVE each cycle and only give up after
+        # the deadline. (A genuinely illegal move also never registers and is
+        # reported the same way after the deadline.)
+        deadline = asyncio.get_event_loop().time() + 10.0
         while asyncio.get_event_loop().time() < deadline:
-            await asyncio.sleep(self._poll_interval)
-            state = await self.get_state()
-            last = state.get("lastMove")
-            sig = _move_signature(last)
-            if sig != sig_before and last and last["color"] == _COLOR_WHITE:
-                self._last_seen_move_signature = sig
-                return
+            await self._page.evaluate(_js.SUBMIT_MOVE, uci)
+            # Give this dispatch a moment to land before re-firing.
+            for _ in range(5):
+                await asyncio.sleep(self._poll_interval)
+                state = await self.get_state()
+                last = state.get("lastMove")
+                sig = _move_signature(last)
+                if sig != sig_before and last and last["color"] == _COLOR_WHITE:
+                    # Registered (this also covers a move that ended the game,
+                    # e.g. checkmate by us — the white move still shows as last).
+                    self._last_seen_move_signature = sig
+                    return
 
         raise ChessComIllegalMove(
             f"chess.com did not register move {uci}; the click may have missed "

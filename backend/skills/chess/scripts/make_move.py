@@ -272,6 +272,38 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | No
         worst = (max(see_loss, worst[0] if worst else 0), desc,
                  move.promotion)
 
+    # Leaving an enemy pawn free to promote: after this move the opponent can
+    # promote on its reply and we cannot win the new queen back (SEE on the
+    # promotion square < ~3 pawns). This is the "ignored the promotion warning"
+    # loss — the agent played a check / idle move and let c1=Q happen while
+    # winning (game 6ba7598c, 2026-06-23, drew a 2R+B-vs-K+2P from this). Skip
+    # when our move gives check (the opponent must answer it first, so the
+    # promotion is not free on the immediate reply) and when our move IS the
+    # capture/block that handles the pawn. Pure rules: legal promotions + SEE.
+    if not after.is_check():
+        promo_sqs = []
+        for r in after.legal_moves:
+            if r.promotion != chess.QUEEN:
+                continue
+            b2 = after.copy(stack=False)
+            b2.push(r)
+            if static_exchange_eval(b2, r.to_square, mover) < 300:
+                promo_sqs.append(chess.square_name(r.to_square))
+        promo_sqs = sorted(set(promo_sqs))
+        if promo_sqs:
+            desc = (
+                f"this move lets the opponent PROMOTE on {', '.join(promo_sqs)} "
+                f"next move, and you cannot win the new queen back — a fresh "
+                f"enemy queen will wreck your winning position. Your move MUST "
+                f"deal with the pawn instead: capture it, block its path, put a "
+                f"rook/your king on the promotion square, or give a check that "
+                f"also stops it. Use chess__imagine_line to play the pawn push "
+                f"out and confirm your move does NOT leave it free to queen."
+            )
+            # Worth at least a queen — always severe; rank above sub-queen hangs.
+            if worst is None or 900 > worst[0]:
+                worst = (max(900, worst[0] if worst else 0), desc, chess.QUEEN)
+
     if worst is not None and worst[0] >= 150:
         # `severe` controls the LOUDNESS of the (advisory) warning and the
         # friction on overriding it — it is NOT a block (the gate is advisory;
@@ -313,13 +345,23 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | No
                     saved = True
                     break
             if saved:
+                # Severe when the abandoned piece is a ROOK or QUEEN — leaving a
+                # rescuable major hanging loses games outright and is never a
+                # real sacrifice you'd want to wave through (game 79a5d9c7,
+                # 2026-06-23: a hanging QUEEN on e3 was flagged only SOFT, the
+                # agent confirmed axb3 anyway, and ...Bxe3 won the queen). A
+                # MINOR stays soft: it can be a genuine gambit/sacrifice and the
+                # loss may be unavoidable (game 9b0d7590, the deliberate soft
+                # case the rescuable-hang warning was built for).
+                severe = piece_type in (chess.ROOK, chess.QUEEN)
                 return (
                     f"heads up: your {PIECE_NAMES[piece_type]} on "
                     f"{chess.square_name(psq)} is hanging (the opponent wins "
                     f"material in the exchange there), and a move this turn "
                     f"could save it — you are leaving it to be taken. If that "
-                    f"is not a deliberate sacrifice, rescue it instead.",
-                    False,
+                    f"is not a deliberate sacrifice, rescue it instead. Use "
+                    f"chess__imagine_move to confirm it is really safe.",
+                    severe,
                 )
     return None
 

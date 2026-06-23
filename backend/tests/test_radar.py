@@ -325,12 +325,24 @@ class TestLadderFinishHooks:
         assert "on the edge (rank 1)" in out and "WAITING move" in out
 
     def test_hanging_rook_says_slide_to_different_cross_line_first(self):
-        # The user's rule: a capturable rook is moved to safety FIRST, onto a
-        # file the OTHER rook is not on (so they don't block each other).
-        out = self._drill("8/8/8/k7/1R6/8/8/R5K1 w - - 0 1")
+        # The user's rule: a capturable rook with NO safe driving check is moved
+        # to safety FIRST, onto a file the OTHER rook is not on (so they don't
+        # block each other). Here the Rc3 is attacked by the d4 king and its
+        # checks are not safe checks on the king's own line.
+        out = self._drill("8/8/8/8/3k4/2R5/8/R5K1 w - - 0 1")
         assert "can be captured" in out and "slide it to safety FIRST" in out
         assert "the other rook is NOT on" in out and "Safe squares" in out
         self._no_named_move(out)
+
+    def test_hanging_rook_with_safe_driving_check_is_not_told_to_retreat(self):
+        # A rook that is "capturable" but can give a SAFE CHECK on the king's
+        # own line should NOT be told to retreat — that check is the ladder
+        # move, and retreating loops (game 08e916ca, 2026-06-23). Rd1 here is
+        # attacked by the c2 king, but Rd2+ is a safe driving check on the
+        # king's rank, so the drill should drive, not retreat.
+        out = self._drill("8/8/8/1R6/8/P1B5/1Pk4K/3R4 w - - 17 78")
+        assert "slide it to safety FIRST" not in out
+        assert "driving to" in out or "WALL" in out
 
     def test_queen_guarded_rook_not_flagged_as_hanging(self):
         # Queen guards the attacked rook (SEE) → no relocate hint.
