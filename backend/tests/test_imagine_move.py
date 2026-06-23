@@ -265,7 +265,8 @@ def test_opponent_legal_moves_count_matches_python_chess(im):
     expected = board.legal_moves.count()
     board = chess.Board()
     out = im.render_imagine(board, chess.Move.from_uci("e2e4"))
-    assert f"_{expected} legal replies_" in out
+    # The replies line now carries a material-sorted suffix.
+    assert f"_{expected} legal replies, sorted by the material" in out
 
 
 def test_opponent_legal_moves_show_full_list_not_truncated(im):

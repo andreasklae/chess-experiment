@@ -22,6 +22,7 @@ signature, which it does.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from pathlib import Path
 
@@ -87,11 +88,38 @@ class ChessComPlayer:
                 actual_rating=self.actual_rating or -1,
                 target_elo=self.target_elo,
             )
-        await self._driver.launch()
-        start = await self._driver.start_game(self.target_elo)
-        self.actual_rating = start.actual_rating
-        self._started = True
-        return start
+
+        # Launch + game-setup can fail transiently: a slow chess.com page, a
+        # Cloudflare interstitial, a missing/blocked Engine group on a degraded
+        # render. On any failure, fully quit the browser and retry from a clean
+        # launch (a brand-new ephemeral profile each time).
+        last_exc: Exception | None = None
+        for attempt in (1, 2, 3):
+            try:
+                await self._driver.launch()
+                start = await self._driver.start_game(self.target_elo)
+                self.actual_rating = start.actual_rating
+                self._started = True
+                return start
+            except (ChessComSetupError, ChessComGameError) as exc:
+                last_exc = exc
+                logger.warning(
+                    "chess.com game setup failed (attempt %d/3, target_elo=%d): %s",
+                    attempt, self.target_elo, exc,
+                )
+                # Quit Chrome so the next attempt relaunches clean.
+                try:
+                    await self._driver.close()
+                except Exception:  # noqa: BLE001
+                    logger.exception("driver.close() failed during setup retry")
+                self._started = False
+                if attempt < 3:
+                    await asyncio.sleep(3.0 * attempt)
+
+        raise ChessComSetupError(
+            f"Failed to start a chess.com game at ELO {self.target_elo} after "
+            f"3 attempts: {last_exc}"
+        ) from last_exc
 
     async def get_move(
         self, board: chess.Board, last_san: str | None = None

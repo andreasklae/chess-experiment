@@ -272,14 +272,49 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | No
         worst = (max(see_loss, worst[0] if worst else 0), desc,
                  move.promotion)
 
+    # Leaving an enemy pawn free to promote: after this move the opponent can
+    # promote on its reply and we cannot win the new queen back (SEE on the
+    # promotion square < ~3 pawns). This is the "ignored the promotion warning"
+    # loss — the agent played a check / idle move and let c1=Q happen while
+    # winning (game 6ba7598c, 2026-06-23, drew a 2R+B-vs-K+2P from this). Skip
+    # when our move gives check (the opponent must answer it first, so the
+    # promotion is not free on the immediate reply) and when our move IS the
+    # capture/block that handles the pawn. Pure rules: legal promotions + SEE.
+    if not after.is_check():
+        promo_sqs = []
+        for r in after.legal_moves:
+            if r.promotion != chess.QUEEN:
+                continue
+            b2 = after.copy(stack=False)
+            b2.push(r)
+            if static_exchange_eval(b2, r.to_square, mover) < 300:
+                promo_sqs.append(chess.square_name(r.to_square))
+        promo_sqs = sorted(set(promo_sqs))
+        if promo_sqs:
+            desc = (
+                f"this move lets the opponent PROMOTE on {', '.join(promo_sqs)} "
+                f"next move, and you cannot win the new queen back — a fresh "
+                f"enemy queen will wreck your winning position. Your move MUST "
+                f"deal with the pawn instead: capture it, block its path, put a "
+                f"rook/your king on the promotion square, or give a check that "
+                f"also stops it. Use chess__imagine_line to play the pawn push "
+                f"out and confirm your move does NOT leave it free to queen."
+            )
+            # Worth at least a queen — always severe; rank above sub-queen hangs.
+            if worst is None or 900 > worst[0]:
+                worst = (max(900, worst[0] if worst else 0), desc, chess.QUEEN)
+
     if worst is not None and worst[0] >= 150:
-        # Hard (unconfirmable) when it throws the win away outright, or hands
-        # a rook/queen to a king with no army to support a sacrifice.
-        hard = (
-            worst[0] >= 10_000
-            or (opp_has_no_pieces and worst[2] in (chess.ROOK, chess.QUEEN))
-        )
-        return worst[1], hard
+        # `severe` controls the LOUDNESS of the (advisory) warning and the
+        # friction on overriding it — it is NOT a block (the gate is advisory;
+        # see decisions/2026-06-20-blunder-gate-advisory-only.md). A move that
+        # loses a whole PIECE (minor or major) or throws the win away outright
+        # is severe; losing only a pawn (or a sub-piece amount) stays ordinary.
+        # The ranked batch on 2026-06-20 showed the agent confidently
+        # confirm=true'ing queen-hangs that were merely "ordinary" warnings —
+        # losing easily-won games — so every piece-level blunder must read loud.
+        severe = worst[2] != chess.PAWN or worst[0] >= 10_000
+        return worst[1], severe
 
     # Rescuable hanging piece (SOFT only): the move doesn't CAUSE a loss, but
     # after it one of your pieces is still losing-by-value AND a different
@@ -310,13 +345,23 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | No
                     saved = True
                     break
             if saved:
+                # Severe when the abandoned piece is a ROOK or QUEEN — leaving a
+                # rescuable major hanging loses games outright and is never a
+                # real sacrifice you'd want to wave through (game 79a5d9c7,
+                # 2026-06-23: a hanging QUEEN on e3 was flagged only SOFT, the
+                # agent confirmed axb3 anyway, and ...Bxe3 won the queen). A
+                # MINOR stays soft: it can be a genuine gambit/sacrifice and the
+                # loss may be unavoidable (game 9b0d7590, the deliberate soft
+                # case the rescuable-hang warning was built for).
+                severe = piece_type in (chess.ROOK, chess.QUEEN)
                 return (
                     f"heads up: your {PIECE_NAMES[piece_type]} on "
                     f"{chess.square_name(psq)} is hanging (the opponent wins "
                     f"material in the exchange there), and a move this turn "
                     f"could save it — you are leaving it to be taken. If that "
-                    f"is not a deliberate sacrifice, rescue it instead.",
-                    False,
+                    f"is not a deliberate sacrifice, rescue it instead. Use "
+                    f"chess__imagine_move to confirm it is really safe.",
+                    severe,
                 )
     return None
 
@@ -432,11 +477,15 @@ def main() -> None:
         # See decisions/2026-06-20-blunder-gate-advisory-only.md.
         if severe:
             prefix = (
-                "SAFETY CHECK (severe) — move NOT yet committed: " + warning +
-                " This very likely LOSES or DRAWS the game outright — almost "
-                "never what you want. Only override if you are certain. To play "
-                "it anyway, call chess__make_move again with the same move and "
-                "confirm=true; otherwise pick a move that keeps the win."
+                "⛔ SAFETY CHECK (severe) — move NOT committed: " + warning +
+                " This hangs a PIECE / throws the game away — it is almost "
+                "certainly a losing blunder, and blundering pieces is the #1 way "
+                "this agent loses won games. The default is to PICK A DIFFERENT, "
+                "SAFE MOVE. You may override with confirm=true ONLY if it is a "
+                "forced checkmate, OR you can state in `reasoning` the exact "
+                "forced line (move by move, with the opponent's replies) that "
+                "WINS THE MATERIAL BACK or mates. If you cannot name that line, "
+                "do NOT override — choose a move that keeps your pieces."
             )
         else:
             prefix = (

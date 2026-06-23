@@ -21,14 +21,70 @@ function resolveApiBase(): string {
 
 const API_BASE = resolveApiBase();
 
+// ── Global "busy" tracker ───────────────────────────────────────────────────
+// Every request flows through request(); we count in-flight calls and, after a
+// short debounce, flip a `busy` flag so the UI can show a loading indicator.
+// The debounce keeps fast polls (every 1–2s) from flashing the indicator, while
+// a slow/blocking call (e.g. the backend launching a chess.com browser, which
+// blocks ~30s) reliably surfaces it instead of the UI looking frozen.
+const BUSY_DEBOUNCE_MS = 400;
+let inflight = 0;
+let busy = false;
+let busyTimer: ReturnType<typeof setTimeout> | null = null;
+const busyListeners = new Set<(b: boolean) => void>();
+
+function emitBusy() {
+  for (const l of busyListeners) l(busy);
+}
+function requestStarted() {
+  inflight += 1;
+  if (inflight === 1 && busyTimer === null) {
+    busyTimer = setTimeout(() => {
+      busyTimer = null;
+      if (inflight > 0 && !busy) {
+        busy = true;
+        emitBusy();
+      }
+    }, BUSY_DEBOUNCE_MS);
+  }
+}
+function requestEnded() {
+  inflight = Math.max(0, inflight - 1);
+  if (inflight === 0) {
+    if (busyTimer !== null) {
+      clearTimeout(busyTimer);
+      busyTimer = null;
+    }
+    if (busy) {
+      busy = false;
+      emitBusy();
+    }
+  }
+}
+
+/** Subscribe to the global busy flag (true once a request has been pending
+ *  longer than the debounce). Calls back immediately with the current value;
+ *  returns an unsubscribe function. */
+export function subscribeBusy(cb: (b: boolean) => void): () => void {
+  busyListeners.add(cb);
+  cb(busy);
+  return () => busyListeners.delete(cb);
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...init?.headers,
-    },
-  });
+  requestStarted();
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...init?.headers,
+      },
+    });
+  } finally {
+    requestEnded();
+  }
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     throw new Error(body?.detail ?? `Request failed: ${response.status}`);
