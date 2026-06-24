@@ -1,0 +1,79 @@
+{
+  "meta": {
+    "stage": 1,
+    "model": "gemma-31b",
+    "model_name": "google/gemma-4-31B-it",
+    "base_url": "http://localhost:11500/v1",
+    "temperature": 0.8,
+    "max_tokens_a": 400,
+    "max_tokens_b": 700,
+    "n_a": 40,
+    "n_b_per_pos": 4,
+    "started": "2026-06-23T19:16:12",
+    "prompt_a": "Generate a chess position.",
+    "prompt_b_template": "Generate this position: <FEN>",
+    "finished": "2026-06-23T19:34:50",
+    "n_calls": 104
+  },
+  "condition_A": {
+    "n_ok": 40,
+    "primary_visual": {
+      "letter_grid": 23,
+      "piece_list": 10,
+      "unicode_grid": 4,
+      "boxed_grid": 3
+    },
+    "form_present_any": {
+      "fen": 33,
+      "piece_list": 26,
+      "letter_grid": 23,
+      "unicode_grid": 4,
+      "boxed_grid": 3
+    },
+    "exact_form_sets": {
+      "fen, letter_grid, piece_list": 13,
+      "fen, piece_list": 8,
+      "fen, letter_grid": 8,
+      "unicode_grid": 2,
+      "piece_list": 2,
+      "letter_grid": 2,
+      "boxed_grid, fen": 2,
+      "fen, piece_list, unicode_grid": 1,
+      "boxed_grid, fen, piece_list": 1,
+      "piece_list, unicode_grid": 1
+    }
+  },
+  "condition_B": {
+    "n_ok": 64,
+    "primary_visual": {
+      "boxed_grid": 61,
+      "letter_grid": 3
+    },
+    "form_present_any": {
+      "fen": 64,
+      "boxed_grid": 61,
+      "piece_list": 21,
+      "letter_grid": 3
+    },
+    "fen_echo_present": 64,
+    "fen_echo_exact": 64,
+    "fen_echo_fidelity_rate": 1.0,
+    "fen_fidelity_by_phase": {
+      "opening": {
+        "exact": 20,
+        "present": 20,
+        "rate": 1.0
+      },
+      "middlegame": {
+        "exact": 20,
+        "present": 20,
+        "rate": 1.0
+      },
+      "endgame": {
+        "exact": 24,
+        "present": 24,
+        "rate": 1.0
+      }
+    }
+  }
+}

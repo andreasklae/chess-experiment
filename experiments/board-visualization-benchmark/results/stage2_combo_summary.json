@@ -1,0 +1,233 @@
+{
+  "compared": [
+    "fen",
+    "ascii_grid",
+    "fen_plus_grid"
+  ],
+  "overall_accuracy": {
+    "fen": {
+      "acc": 0.8,
+      "lo": 0.7566,
+      "hi": 0.8374,
+      "correct": 300,
+      "total": 375
+    },
+    "ascii_grid": {
+      "acc": 0.776,
+      "lo": 0.7311,
+      "hi": 0.8153,
+      "correct": 291,
+      "total": 375
+    },
+    "fen_plus_grid": {
+      "acc": 0.808,
+      "lo": 0.7651,
+      "hi": 0.8447,
+      "correct": 303,
+      "total": 375
+    }
+  },
+  "by_kind": {
+    "ascii_grid|attacked": {
+      "correct": 51,
+      "total": 75,
+      "acc": 0.68
+    },
+    "ascii_grid|count_attackers": {
+      "correct": 21,
+      "total": 30,
+      "acc": 0.7
+    },
+    "ascii_grid|defended": {
+      "correct": 48,
+      "total": 78,
+      "acc": 0.6154
+    },
+    "ascii_grid|hanging": {
+      "correct": 33,
+      "total": 48,
+      "acc": 0.6875
+    },
+    "ascii_grid|in_check": {
+      "correct": 45,
+      "total": 48,
+      "acc": 0.9375
+    },
+    "ascii_grid|occupancy": {
+      "correct": 93,
+      "total": 96,
+      "acc": 0.9688
+    },
+    "fen|attacked": {
+      "correct": 60,
+      "total": 75,
+      "acc": 0.8
+    },
+    "fen|count_attackers": {
+      "correct": 6,
+      "total": 30,
+      "acc": 0.2
+    },
+    "fen|defended": {
+      "correct": 51,
+      "total": 78,
+      "acc": 0.6538
+    },
+    "fen|hanging": {
+      "correct": 42,
+      "total": 48,
+      "acc": 0.875
+    },
+    "fen|in_check": {
+      "correct": 45,
+      "total": 48,
+      "acc": 0.9375
+    },
+    "fen|occupancy": {
+      "correct": 96,
+      "total": 96,
+      "acc": 1.0
+    },
+    "fen_plus_grid|attacked": {
+      "correct": 60,
+      "total": 75,
+      "acc": 0.8
+    },
+    "fen_plus_grid|count_attackers": {
+      "correct": 9,
+      "total": 30,
+      "acc": 0.3
+    },
+    "fen_plus_grid|defended": {
+      "correct": 48,
+      "total": 78,
+      "acc": 0.6154
+    },
+    "fen_plus_grid|hanging": {
+      "correct": 45,
+      "total": 48,
+      "acc": 0.9375
+    },
+    "fen_plus_grid|in_check": {
+      "correct": 45,
+      "total": 48,
+      "acc": 0.9375
+    },
+    "fen_plus_grid|occupancy": {
+      "correct": 96,
+      "total": 96,
+      "acc": 1.0
+    }
+  },
+  "mcnemar": {
+    "combo_vs_fen": {
+      "b": 12,
+      "c": 9,
+      "discordant": 21,
+      "p_value": 0.66362
+    },
+    "combo_vs_ascii": {
+      "b": 27,
+      "c": 15,
+      "discordant": 42,
+      "p_value": 0.08843
+    }
+  },
+  "mcnemar_by_kind": {
+    "attacked": {
+      "vs_fen": {
+        "b": 0,
+        "c": 0,
+        "discordant": 0,
+        "p_value": 1.0
+      },
+      "vs_ascii": {
+        "b": 9,
+        "c": 0,
+        "discordant": 9,
+        "p_value": 0.00391
+      }
+    },
+    "count_attackers": {
+      "vs_fen": {
+        "b": 3,
+        "c": 0,
+        "discordant": 3,
+        "p_value": 0.25
+      },
+      "vs_ascii": {
+        "b": 0,
+        "c": 12,
+        "discordant": 12,
+        "p_value": 0.00049
+      }
+    },
+    "defended": {
+      "vs_fen": {
+        "b": 3,
+        "c": 6,
+        "discordant": 9,
+        "p_value": 0.50781
+      },
+      "vs_ascii": {
+        "b": 3,
+        "c": 3,
+        "discordant": 6,
+        "p_value": 1.0
+      }
+    },
+    "hanging": {
+      "vs_fen": {
+        "b": 6,
+        "c": 3,
+        "discordant": 9,
+        "p_value": 0.50781
+      },
+      "vs_ascii": {
+        "b": 12,
+        "c": 0,
+        "discordant": 12,
+        "p_value": 0.00049
+      }
+    },
+    "in_check": {
+      "vs_fen": {
+        "b": 0,
+        "c": 0,
+        "discordant": 0,
+        "p_value": 1.0
+      },
+      "vs_ascii": {
+        "b": 0,
+        "c": 0,
+        "discordant": 0,
+        "p_value": 1.0
+      }
+    },
+    "occupancy": {
+      "vs_fen": {
+        "b": 0,
+        "c": 0,
+        "discordant": 0,
+        "p_value": 1.0
+      },
+      "vs_ascii": {
+        "b": 3,
+        "c": 0,
+        "discordant": 3,
+        "p_value": 0.25
+      }
+    }
+  },
+  "mean_tokens_per_board": {
+    "fen": 41.8,
+    "ascii_grid": 97.0,
+    "fen_plus_grid": 139.8
+  },
+  "token_method": "gemma_tokenizer",
+  "acc_per_1k_tokens": {
+    "fen": 19.1388,
+    "ascii_grid": 8.0,
+    "fen_plus_grid": 5.7797
+  }
+}

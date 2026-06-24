@@ -1,0 +1,261 @@
+{
+  "meta": {
+    "stage": 2,
+    "model": "gemma-31b",
+    "model_name": "google/gemma-4-31B-it",
+    "base_url": "http://localhost:11500/v1",
+    "formats": [
+      "fen",
+      "ascii_grid",
+      "unicode_grid",
+      "piece_list"
+    ],
+    "reps": 3,
+    "temperature": 0.0,
+    "max_tokens": 30,
+    "n_positions": 16,
+    "n_probes": 125,
+    "n_trials": 1500,
+    "started": "2026-06-23T19:35:22",
+    "system": "You are a precise chess analyst. You are given a chess position in some representation, then asked one factual question about it. Answer with ONLY the single word or number requested \u2014 no explanation, no restating the question."
+  },
+  "n_trials_ok": 1500,
+  "overall_accuracy": {
+    "fen": {
+      "correct": 300,
+      "total": 375,
+      "acc": 0.8,
+      "ci95": [
+        0.7566,
+        0.8374
+      ]
+    },
+    "ascii_grid": {
+      "correct": 291,
+      "total": 375,
+      "acc": 0.776,
+      "ci95": [
+        0.7311,
+        0.8153
+      ]
+    },
+    "unicode_grid": {
+      "correct": 288,
+      "total": 375,
+      "acc": 0.768,
+      "ci95": [
+        0.7227,
+        0.8079
+      ]
+    },
+    "piece_list": {
+      "correct": 291,
+      "total": 375,
+      "acc": 0.776,
+      "ci95": [
+        0.7311,
+        0.8153
+      ]
+    }
+  },
+  "ranked": [
+    "fen",
+    "ascii_grid",
+    "piece_list",
+    "unicode_grid"
+  ],
+  "best_format": "fen",
+  "best_drawn_format": "ascii_grid",
+  "by_phase": {
+    "ascii_grid|endgame": {
+      "correct": 102,
+      "total": 114,
+      "acc": 0.8947
+    },
+    "ascii_grid|middlegame": {
+      "correct": 96,
+      "total": 132,
+      "acc": 0.7273
+    },
+    "ascii_grid|opening": {
+      "correct": 93,
+      "total": 129,
+      "acc": 0.7209
+    },
+    "fen|endgame": {
+      "correct": 102,
+      "total": 114,
+      "acc": 0.8947
+    },
+    "fen|middlegame": {
+      "correct": 93,
+      "total": 132,
+      "acc": 0.7045
+    },
+    "fen|opening": {
+      "correct": 105,
+      "total": 129,
+      "acc": 0.814
+    },
+    "piece_list|endgame": {
+      "correct": 105,
+      "total": 114,
+      "acc": 0.9211
+    },
+    "piece_list|middlegame": {
+      "correct": 96,
+      "total": 132,
+      "acc": 0.7273
+    },
+    "piece_list|opening": {
+      "correct": 90,
+      "total": 129,
+      "acc": 0.6977
+    },
+    "unicode_grid|endgame": {
+      "correct": 99,
+      "total": 114,
+      "acc": 0.8684
+    },
+    "unicode_grid|middlegame": {
+      "correct": 96,
+      "total": 132,
+      "acc": 0.7273
+    },
+    "unicode_grid|opening": {
+      "correct": 93,
+      "total": 129,
+      "acc": 0.7209
+    }
+  },
+  "by_kind": {
+    "ascii_grid|attacked": {
+      "correct": 51,
+      "total": 75,
+      "acc": 0.68
+    },
+    "ascii_grid|count_attackers": {
+      "correct": 21,
+      "total": 30,
+      "acc": 0.7
+    },
+    "ascii_grid|defended": {
+      "correct": 48,
+      "total": 78,
+      "acc": 0.6154
+    },
+    "ascii_grid|hanging": {
+      "correct": 33,
+      "total": 48,
+      "acc": 0.6875
+    },
+    "ascii_grid|in_check": {
+      "correct": 45,
+      "total": 48,
+      "acc": 0.9375
+    },
+    "ascii_grid|occupancy": {
+      "correct": 93,
+      "total": 96,
+      "acc": 0.9688
+    },
+    "fen|attacked": {
+      "correct": 60,
+      "total": 75,
+      "acc": 0.8
+    },
+    "fen|count_attackers": {
+      "correct": 6,
+      "total": 30,
+      "acc": 0.2
+    },
+    "fen|defended": {
+      "correct": 51,
+      "total": 78,
+      "acc": 0.6538
+    },
+    "fen|hanging": {
+      "correct": 42,
+      "total": 48,
+      "acc": 0.875
+    },
+    "fen|in_check": {
+      "correct": 45,
+      "total": 48,
+      "acc": 0.9375
+    },
+    "fen|occupancy": {
+      "correct": 96,
+      "total": 96,
+      "acc": 1.0
+    },
+    "piece_list|attacked": {
+      "correct": 54,
+      "total": 75,
+      "acc": 0.72
+    },
+    "piece_list|count_attackers": {
+      "correct": 9,
+      "total": 30,
+      "acc": 0.3
+    },
+    "piece_list|defended": {
+      "correct": 45,
+      "total": 78,
+      "acc": 0.5769
+    },
+    "piece_list|hanging": {
+      "correct": 42,
+      "total": 48,
+      "acc": 0.875
+    },
+    "piece_list|in_check": {
+      "correct": 45,
+      "total": 48,
+      "acc": 0.9375
+    },
+    "piece_list|occupancy": {
+      "correct": 96,
+      "total": 96,
+      "acc": 1.0
+    },
+    "unicode_grid|attacked": {
+      "correct": 51,
+      "total": 75,
+      "acc": 0.68
+    },
+    "unicode_grid|count_attackers": {
+      "correct": 18,
+      "total": 30,
+      "acc": 0.6
+    },
+    "unicode_grid|defended": {
+      "correct": 48,
+      "total": 78,
+      "acc": 0.6154
+    },
+    "unicode_grid|hanging": {
+      "correct": 30,
+      "total": 48,
+      "acc": 0.625
+    },
+    "unicode_grid|in_check": {
+      "correct": 45,
+      "total": 48,
+      "acc": 0.9375
+    },
+    "unicode_grid|occupancy": {
+      "correct": 96,
+      "total": 96,
+      "acc": 1.0
+    }
+  },
+  "mcnemar": {
+    "ascii_grid_vs_fen": {
+      "b": 24,
+      "c": 33,
+      "discordant": 57,
+      "p_value": 0.28924
+    }
+  }
+}
