@@ -44,7 +44,7 @@ class TestPerspective:
     def test_own_move_no_banner(self, im):
         board = chess.Board(FEN)  # white to move
         out = im.render_imagine(board, board.parse_san("Rb8"), agent_color=chess.WHITE)
-        assert "OPPONENT" not in out
+        assert "This is the OPPONENT's" not in out  # the perspective banner, not the features header
         assert "## Opponent legal replies" in out
         assert "## Newly hanging own pieces" in out
 
@@ -52,7 +52,7 @@ class TestPerspective:
         # imagine_move passes None — unchanged behavior regardless of side.
         board = chess.Board(FEN)
         out = im.render_imagine(board, board.parse_san("Rb8"))
-        assert "OPPONENT" not in out
+        assert "This is the OPPONENT's" not in out  # the perspective banner, not the features header
         assert "## Opponent legal replies" in out
 
     def test_opponent_move_gets_banner_and_relabels(self, im):
@@ -74,7 +74,7 @@ class TestImagineLine:
         assert r.returncode == 0, r.stderr
         assert "Line: 1.W Rb8" in r.stdout
         assert "## Move:" in r.stdout            # frontier report present
-        assert "OPPONENT" not in r.stdout        # ends on White's move
+        assert "This is the OPPONENT's" not in r.stdout  # perspective banner absent; ends on White's move
 
     def test_black_ending_line_shows_banner(self):
         r = _run(["--fen", FEN, "Rb8,Rf4"])

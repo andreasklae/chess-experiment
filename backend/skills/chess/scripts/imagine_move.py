@@ -545,6 +545,18 @@ def render_imagine(
     out.append(f"## Move: {_move_summary(board_before, move)}")
     out.append("")
     out.append(f"**Check:** {check_text}")
+    # Why this move may be STRONG: an unanswerable threat — e.g. it attacks a
+    # valuable piece WHILE giving check, so the side to reply can't both answer
+    # the check and save the piece. Advisory; tells the agent to verify the line.
+    # When the imagined move is the OPPONENT's (in an imagine_line), make clear
+    # this is the opponent's strong move — a threat to meet, not the agent's win.
+    try:
+        from _features import why_stronger
+        prefix = "OPPONENT's move is " if opp_move else ""
+        for line in why_stronger(board_before, move):
+            out.append(f"**{prefix}{line}**")
+    except Exception:
+        pass
     if board_before.move_stack and not board_after.is_checkmate():
         if board_after.can_claim_threefold_repetition():
             out.append(
@@ -750,6 +762,24 @@ def render_imagine(
                 "`chess__imagine_line` (this move, the opponent's best reply, your "
                 "follow-up — add one move at a time) and confirm the line works."
             )
+
+    # Position assessment for the RESULTING board, ALWAYS from the AGENT's seat
+    # (YOURS = the agent). When imagine_move imagines the agent's own move,
+    # agent_color is None and the mover IS the agent, so mover_color is correct.
+    # But imagine_line can imagine the OPPONENT's move (agent_color != mover);
+    # there we must frame from agent_color, or a Black move that forks the White
+    # agent would wrongly read as "YOURS". This is what lets the agent assess the
+    # opponent's replies as strongly as its own.
+    seat = agent_color if agent_color is not None else mover_color
+    try:
+        from _features import render_features_for
+        feats = render_features_for(board_after, seat,
+                                    heading="After this move — strengths, weaknesses & ideas")
+        if feats:
+            out.append("")
+            out.append(feats)
+    except Exception:
+        pass
 
     return "\n".join(out)
 

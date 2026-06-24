@@ -311,6 +311,15 @@ def render_position(board: chess.Board, move_cap: int | None = None) -> str:
     net = _king_net_section(board)
     if net:
         out += ["", net]
+    # Positional / tactical / fundamentals assessment (strengths, weaknesses,
+    # potentials — both sides, with handling suggestions and wiki pointers).
+    try:
+        from _features import render_features
+        feats = render_features(board)
+        if feats:
+            out += ["", feats]
+    except Exception:
+        pass  # features must never take down the position report
     radar = render_radar(board, move_cap=move_cap)
     if radar:
         out += ["", radar]

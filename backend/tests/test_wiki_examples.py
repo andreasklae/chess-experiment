@@ -49,9 +49,19 @@ def _san_tokens(movetext: str) -> list[str] | None:
 @pytest.mark.parametrize("page", pages, ids=lambda p: str(p.relative_to(REFS)))
 def test_page_fens_and_mate_lines(page):
     text = page.read_text(encoding="utf-8")
+    is_raw = "raw" in page.relative_to(REFS).parts
     fens = FEN_RE.findall(text)
     for fen in fens:
-        board = chess.Board(fen)  # raises on garbage
+        board = chess.Board(fen)  # raises on garbage (parse errors still caught)
+        # The verify-every-claim contract applies to AUTHORED wiki pages, whose
+        # FENs must be legal playable positions. raw/ holds EXTERNAL source
+        # illustrations (Wikipedia diagrams): these legitimately include
+        # not-to-move-in-check positions, king-less pawn skeletons, and
+        # single-king tactical fragments — all "invalid" to python-chess but
+        # correct as diagrams. So we only require raw/ FENs to PARSE, not to be
+        # legal positions.
+        if is_raw:
+            continue
         assert board.is_valid() or board.is_checkmate() or board.is_stalemate(), (
             f"invalid position in {page.name}: {fen}"
         )

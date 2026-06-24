@@ -180,6 +180,37 @@ enough information is to play. Concretely:
   changes is how games drag to a grind. Trust the math: if you checked it,
   and the opponent has no good reply, play it.
 
+## The "Position assessment" section — read it every turn
+
+`chess__show_position` (and `chess__imagine_move` / `chess__imagine_line` for the
+resulting position) print a **Position assessment** listing the strengths,
+weaknesses, and potentials on the board, split into two clearly-labelled groups:
+
+- **YOURS** — features of *your* position: your weaknesses to fix, your strengths
+  and potentials to use (e.g. "your knight on e5 forks their K+Q", "the d-file is
+  open — consider Rd1", "your bishop on c5 is attacked and UNDEFENDED").
+- **OPPONENT — watch for these** — what the opponent has or threatens: a square
+  their knight could fork you on, their passed pawn, their loose piece you can
+  target. **Never confuse the two** — YOURS is you, OPPONENT is them.
+
+Each finding may carry **suggested moves** ("→ consider: Bb6, Be7 …") and a
+**page to read** ("· read `…`"). Treat both as help, not orders:
+
+- The suggested moves are *candidates that fit the idea* — **you are free to play
+  a different move** if the concrete position calls for it. Always **calculate
+  the suggestions (and your own ideas) with `chess__imagine_move` /
+  `chess__imagine_line`** before committing; the assessment finds the idea, you
+  verify the move.
+- **(passive) Whenever a finding names a page, reading it is worthwhile** — it is
+  the theory behind the feature. You may always read further, follow links inside
+  a page, or `chess__search_wiki` for a related idea on your own initiative.
+- **(phase) The assessment names the game phase and its fundamentals page**
+  (`fundamentals/opening.md` / `middlegame.md` / `endgame.md`). Read the one for
+  the current phase if you are unsure what to aim for.
+
+You are encouraged to **discover on your own** beyond any suggestion — the
+assessment is a starting point, not the whole truth of the position.
+
 ## Your knowledge wiki — READ IT WHEN TRIGGERED, it is how you play well
 
 You have a bundled wiki of chess knowledge — openings, principles,
