@@ -23,11 +23,13 @@ exactly what each folder holds so you can route in one hop.
 
 | If the position is… | open this folder |
 |---|---|
+| **you're not sure where to start** — the every-move checklist + what to aim for in this phase (opening/middlegame/endgame) | [`fundamentals/`](fundamentals/index.md) |
 | **the enemy king is matable** — you can force or are hunting checkmate (basic K+Q / K+R / K+2R drills AND named mating nets like back-rank, smothered) | [`mates/`](mates/index.md) |
-| **a tactic is in the air** — a loose piece, an overworked defender, a combination to win material | [`tactics/`](tactics/index.md) |
+| **a tactic is in the air** — a fork (K+Q, K+R), a pin/skewer, a discovered attack, a loose piece, an overworked defender | [`tactics/`](tactics/index.md) |
+| **you need to ASSESS it** — what are the strengths, weaknesses, and potentials (pawn structure, piece activity, king safety) for BOTH sides? | [`positional/`](positional/index.md) |
 | **few pieces left, no immediate mate** — king-and-pawn play, promotion, opposition | [`endgames/`](endgames/index.md) |
-| **you need a rule-of-thumb / sanity check** on a move | [`principles/`](principles/index.md) |
-| **you need a PLAN** — quiet position, "what am I trying to do here?", converting an advantage | [`strategy/`](strategy/index.md) |
+| **you need a rule-of-thumb / sanity check** on a move — opening rules, when to trade, stalemate, luft | [`principles/`](principles/index.md) |
+| **you need a PLAN** — quiet position, "what am I trying to do here?", answering a threat, converting an advantage | [`strategy/`](strategy/index.md) |
 
 *(Folders for openings and per-game analyses exist but have no pages yet —
 they are added by ingestion and post-game review.)*

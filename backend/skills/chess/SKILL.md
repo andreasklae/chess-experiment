@@ -215,6 +215,7 @@ games.
 
 | If the position is… | read this folder's index |
 |---|---|
+| you're unsure where to start, or want the every-move checklist / what to aim for in this phase | `fundamentals/index.md` |
 | the enemy king is matable (basic K+Q/K+R/K+2R drills OR a named mating net) | `mates/index.md` |
 | a tactic is in the air (loose piece, overworked defender, combination) | `tactics/index.md` |
 | few pieces left, no immediate mate (king+pawn, promotion, opposition) | `endgames/index.md` |
@@ -275,7 +276,12 @@ well under ten tool calls. Between each tool call/step, do some reasoning, think
 3. **Write your plan** (2–3 sentences) citing the page you just read.
 4. **Then proceed to pick candidates and move** (see below).
 
-**EVERY TURN:**
+**EVERY TURN — the checklist, in order:** *(1) what did the opponent's last move
+threaten? answer it. (2) does my move blunder? verify with `chess__imagine_move`.
+(3) do I have a check/capture/threat that wins? (4) else, improve my worst piece /
+follow my plan.* The full version with the tactical and positional cross-links is
+`fundamentals/every-move-checklist.md` — read it once if you're unsure how to think
+through a position. The numbered steps below expand this same order.
 
 0. **Always check for checkmate first.** Before anything else, ask
    yourself: can I deliver checkmate this turn? In endgame positions
