@@ -224,7 +224,18 @@ def attack_defense_section(
         desc = piece_label(board, sq, pinned=board.is_pinned(own_color, sq))
         atk_str = format_chain(board, opp_color, attacker_chain)
         def_str = format_chain(board, own_color, defender_chain) if defender_chain else "nothing"
-        lines.append(f"- {desc}: {action} {atk_str}; defended by {def_str}")
+        # State the counts as explicit integers, not just a prose list the model
+        # must tally itself. The board-visualization benchmark (2026-06-24) found
+        # the model reads relations well but counts attackers on a square poorly
+        # (0.20 from FEN) — so surface the number as a computed fact. Pure
+        # mechanics: len() of the chains the tool already built. See
+        # decisions/2026-06-23-board-visualization-benchmark.md.
+        n_atk = len(attacker_chain)
+        n_def = len(defender_chain)
+        lines.append(
+            f"- {desc}: {action} {n_atk} ({atk_str}); "
+            f"defended by {n_def} ({def_str})"
+        )
         # For OUR attacked pieces, when the piece is actually losing material
         # on its square, list where it can go without re-hanging it.
         if show_safe_squares:

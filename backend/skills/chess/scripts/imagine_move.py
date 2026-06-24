@@ -296,9 +296,13 @@ def _newly_hanging_own_pieces(board_before: chess.Board, board_after: chess.Boar
             if see_loss >= 150
             else ""
         )
+        # Explicit attacker/defender counts, not just a prose list. The model
+        # counts poorly off a rendering (board-visualization benchmark 2026-06-24)
+        # so the tool states the number. Pure mechanics (len of the sets above).
         new_hanging.append(
-            f"{describe_piece(board_after, sq)} — attacked by {atk_str}; "
-            f"defended by {def_str}{loss_note}"
+            f"{describe_piece(board_after, sq)} — attacked by "
+            f"{len(attackers_after)} ({atk_str}); defended by "
+            f"{len(defenders_after)} ({def_str}){loss_note}"
         )
     return new_hanging
 

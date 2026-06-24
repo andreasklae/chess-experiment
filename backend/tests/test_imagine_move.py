@@ -149,7 +149,10 @@ def test_newly_hanging_after_queen_abandons_pawn(im):
     assert "## Newly hanging own pieces" in out
     hanging_section = out.split("## Newly hanging own pieces")[1].split("##")[0]
     assert "pawn on d4" in hanging_section
-    assert "defended by nothing" in hanging_section
+    # Counts are now stated explicitly (board-visualization benchmark 2026-06-24):
+    # "attacked by 1 (...); defended by 0 (nothing)".
+    assert "defended by 0 (nothing)" in hanging_section
+    assert "attacked by 1 (pawn on e5)" in hanging_section
 
 
 def test_no_newly_hanging_when_safe(im):

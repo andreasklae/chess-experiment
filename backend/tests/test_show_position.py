@@ -145,6 +145,10 @@ def test_render_position_smoke(sp):
     assert "pawn on e5" in output
     assert "knight on f3" in output
     assert "knight on c6" in output
+    # Counts stated explicitly (board-visualization benchmark 2026-06-24): the
+    # e5 pawn line reads "attacked by your 1 (knight on f3); defended by 1 (...)".
+    assert "attacked by your 1 (knight on f3)" in output
+    assert "defended by 1 (knight on c6)" in output
     # Move 3, full piece count -> early opening.
     assert "**Phase:** early opening" in output
     # Material balance line is now embedded in show_position output.
