@@ -563,9 +563,17 @@ def detect_loose_pieces(board: chess.Board, perspective: bool | None = None) -> 
                         moves=_handle_attacked_piece_moves(board, sq, color),
                         wiki="handle_threat"))
                 else:
-                    findings.append(Finding(False, "potential",
-                        f"opponent's {PIECE_NAME[p.piece_type]} on {_sq(sq)} is loose (undefended) and you attack it — "
-                        f"a target; can you win it?", wiki="forks"))
+                    # You attack an UNDEFENDED enemy piece: a free piece on the
+                    # board right now. This is the single highest-value fact in
+                    # most positions, so it is a top-priority "win" imperative
+                    # (rendered first, in YOUR block), NOT a low "potential". The
+                    # only caveat is a trap — taking it loses more elsewhere —
+                    # which detect_traps flags separately and the wording points at.
+                    findings.append(Finding(True, "win",
+                        f"FREE MATERIAL: opponent's {PIECE_NAME[p.piece_type]} on {_sq(sq)} is UNDEFENDED and you "
+                        f"attack it — capturing it wins a piece (this is NOT a trade; it costs you nothing). "
+                        f"Take it unless imagine_move shows it is a trap (you lose more material right after).",
+                        moves=_winning_captures_of(board, sq, stm), wiki="forks"))
             elif not defenders and not attackers and p.piece_type in (chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT):
                 # Loose but not yet attacked — only flag as a *latent* target when
                 # it's a real one: an active (developed) piece, not a rook sitting
@@ -578,6 +586,22 @@ def detect_loose_pieces(board: chess.Board, perspective: bool | None = None) -> 
                         f"opponent's {PIECE_NAME[p.piece_type]} on {_sq(sq)} is undefended — "
                         f"a loose piece; look for a fork/double-attack hitting it", wiki="forks"))
     return findings
+
+
+def _winning_captures_of(board: chess.Board, target: int, color: bool) -> list[str]:
+    """SAN of every legal capture of `target` by `color` (only when it's color's
+    turn). Used to hand the agent the concrete free-material captures so it does
+    not have to find them itself."""
+    if board.turn != color:
+        return []
+    out: list[str] = []
+    for m in board.legal_moves:
+        if m.to_square == target:
+            try:
+                out.append(board.san(m))
+            except Exception:
+                pass
+    return sorted(set(out))
 
 
 def _handle_attacked_piece_moves(board: chess.Board, sq: int, color: bool) -> list[str]:
@@ -919,13 +943,15 @@ def detect_material(board: chess.Board, perspective: bool | None = None) -> list
     diff = _material_count(board, stm) - _material_count(board, not stm)
     if diff >= 2:
         findings.append(Finding(True, "strength",
-            f"you are UP ~{diff} points of material — trade PIECES (not pawns) to simplify "
+            f"you are UP ~{diff} points of material — prefer trading PIECES (not pawns) to simplify "
             f"toward a won endgame; keep at least one rook or the queen for mating",
             wiki="material"))
     elif diff <= -2:
         findings.append(Finding(True, "weakness",
-            f"you are DOWN ~{-diff} points of material — AVOID trades, keep pieces on, "
-            f"seek complications and counterplay (a passed pawn, an attack on the king)",
+            f"you are DOWN ~{-diff} points of material — when given the choice, avoid INITIATING even "
+            f"piece trades (keep pieces on for chances) and seek complications/counterplay. "
+            f"This does NOT mean refuse free material: ALWAYS capture an undefended enemy piece or win "
+            f"a favourable exchange — that is how you climb back, not a trade to avoid.",
             wiki="material"))
     return findings
 
@@ -1186,11 +1212,13 @@ def render_findings(findings: list[Finding], *, agent_color: bool, heading: str)
         if not items:
             return
         out.append(f"\n**{title}**")
-        # order: threats first, then weaknesses, strengths, potentials, fundamentals
-        order = {"threat": 0, "weakness": 1, "strength": 2, "potential": 3, "fundamental": 4}
+        # order: free material first (win it now), then threats, weaknesses,
+        # strengths, potentials, fundamentals.
+        order = {"win": 0, "threat": 1, "weakness": 2, "strength": 3, "potential": 4, "fundamental": 5}
         for f in sorted(items, key=lambda x: order.get(x.kind, 9)):
-            tag = {"threat": "⚠ THREAT", "weakness": "weakness", "strength": "strength",
-                   "potential": "potential", "fundamental": "fundamental"}.get(f.kind, f.kind)
+            tag = {"win": "★ WIN MATERIAL", "threat": "⚠ THREAT", "weakness": "weakness",
+                   "strength": "strength", "potential": "potential",
+                   "fundamental": "fundamental"}.get(f.kind, f.kind)
             line = f"- [{tag}] {f.text}"
             if f.moves:
                 line += f"  → consider: {', '.join(f.moves)} (calculate these with imagine_move/imagine_line)"

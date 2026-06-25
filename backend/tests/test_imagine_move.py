@@ -296,6 +296,43 @@ def test_opponent_legal_moves_zero_on_mate(im):
     assert "checkmate" in out.lower()
 
 
+# ── capture-netting: a winning capture that allows an equal recapture is an
+#    even trade, not a blunder (regression for puzzle YZ2IM) ─────────────────
+
+_YZ2IM = "4r1r1/p1k2np1/1pp1Bp1p/5P1P/2P1N3/1P6/8/2K3R1 w - - 1 36"
+
+
+def test_capture_allowing_equal_recapture_is_not_a_material_loss(im):
+    # Bxf7 wins a knight; the e4 knight then hangs to the e8 rook (Rxe4). Netted,
+    # that is an even trade (the move captured a knight), so _material_loss must
+    # report ~0 -- NOT a 3-pawn loss. (Bxg8 actually then wins more, but even the
+    # one-ply-deep verdict must be "even", not "blunder".)
+    b = chess.Board(_YZ2IM)
+    mv = chess.Move.from_uci("e6f7")
+    after = b.copy(); after.push(mv)
+    loss_cp, _ = im._material_loss(b, after, mv)
+    assert loss_cp == 0, f"expected even trade, got {loss_cp}cp loss"
+
+
+def test_capture_netting_does_not_hide_real_blunder(im):
+    # Hanging the queen for NOTHING (no capture) is still a full blunder -- the
+    # netting only offsets by material the move actually captured.
+    b = chess.Board("4k3/1q6/8/8/8/8/8/Q3K3 w - - 0 1")
+    mv = chess.Move.from_uci("a1a7")  # Qa7?? Qxa7
+    after = b.copy(); after.push(mv)
+    loss_cp, piece = im._material_loss(b, after, mv)
+    assert loss_cp >= 800 and piece == "queen"
+
+
+def test_imagine_reframes_even_capture_not_as_refutation(im):
+    # The opponent-reply section must NOT shout "NOT an even trade" for Bxf7;
+    # instead it shows the "roughly even" note prompting deeper calculation.
+    out = im.render_imagine(chess.Board(_YZ2IM), chess.Move.from_uci("e6f7"))
+    assert "NOT an even trade" not in out
+    assert "BLUNDER" not in out
+    assert "roughly even" in out.lower() or "↔" in out
+
+
 # ── _attacks_and_defenses helper ───────────────────────────────────────────
 
 

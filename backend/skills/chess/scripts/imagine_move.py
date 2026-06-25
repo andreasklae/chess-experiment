@@ -252,11 +252,30 @@ def _discovered_attacks(board_before: chess.Board, board_after: chess.Board, mov
     return discoveries
 
 
+def _captured_value_cp(board_before: chess.Board, move: chess.Move) -> int:
+    """Material (centipawns) this move captures outright (0 if not a capture).
+    Used to NET a side-effect hanging-piece loss against the gain the move just
+    made — a move that wins a knight and lets a knight hang is an even trade, not
+    a 3-point loss. (en-passant captures a pawn.)"""
+    if not board_before.is_capture(move):
+        return 0
+    if board_before.is_en_passant(move):
+        return MATERIAL[chess.PAWN]
+    victim = board_before.piece_at(move.to_square)
+    return MATERIAL.get(victim.piece_type, 0) if victim else 0
+
+
 def _newly_hanging_own_pieces(board_before: chess.Board, board_after: chess.Board, move: chess.Move) -> list[str]:
     """List own pieces (other than the moved piece) that became unsafe as a
-    side-effect of this move (was safe before, has attackers ≥ defenders now)."""
+    side-effect of this move (was safe before, has attackers ≥ defenders now).
+
+    A side-effect loss is NETTED against any material the move captured: winning
+    a piece and letting a same-valued piece hang is an even trade, not a loss —
+    so the agent is told the net and prompted to calculate a follow-up rather
+    than abandon a winning capture on a one-ply fear (the YZ2IM failure mode)."""
     mover_color = board_before.turn
     enemy_color = not mover_color
+    captured_cp = _captured_value_cp(board_before, move)
     new_hanging: list[str] = []
     for sq in chess.SQUARES:
         if sq == move.to_square:
@@ -290,12 +309,27 @@ def _newly_hanging_own_pieces(board_before: chess.Board, board_after: chess.Boar
         atk_str = ", ".join(describe_piece(board_after, a) for a in sorted(attackers_after))
         def_str = (", ".join(describe_piece(board_after, d) for d in sorted(defenders_after))
                    if defenders_after else "nothing")
-        loss_note = (
-            f" — you would lose ~{see_loss // 100} pawn(s) of material in the "
-            f"exchange here"
-            if see_loss >= 150
-            else ""
-        )
+        loss_note = ""
+        if see_loss >= 150:
+            if captured_cp > 0:
+                # NET the side-effect loss against what this move just captured.
+                net = see_loss - captured_cp
+                if net <= 0:
+                    loss_note = (
+                        f" — but this move CAPTURED ~{captured_cp // 100} pawn(s), so even if this "
+                        f"piece falls the trade is roughly even or better (net ~{net // 100}); "
+                        f"don't abandon the capture on this alone — calculate the follow-up with "
+                        f"imagine_line (you may win MORE after the recapture)"
+                    )
+                else:
+                    loss_note = (
+                        f" — net loss ~{net // 100} pawn(s) after offsetting the ~{captured_cp // 100} "
+                        f"this move captured; calculate the follow-up before deciding"
+                    )
+            else:
+                loss_note = (
+                    f" — you would lose ~{see_loss // 100} pawn(s) of material in the exchange here"
+                )
         # Explicit attacker/defender counts, not just a prose list. The model
         # counts poorly off a rendering (board-visualization benchmark 2026-06-24)
         # so the tool states the number. Pure mechanics (len of the sets above).
@@ -415,7 +449,14 @@ def _material_loss(board_before: chess.Board, board_after: chess.Board,
     moved = board_after.piece_at(move.to_square)
     loss = max(0, opp_gain - my_gain)
     piece = PIECE_NAMES[moved.piece_type] if moved else None
-    # Other own pieces left hanging (safe before, losing after).
+    # Other own pieces left hanging (safe before, losing after). NET each against
+    # the material this move captured (my_gain): winning a knight and leaving a
+    # knight hanging is an even trade, not a piece down — the side-effect loss is
+    # only a real loss to the extent it EXCEEDS what the move just won. Without
+    # this, the blunder gate / banner falsely condemns winning captures that
+    # allow an equal recapture (the YZ2IM failure: Bxf7 wins a knight, the e4
+    # knight then hangs, net 0 — and Bxg8 follows). The agent must still
+    # CALCULATE the follow-up (imagine_line), which the surrounding text prompts.
     for psq in chess.SQUARES:
         if psq == move.to_square:
             continue
@@ -427,7 +468,7 @@ def _material_loss(board_before: chess.Board, board_after: chess.Board,
             continue
         if static_exchange_eval(board_before, psq, not mover) >= 150:
             continue  # not safe before this move
-        l = static_exchange_eval(board_after, psq, not mover)
+        l = max(0, static_exchange_eval(board_after, psq, not mover) - my_gain)
         if l > loss:
             loss, piece = l, PIECE_NAMES[p.piece_type]
     return loss, piece
@@ -707,16 +748,36 @@ def render_imagine(
         top = ranked[0]
         # Headline the refutation when the replies are the OPPONENT's and their
         # best reply wins a piece (or mates) — i.e. THIS move loses material.
-        if not opp_move and (top[2] == "mate" or top[1] >= 300):
+        # BUT net the opponent's gain against what this move just captured: a
+        # move that wins a knight and lets the opponent win a knight back is an
+        # even trade, not a refutation. Only shout "loses material" when the move
+        # is genuinely down AFTER netting (the YZ2IM fix: Bxf7 captured a knight,
+        # so ...Rxe4 winning a knight is even — and Bxg8 then wins more).
+        captured_cp = _captured_value_cp(board_before, move)
+        net_gain = top[1] - captured_cp  # opponent's net edge after this capture
+        if not opp_move and (top[2] == "mate" or net_gain >= 300):
             if top[2] == "mate":
                 out.append(f"**⛔ The opponent has CHECKMATE in reply: {top[4]}. This move loses on the spot.**")
             else:
                 out.append(
                     f"**⛔ The opponent's strongest reply, {top[4]}, WINS your "
-                    f"{top[3]} (about {top[1]} cp / ~{top[1] // 100} pawns). This "
-                    f"move is NOT an even trade — after {top[4]} you are down "
+                    f"{top[3]} (about {top[1]} cp / ~{top[1] // 100} pawns)"
+                    + (f", and this move only captured ~{captured_cp // 100} — net you are "
+                       f"down ~{net_gain // 100} pawn(s)." if captured_cp > 0 else ".")
+                    + f" This move is NOT an even trade — after {top[4]} you are down "
                     f"material. Do not play it expecting a fair exchange.**"
                 )
+            out.append("")
+        elif not opp_move and captured_cp > 0 and top[1] >= 300 and net_gain < 300:
+            # The opponent wins a piece back, but this move captured enough that
+            # the trade is roughly even — don't scare the agent off; prompt it to
+            # look DEEPER for a follow-up that wins more.
+            out.append(
+                f"**↔ Roughly even material:** the opponent's best reply {top[4]} wins ~{top[1] // 100} "
+                f"pawn(s) back, but this move captured ~{captured_cp // 100} — net ~{net_gain // 100}. "
+                f"This is a trade, not a blunder. Use `chess__imagine_line` to check whether a follow-up "
+                f"after {top[4]} wins MORE (an in-between capture/check) before deciding."
+            )
             out.append("")
         out.append(
             f"_{len(legal)} legal replies, sorted by the material the "

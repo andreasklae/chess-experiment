@@ -2012,15 +2012,15 @@
     ]
   },
   "WvFGr": {
-    "status": "failed",
+    "status": "solved",
     "topic": "hanging-piece",
     "difficulty": "easy",
     "rating": 712,
-    "solved_plies": 1,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "failed",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:32:32",
+    "aborted_reason": null,
+    "run_id": "run_1782414663",
+    "ts": "2026-06-25T21:11:25",
     "attempts": [
       {
         "ply": 0,
@@ -2031,43 +2031,77 @@
         "played_san": "Qxb8+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "Capture the pinned knight on b8 with check. This recovers significant material (-3.65 to -0.75) and forces a response from black (likely Bc8). While my king is exposed, the immediate gain of a piece and the initiative are paramount. I rejected h3 and Ke1 as they allow Qd2# or other devastating queen attacks. I verified that after Qxb8+ Bc8, I have options like Qxf4 to put pressure on the center and f-file. \u00b7 goal: eliminate the knight on b8 and create threats against the black king. \u00b7 plan: material recovery and king hunt: first capture the pinned knight to reduce black's advantage, then seek to exploit the exposed black king and the potential for a rook on the e-file."
+        "reasoning": "Capturing the undefended knight on b8 with check. Black has only one legal reply, Bc8, which then allows Qxc8 mate. This sequence wins the game immediately. \u00b7 goal: Deliver mate in 2 moves. \u00b7 plan: Force checkmate using the queen's penetration. 1. Qxb8+ Bc8 2. Qxc8#."
+      },
+      {
+        "ply": 1,
+        "fen_before": "1Qb1k2r/p3pp2/2p5/3P4/2P2p2/4p3/q3BPPP/3K3R w k - 1 21",
+        "expected_uci": "b8c8",
+        "expected_san": "Qxc8#",
+        "played_uci": "b8c8",
+        "played_san": "Qxc8#",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan to force checkmate using the queen's penetration, I am delivering the final blow. The opponent's move Bc8 was the final step of the sequence I predicted on move 20, and capturing the bishop now results in checkmate."
       }
     ]
   },
   "OMazC": {
-    "status": "failed",
+    "status": "solved",
     "topic": "hanging-piece",
     "difficulty": "easy",
     "rating": 644,
-    "solved_plies": 0,
+    "solved_plies": 1,
     "total_plies": 1,
-    "aborted_reason": "failed",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:32:42",
-    "attempts": []
+    "aborted_reason": null,
+    "run_id": "run_1782414663",
+    "ts": "2026-06-25T21:11:35",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "2Q2b1k/7p/2p3p1/1n2qp2/1P6/P3PP2/6PP/3B2K1 w - - 0 29",
+        "expected_uci": "c8f8",
+        "expected_san": "Qxf8#",
+        "played_uci": "c8f8",
+        "played_san": "Qxf8#",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Found a forced mate in one. The bishop on f8 is pinned to the king by the queen on c8 and is undefended. Capturing it delivers checkmate as the king has no escape squares. \u00b7 plan: Deliver immediate checkmate."
+      }
+    ]
   },
   "YZ2IM": {
-    "status": "failed",
+    "status": "solved",
     "topic": "hanging-piece",
     "difficulty": "easy",
     "rating": 942,
-    "solved_plies": 0,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "agent played g1g6, expected e6f7",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:33:04",
+    "aborted_reason": null,
+    "run_id": "run_1782415785",
+    "ts": "2026-06-25T21:30:17",
     "attempts": [
       {
         "ply": 0,
         "fen_before": "4r1r1/p1k2np1/1pp1Bp1p/5P1P/2P1N3/1P6/8/2K3R1 w - - 1 36",
         "expected_uci": "e6f7",
         "expected_san": "Bxf7",
-        "played_uci": "g1g6",
-        "played_san": "Rg6",
-        "correct": false,
-        "accepted_as": null,
-        "reasoning": "Analyzed several candidates. Bxf7 and Nxf6 were traps (losing the knight). Nd6 was a blunder (hanging the knight). Rg6 is a safe, active move that improves the rook's position, puts pressure on f6 and g7, and avoids immediate material loss. It also removes the rook from the g1 square where it could be targeted by a discovered attack if g7 moved. \u00b7 goal: Avoid material loss and maintain piece coordination. \u00b7 plan: Avoid trades and traps while maintaining active pieces. Specifically, keep the Ne4 and Be6 coordinated and avoid falling for 'free' captures that lead to losses. Focus on limiting black's activity and potentially targeting the backward pawn on g7."
+        "played_uci": "e6f7",
+        "played_san": "Bxf7",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The opponent's knight on f7 is undefended. Capturing it (Bxf7) is the strongest move. Even if black captures my knight on e4 (Rxe4), I can then capture the rook on g8 (Bxg8), winning a rook and a knight for a knight, which completely swings the material balance in my favor. \u00b7 goal: Win the knight on f7 and potentially a rook on g8, turning the material deficit into an advantage. \u00b7 plan: Tactical liquidation: capture the undefended knight on f7. If black responds with Rxe4, capture the rook on g8 (Bxg8), resulting in a net gain of material (Knight + Rook for Knight)."
+      },
+      {
+        "ply": 1,
+        "fen_before": "6r1/p1k2Bp1/1pp2p1p/5P1P/2P1r3/1P6/8/2K3R1 w - - 0 37",
+        "expected_uci": "f7g8",
+        "expected_san": "Bxg8",
+        "played_uci": "f7g8",
+        "played_san": "Bxg8",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "I am intentionally sacrificing the knight on e4 to win the knight on f7 and then the rook on g8. The forced sequence is: 1. Bxf7 Rxe4 (best reply) 2. Bxg8. This sequence wins a Rook and a Knight for a Knight, changing the material balance from -3.60 to +1.05. I have verified this line with imagine_line. \u00b7 goal: Win the knight on f7 and potentially a rook on g8, turning the material deficit into an advantage. \u00b7 plan: Tactical liquidation: capture the undefended knight on f7. If black responds with Rxe4, capture the rook on g8 (Bxg8), resulting in a net gain of material (Knight + Rook for Knight)."
       }
     ]
   },

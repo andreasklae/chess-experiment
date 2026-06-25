@@ -515,23 +515,50 @@ def puzzle_run_status() -> dict:
 
 @app.get("/api/puzzles/run/events")
 async def puzzle_run_events() -> StreamingResponse:
-    run = app.state.puzzle_run
-    if run is None:
-        raise HTTPException(status_code=404, detail="No puzzle run.")
-    queue = run.subscribe()
+    """Persistent puzzle-run event stream. Stays open even when idle, and
+    attaches to whatever run is current — so a run launched from anywhere
+    (the UI, a script, this API) is picked up live without a page refresh.
+
+    The stream follows `app.state.puzzle_run` across runs: it subscribes to the
+    active run, forwards its events, and when that run ends it goes back to
+    waiting for the next one. A late subscriber catches up via a replayed
+    `puzzle_result` per completed puzzle plus a `run_status` snapshot."""
 
     async def stream() -> AsyncIterator[str]:
-        # replay current results so a late subscriber catches up
-        for r in run.results:
-            yield f"data: {json.dumps({'type': 'puzzle_result', **r})}\n\n"
+        seen_run = None          # the run object we are currently attached to
+        queue = None
+
         while True:
+            run = app.state.puzzle_run
+
+            # A new run appeared (or the first one): attach + replay catch-up.
+            if run is not None and run is not seen_run:
+                seen_run = run
+                queue = run.subscribe()
+                started = {"type": "run_started", "n": len(run.specs),
+                           "running": run.running, "mode": run.mode}
+                yield f"data: {json.dumps(started)}\n\n"
+                for r in run.results:        # catch a late subscriber up
+                    yield f"data: {json.dumps({'type': 'puzzle_result', **r})}\n\n"
+
+            if queue is None:
+                # No run yet — idle heartbeat so the connection stays open and
+                # the client keeps listening for the next run.
+                await asyncio.sleep(2)
+                yield ": idle\n\n"
+                continue
+
             try:
-                evt = await asyncio.wait_for(queue.get(), timeout=20)
+                evt = await asyncio.wait_for(queue.get(), timeout=15)
                 yield f"data: {json.dumps(evt)}\n\n"
             except asyncio.TimeoutError:
                 yield ": keep-alive\n\n"
-            if not run.running and queue.empty():
-                yield f"data: {json.dumps({'type': 'run_done'})}\n\n"
-                break
+
+            # Current run finished and drained: emit run_done, then detach and
+            # loop back to wait for the next run (do NOT close the stream).
+            if seen_run is not None and not seen_run.running and queue.empty():
+                yield f"data: {json.dumps({'type': 'run_done', 'n': len(seen_run.results)})}\n\n"
+                seen_run = None
+                queue = None
 
     return StreamingResponse(stream(), media_type="text/event-stream")

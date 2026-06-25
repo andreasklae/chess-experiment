@@ -420,15 +420,52 @@ def test_material_up_advises_trade():
     from _features import detect_material
     b = chess.Board("4k3/8/8/8/8/8/8/R3K3 w - - 0 1")  # White up a rook
     fs = detect_material(b)
-    assert any("UP" in f.text and "trade" in f.text.lower() and f.side for f in fs)
+    assert any("UP" in f.text and "trad" in f.text.lower() and f.side for f in fs)
 
 
-def test_material_down_advises_avoid_trades():
+def test_material_down_advises_avoid_initiating_trades_but_keep_free_material():
     from _features import detect_material
     b = chess.Board("r3k3/8/8/8/8/8/8/4K3 b - - 0 1")  # Black (to move) up a rook
     # from White's perspective White is down
     fs = detect_material(b, perspective=chess.WHITE)
-    assert any("DOWN" in f.text and "avoid trades" in f.text.lower() for f in fs)
+    # Down-material advice must (a) discourage INITIATING trades but (b) NEVER
+    # discourage winning free material — the bug that made the agent reject a
+    # free capture (puzzle YZ2IM). Assert both halves so the carve-out can't
+    # regress away.
+    down = [f for f in fs if "DOWN" in f.text]
+    assert down, "expected a down-material finding"
+    txt = down[0].text.lower()
+    assert "avoid initiating" in txt
+    assert "free material" in txt and "always capture" in txt
+
+
+def test_free_undefended_enemy_piece_is_top_win_finding():
+    # YZ2IM position: White (down material) attacks an UNDEFENDED black knight on
+    # f7 with the bishop on e6. This must surface as a top-priority WIN-material
+    # finding in YOUR block with the capture move (Bxf7) -- not a buried
+    # 'potential'. Regression for the agent rejecting a free capture because it
+    # was 'down material'.
+    from _features import detect_loose_pieces, detect_all, render_features
+    b = chess.Board("4r1r1/p1k2np1/1pp1Bp1p/5P1P/2P1N3/1P6/8/2K3R1 w - - 1 36")
+    fs = detect_loose_pieces(b)
+    win = [f for f in fs if f.kind == "win"]
+    assert win, "expected a WIN finding for the free knight on f7"
+    assert win[0].side is True               # belongs to the agent (YOURS)
+    assert "FREE MATERIAL" in win[0].text and "f7" in win[0].text
+    assert "Bxf7" in (win[0].moves or [])
+    # and it renders FIRST in the YOURS block (before any threat/weakness)
+    out = render_features(b)
+    yours = out.split("OPPONENT")[0]
+    assert yours.index("WIN MATERIAL") < yours.index("THREAT")
+
+
+def test_win_finding_only_when_capture_available_now():
+    # An undefended enemy piece NOT currently attacked by us is a latent target
+    # (potential), not a WIN-now finding.
+    from _features import detect_loose_pieces
+    b = chess.Board("4k3/8/3b4/8/8/8/8/4K3 w - - 0 1")  # lone black bishop, white can't reach it
+    fs = detect_loose_pieces(b)
+    assert not any(f.kind == "win" for f in fs)
 
 
 def test_king_safety_flags_both_sides():

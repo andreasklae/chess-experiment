@@ -44,11 +44,21 @@ export function PuzzlePage() {
     }).catch(() => {});
   }, []);
 
+  // Persistent run-event stream. The backend keeps this open even when idle and
+  // attaches to whatever run is current, so a run launched from anywhere (UI,
+  // script, API) shows up live with no page refresh. EventSource auto-reconnects
+  // on transient errors; we just keep the handler resilient.
   useEffect(() => {
     const src = new EventSource(puzzleRunEventsUrl());
     src.onmessage = (e) => {
-      const ev = JSON.parse(e.data) as RunEvent & Partial<PuzzleResult>;
-      if (ev.type === 'puzzle_begin') {
+      const ev = JSON.parse(e.data) as RunEvent & Partial<PuzzleResult> & { running?: boolean };
+      if (ev.type === 'run_started') {
+        // A new run began somewhere — clear the old run's results and light up.
+        setResults([]); setCurrent(null); setRunning(true);
+        if (ev.n) setProgress({ i: 0, n: ev.n });
+        setMessage('');
+        refreshProgress();
+      } else if (ev.type === 'puzzle_begin') {
         setCurrent(ev as RunEvent); setProgress({ i: ev.i ?? 0, n: ev.n ?? 0 }); setRunning(true);
       } else if (ev.type === 'puzzle_result') {
         setResults((r) => [...r.filter((x) => x.puzzle_id !== (ev as PuzzleResult).puzzle_id), ev as unknown as PuzzleResult]);
@@ -58,8 +68,24 @@ export function PuzzlePage() {
         if (ev.type === 'run_aborted') setMessage('Run aborted');
       }
     };
-    src.onerror = () => {};
+    src.onerror = () => {};  // EventSource reconnects on its own
     return () => src.close();
+  }, []);
+
+  // Safety net: even if an SSE event is missed, poll run-status periodically so
+  // a run launched externally is reflected (and a finished run clears). Cheap.
+  useEffect(() => {
+    const id = setInterval(() => {
+      puzzleRunStatus().then((s) => {
+        setRunning((was) => {
+          if (s.running && !was) { refreshProgress(); }
+          return s.running;
+        });
+        if (s.running && s.n) setProgress({ i: s.idx, n: s.n });
+        if (s.results?.length) setResults((r) => (r.length === s.results.length ? r : s.results));
+      }).catch(() => {});
+    }, 3000);
+    return () => clearInterval(id);
   }, []);
 
   // poll the current puzzle game for the live board while running
