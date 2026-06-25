@@ -53,6 +53,17 @@ sources above are authoritative; these are convenience summaries.
 - `tactics-mechanics.md` — consolidated tactical mechanics + soundness tests,
   drawn from the Wikipedia motif articles + Lichess + the books.
 
+## Puzzle benchmark curriculum (open content)
+
+| File | Source | License |
+|---|---|---|
+| `lichess-puzzle-themes.md` | Lichess puzzle theme definitions (lila i18n `puzzleTheme.xml`) | lichess.org AGPL; free content |
+
+The official one-line definitions Lichess uses to tag puzzles — the same theme
+tags the agent puzzle benchmark (`experiments/puzzle-benchmark/`) selects on.
+Used to align/sharpen the wiki tactic-page descriptions and `triggers` so the
+agent's `search_wiki` matches the motif vocabulary. Retrieved 2026-06-25.
+
 ## Diagram handling (point made explicit)
 
 The `wikipedia-*.md` files store the article text **with every position diagram

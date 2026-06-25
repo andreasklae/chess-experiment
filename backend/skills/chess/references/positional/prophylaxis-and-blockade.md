@@ -1,7 +1,7 @@
 ---
 category: positional
 description: Prophylaxis (stop the opponent's plan before your own), the blockade (a piece parked in front of a passed/isolated pawn), the seventh-rank rook, and fixing a weakness. The quiet skills that turn a small edge into a won game.
-triggers: [prophylaxis, prevent, stop their plan, blockade, blockading piece, seventh rank, rook on the 7th, fix the weakness, restrain, what does my opponent want]
+triggers: [prophylaxis, prevent, stop their plan, blockade, blockading piece, seventh rank, rook on the 7th, fix the weakness, restrain, what does my opponent want, quiet move, no forcing move, improving move]
 related_pages: [positional/pawn-weaknesses, positional/pawn-strengths, positional/piece-activity, positional/evaluate-position]
 tags: [positional, prophylaxis, blockade, seventh-rank, restraint]
 status: draft

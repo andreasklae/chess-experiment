@@ -3,8 +3,10 @@ import json
 import logging
 import os
 import shutil
+import time
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from pathlib import Path
 from typing import Annotated
 
 
@@ -31,7 +33,7 @@ def _configure_logging() -> None:
 _configure_logging()
 logger = logging.getLogger("app.main")
 
-from fastapi import Depends, FastAPI, Response
+from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
@@ -55,6 +57,8 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
     batch_service = BatchService(settings.batches_dir, settings.games_dir)
     fastapi_app.state.batch_service = batch_service
     fastapi_app.state.batch_runner = BatchRunner(batch_service, fastapi_app.state.game_service)
+    fastapi_app.state.puzzle_run = None  # the current/last PuzzleRun, if any
+    fastapi_app.state.puzzle_task = None
     logger.info("startup · ready")
     try:
         yield
@@ -365,5 +369,105 @@ async def agent_events(game_id: str, service: GameServiceDep) -> StreamingRespon
                     yield ": keep-alive\n\n"
         finally:
             service.unsubscribe_agent_events(game_id, queue)
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
+
+
+# ============================================================================
+# PUZZLE BENCHMARK
+# ============================================================================
+
+from pydantic import BaseModel as _BaseModel  # noqa: E402
+
+_PUZZLE_SET_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "experiments" / "puzzle-benchmark" / "puzzles.json"
+)
+
+
+class PuzzleRunRequest(_BaseModel):
+    topics: list[str] | None = None   # filter to these topics (None = all)
+    limit: int | None = None          # cap number of puzzles (None = all)
+    ids: list[str] | None = None      # run only these puzzle ids (overrides filters)
+
+
+def _load_specs():
+    from app.puzzle_service import load_puzzle_set
+    return load_puzzle_set(_PUZZLE_SET_PATH)
+
+
+@app.get("/api/puzzles")
+def list_puzzles() -> dict:
+    """The fixed puzzle set: counts per topic/band so the UI can show the menu."""
+    specs = _load_specs()
+    topics: dict[str, int] = {}
+    for s in specs:
+        topics[s.topic] = topics.get(s.topic, 0) + 1
+    return {"total": len(specs), "topics": topics,
+            "puzzles": [{"id": s.id, "topic": s.topic, "rating": s.rating,
+                         "band": s.band, "themes": s.themes} for s in specs]}
+
+
+@app.post("/api/puzzles/run")
+async def start_puzzle_run(request: PuzzleRunRequest) -> dict:
+    import asyncio as _asyncio
+    from app.puzzle_runner import PuzzleRun, run_puzzles
+
+    existing = app.state.puzzle_task
+    if existing is not None and not existing.done():
+        raise HTTPException(status_code=409, detail="A puzzle run is already in progress.")
+
+    specs = _load_specs()
+    if request.ids:
+        idset = set(request.ids)
+        specs = [s for s in specs if s.id in idset]
+    else:
+        if request.topics:
+            tset = set(request.topics)
+            specs = [s for s in specs if s.topic in tset]
+        if request.limit:
+            specs = specs[: request.limit]
+    if not specs:
+        raise HTTPException(status_code=400, detail="No puzzles match the request.")
+
+    out_path = _PUZZLE_SET_PATH.parent / "results" / f"run_{int(time.time())}.jsonl"
+    run = PuzzleRun(specs, out_path)
+    app.state.puzzle_run = run
+    service = app.state.game_service
+    app.state.puzzle_task = _asyncio.create_task(run_puzzles(service, run))
+    return {"started": True, "n": len(specs), "out_path": str(out_path)}
+
+
+@app.get("/api/puzzles/run")
+def puzzle_run_status() -> dict:
+    run = app.state.puzzle_run
+    if run is None:
+        return {"running": False, "results": []}
+    solved = sum(1 for r in run.results if r.get("solved"))
+    return {"running": run.running, "idx": run.idx, "n": len(run.specs),
+            "completed": len(run.results), "solved": solved,
+            "results": run.results}
+
+
+@app.get("/api/puzzles/run/events")
+async def puzzle_run_events() -> StreamingResponse:
+    run = app.state.puzzle_run
+    if run is None:
+        raise HTTPException(status_code=404, detail="No puzzle run.")
+    queue = run.subscribe()
+
+    async def stream() -> AsyncIterator[str]:
+        # replay current results so a late subscriber catches up
+        for r in run.results:
+            yield f"data: {json.dumps({'type': 'puzzle_result', **r})}\n\n"
+        while True:
+            try:
+                evt = await asyncio.wait_for(queue.get(), timeout=20)
+                yield f"data: {json.dumps(evt)}\n\n"
+            except asyncio.TimeoutError:
+                yield ": keep-alive\n\n"
+            if not run.running and queue.empty():
+                yield f"data: {json.dumps({'type': 'run_done'})}\n\n"
+                break
 
     return StreamingResponse(stream(), media_type="text/event-stream")

@@ -29,7 +29,12 @@ from app.persistence import (
     save_game,
 )
 from app.players import AgentResignedError, Player, PlayerError, PlayerFactory
+from app.puzzle_service import PuzzleComplete, PuzzleFailed
 from app.schemas import CreateGameRequest, GameState, GameSummary, PlayerConfig
+
+# Exceptions a PuzzlePlayer raises to end a puzzle game cleanly (solved/failed),
+# distinct from infra aborts. Caught explicitly in the bot loop.
+_PUZZLE_TERMINAL = (PuzzleComplete, PuzzleFailed)
 
 
 # Per-move Stockfish probe: shallow + time-capped so it doesn't slow games
@@ -113,6 +118,10 @@ class Game:
     # (e.g. agent_resigned_no_move sets result_override="0-1"). is_over() and
     # result() honour it. See decisions/2026-05-25-agent-resigns-when-stuck.md.
     result_override: str | None = None
+    # Puzzle-benchmark outcome (set only when the opponent is a PuzzlePlayer).
+    # puzzle_solved is None for non-puzzle games.
+    puzzle_solved: bool | None = None
+    puzzle_detail: str = ""
     # Forced-draw cap. When the half-move count reaches this limit the game
     # is declared a draw (1/2-1/2) regardless of position. Prevents infinite
     # endgames where neither bot can deliver mate. Default 300 = 150 full moves.
@@ -367,6 +376,55 @@ class GameService:
         asyncio.create_task(self._update_eval(game))
         self._schedule_bot_turns(game)
         return game.state()
+
+    async def create_puzzle_game(self, spec) -> "Game":
+        """Create a game for ONE puzzle: the agent on the side to move, a
+        PuzzlePlayer (scripted opponent + scorer) on the other side, starting
+        from the position AFTER the puzzle's setup move. Returns the Game so the
+        runner can await it and read spec/PuzzlePlayer state afterward.
+
+        Bypasses the config/CSV/ELO path — puzzles are a benchmark, not ranked
+        games — but reuses the agent's full perception + commit + reasoning-log
+        machinery (the agent can't tell it's a puzzle)."""
+        from app.puzzle_service import PuzzlePlayer
+
+        if self._game is not None:
+            await self._teardown(self._game)
+        game_id = uuid.uuid4().hex
+        created_at = datetime.now(timezone.utc).isoformat()
+        from app.folder_resolver import resolve_target_folder
+        subfolder = resolve_target_folder().folder
+        agent_is_white = spec.agent_color == chess.WHITE
+        puzzle_player = PuzzlePlayer(spec)
+
+        from app.agent_player import AgentPlayer
+        agent = AgentPlayer(
+            game_id=game_id,
+            event_sink=lambda evt, gid=game_id: self._on_agent_event(gid, evt),
+        )
+        agent_cfg = PlayerConfig(type="agent")
+        opp_cfg = PlayerConfig(type="human")  # placeholder config; player is injected
+        game = Game(
+            game_id=game_id,
+            board=chess.Board(spec.start_fen),
+            initial_fen=spec.start_fen,
+            max_half_moves=300,
+            white_config=agent_cfg if agent_is_white else opp_cfg,
+            black_config=opp_cfg if agent_is_white else agent_cfg,
+            white_player=agent if agent_is_white else puzzle_player,
+            black_player=puzzle_player if agent_is_white else agent,
+            created_at=created_at,
+            subfolder=subfolder,
+        )
+        game.puzzle_player = puzzle_player   # type: ignore[attr-defined]
+        game.puzzle_spec = spec              # type: ignore[attr-defined]
+        await game.start_players()
+        self._game = game
+        logger.info("create_puzzle_game · %s puzzle=%s agent=%s",
+                    game.game_id[:8], spec.id, "white" if agent_is_white else "black")
+        self._persist(game)
+        self._schedule_bot_turns(game)
+        return game
 
     async def load_game(self, game_id: str) -> GameState:
         try:
@@ -777,6 +835,21 @@ class GameService:
                     result_override=override,
                 )
                 return
+            except _PUZZLE_TERMINAL as exc:
+                # Puzzle benchmark: the PuzzlePlayer ends the game when the agent
+                # completes the solution (_PuzzleComplete) or deviates from it
+                # (PuzzleFailed). Either way it's a clean puzzle terminus, not an
+                # infra abort — record the outcome on the game and finish.
+                solved = getattr(exc, "solved", False)
+                game.puzzle_solved = solved
+                game.puzzle_detail = str(exc)
+                await self._finish_game_with_error(
+                    game,
+                    publish_message=("Puzzle solved." if solved else f"Puzzle failed: {exc}"),
+                    aborted_reason=("puzzle_solved" if solved else "puzzle_failed"),
+                    result_override=("1-0" if solved else "0-1"),
+                )
+                return
             except Exception as exc:
                 # Infrastructure / environmental error — no chess result, no
                 # ELO change. result_override stays None so game.result()
@@ -829,11 +902,15 @@ class GameService:
                     stockfish_before_task=stockfish_eval_before_task,
                     move_time_ms=move_time_ms,
                 )
-                # Flush agent log to disk immediately so reasoning is visible mid-game
-                from app.folder_resolver import resolve_target_folder
-                target = resolve_target_folder()
-                model = "google/gemma-4-31B-it"  # hardcoded for now; could extract from player
-                self._logging.flush_agent_log(game.game_id, model, target.folder)
+                # Flush agent log to disk immediately so reasoning is visible
+                # mid-game. Skip for puzzle-benchmark games — their reasoning is
+                # captured in the puzzle results JSONL, not the experiment's
+                # per-game folders (keeps the experiment record clean).
+                if getattr(game, "puzzle_player", None) is None:
+                    from app.folder_resolver import resolve_target_folder
+                    target = resolve_target_folder()
+                    model = "google/gemma-4-31B-it"  # hardcoded for now; could extract from player
+                    self._logging.flush_agent_log(game.game_id, model, target.folder)
 
     def _push_uci_move(self, game: Game, move_uci: str) -> None:
         try:
@@ -865,6 +942,11 @@ class GameService:
         self._persist(game)
 
     def _persist(self, game: Game) -> None:
+        # Puzzle-benchmark games are not part of the experiment record and don't
+        # need on-disk persistence (no resume across restarts); their results
+        # live in experiments/puzzle-benchmark/results/. Skip to keep games/ clean.
+        if getattr(game, "puzzle_player", None) is not None:
+            return
         result = game.result()
         save_game(
             self._games_dir,
@@ -893,6 +975,12 @@ class GameService:
         # both end up in the CSVs; `LoggingService.record_game` decides ranked
         # vs experimental based on the live git state. Human-vs-Maia ad-hoc
         # games are not part of the experiment record.
+        #
+        # Puzzle-benchmark games are NOT experiment games: their results live in
+        # experiments/puzzle-benchmark/results/, not ranked/experimental.csv. So
+        # skip the experiment CSV + per-game-folder logging for them.
+        if game.puzzle_solved is not None:
+            return
         white_type = game.white_config.type
         black_type = game.black_config.type
         if white_type != "agent" and black_type != "agent":

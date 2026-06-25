@@ -216,3 +216,37 @@ export interface RepoState {
 export function getRepoState(): Promise<RepoState> {
   return request<RepoState>('/api/repo-state');
 }
+
+// ---- Puzzle benchmark ----
+
+export interface PuzzleInfo {
+  id: string; topic: string; rating: number; band: string; themes: string[];
+}
+export interface PuzzleAttempt {
+  ply: number; fen_before: string; expected_uci: string; expected_san: string;
+  played_uci: string | null; played_san: string | null; correct: boolean;
+  accepted_as: string | null; reasoning?: string;
+}
+export interface PuzzleResult {
+  puzzle_id: string; topic: string; band: string; rating: number; themes: string[];
+  agent_color: string; solved: boolean; solved_plies: number; total_plies: number;
+  aborted_reason: string | null; attempts: PuzzleAttempt[];
+}
+
+export function listPuzzles(): Promise<{ total: number; topics: Record<string, number>; puzzles: PuzzleInfo[] }> {
+  return fetch(`${API_BASE}/api/puzzles`).then((r) => r.json());
+}
+
+export function startPuzzleRun(body: { topics?: string[]; limit?: number; ids?: string[] }): Promise<{ started: boolean; n: number; out_path: string }> {
+  return fetch(`${API_BASE}/api/puzzles/run`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  }).then(async (r) => { if (!r.ok) throw new Error((await r.json()).detail || 'failed'); return r.json(); });
+}
+
+export function puzzleRunStatus(): Promise<{ running: boolean; idx: number; n: number; completed: number; solved: number; results: PuzzleResult[] }> {
+  return fetch(`${API_BASE}/api/puzzles/run`).then((r) => r.json());
+}
+
+export function puzzleRunEventsUrl(): string {
+  return `${API_BASE}/api/puzzles/run/events`;
+}

@@ -1,7 +1,7 @@
 ---
 category: tactics
 description: Removing the defender — the umbrella for deflection, decoy/attraction, overloading, interference, and undermining. A target is held by one defender; eliminate, lure, block, or overwork it, then win the target.
-triggers: [removing the defender, remove the guard, deflection, decoy, attraction, overloaded, overworked piece, interference, undermining, lure away, only defender]
+triggers: [removing the defender, remove the guard, capturing the defender, capture the defender, deflection, decoy, attraction, overloaded, overworked piece, interference, undermining, lure away, only defender]
 related_pages: [tactics/index, tactics/deflection, tactics/pins-and-skewers, strategy/handle-a-threat]
 tags: [tactics, deflection, decoy, overload, interference, defender]
 status: draft
