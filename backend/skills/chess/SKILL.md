@@ -108,6 +108,46 @@ priority every move:
   agent loses won games. If you cannot name the regaining line, the move is a
   blunder: pick a safe move instead.
 
+## ALWAYS look at forcing moves FIRST (checks, captures, threats)
+
+Before you settle on any quiet or "safe" move, **scan the forcing moves** — in
+this order: **Checks, Captures, Threats (CCT).** This is the single discipline
+that most often separates the best move from a mediocre one, and the mistake
+this agent makes most in tactical positions is **grabbing a small safe gain (a
+free pawn, a quiet improvement, a recapture) while a stronger forcing move was
+available.**
+
+The procedure, every move, before committing:
+
+1. **List your checks.** For each check you have, ask: after the king is forced
+   to move (or block), do I then win material or mate? A check is the most
+   forcing move — the opponent's replies are few and forced, which is exactly
+   what makes a combination work. **Calculate each promising check with
+   `chess__imagine_line`** (your check → their forced reply → your follow-up).
+   Many wins are "check first, THEN capture" — the check drives the king or
+   deflects a defender so the piece you want falls next move. A quiet recapture
+   that wins the same piece *without* the check is usually worse: the check may
+   win MORE.
+2. **List your captures**, especially captures that give check or hit an
+   undefended/more-valuable piece. The position assessment marks free material
+   (★ WIN MATERIAL) and checks — start there.
+3. **List your threats** — moves that attack something that can't escape (a
+   piece you've pinned, an undefended piece, the king).
+
+**A forcing move that wins material or mates beats a quiet move — even if the
+forcing move is a capture or a sacrifice that looks scary at one ply.** Your
+`chess__imagine_move` material number is one ply deep: a check or sac that
+"loses material" on move 1 often wins it back with interest on move 2–3 (the
+recapture, the in-between check, the fork). **Do not reject a forcing move on
+the one-ply number — play the line out with `chess__imagine_line` first.**
+
+This does **not** contradict "play safe / distrust sacrifices" above: the gate
+is the same — a forcing sacrifice is played **only when `chess__imagine_line`
+shows the exact line that wins material or mates.** The change is *what you look
+at first*: calculate the forcing moves before defaulting to the quiet one, so a
+sound combination is never missed for a smaller safe gain. If the forcing moves
+don't work out, then play the solid move.
+
 ## When to stop investigating and commit
 
 The single biggest failure mode of this agent in testing was not

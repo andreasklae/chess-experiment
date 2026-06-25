@@ -1358,10 +1358,58 @@ def why_stronger(board_before: chess.Board, move: chess.Move) -> list[str]:
     return out
 
 
+def _forcing_moves_line(board: chess.Board) -> str:
+    """List the side-to-move's CHECKS (and which are also captures) as the
+    forcing moves to calculate FIRST. Pure enumeration of legal checks — no
+    evaluation, no best-move pick (usually several; the agent still calculates
+    which works). Delivered in the tool output, at the decision point, because
+    SKILL.md prose alone does not move the model toward forcing moves; a list in
+    front of it does. Tool-fair mechanics (board.gives_check)."""
+    checks = []
+    for mv in board.legal_moves:
+        if board.gives_check(mv):
+            try:
+                san = board.san(mv)
+            except Exception:
+                continue
+            checks.append(san)
+    if not checks:
+        return ""
+    # Captures-that-check are the sharpest — surface them, then the rest.
+    cap_checks = [c for c in checks if "x" in c]
+    quiet_checks = [c for c in checks if "x" not in c]
+    ordered = cap_checks + quiet_checks
+    return (
+        "**Forcing moves — calculate these FIRST (checks; ★ = also a capture):** "
+        + ", ".join((f"★{c}" if c in cap_checks else c) for c in ordered)
+        + ". A check forces the reply, so it is how most combinations work — play "
+        "each promising one out with `imagine_line` (check → forced reply → your "
+        "follow-up) BEFORE settling on a quiet move. Many wins are 'check first, "
+        "then win material'. (Listing the checks is mechanics; whether one wins is "
+        "for you to calculate.)"
+    )
+
+
 def render_features(board: chess.Board, *, heading: str = "Position assessment — strengths, weaknesses & ideas") -> str:
     """Full feature section for `board`, from the side-to-move's perspective."""
     findings = detect_all(board)
-    return render_findings(findings, agent_color=board.turn, heading=heading)
+    body = render_findings(findings, agent_color=board.turn, heading=heading)
+    forcing = _forcing_moves_line(board)
+    if not forcing:
+        return body
+    if not body:
+        return f"## {heading}\n\n{forcing}"
+    # Insert the forcing-moves line right after the heading + method note so it is
+    # the first concrete thing the agent reads.
+    lines = body.split("\n")
+    # find the method-note paragraph (starts with "_Full method"); insert after it
+    insert_at = 1
+    for i, ln in enumerate(lines):
+        if ln.startswith("_Full method"):
+            insert_at = i + 1
+            break
+    lines.insert(insert_at, f"\n{forcing}")
+    return "\n".join(lines)
 
 
 def render_features_for(board: chess.Board, perspective: bool, *, heading: str) -> str:

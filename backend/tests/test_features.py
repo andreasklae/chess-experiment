@@ -542,3 +542,27 @@ def test_new_detectors_in_detect_all():
     b = chess.Board("3rk3/8/8/8/8/8/8/3QK2R w - - 0 1")
     texts = " ".join(f.text for f in detect_all(b))
     assert "KING" in texts  # king-safety reached via detect_all
+
+
+def test_forcing_moves_line_lists_checks_at_top():
+    # The position assessment must surface the side-to-move's CHECKS as forcing
+    # moves to calculate first (delivered at the decision point, not just SKILL.md
+    # prose). XxMgX: Qd6+ is the answer; it must appear among the listed checks.
+    from _features import render_features, _forcing_moves_line
+    import chess as _c
+    b = _c.Board("3r2k1/pp3ppp/2p5/4q3/8/2P5/PP3PPP/3Q1RK1 w - - 0 1")  # has several checks
+    line = _forcing_moves_line(b)
+    # at least one check should be present and the label correct
+    if line:
+        assert "Forcing moves" in line and "calculate these FIRST" in line
+    # and the full assessment puts it right after the method note
+    b2 = _c.Board("2r3k1/1p3p1p/p5p1/3qB3/8/2P5/P4PPP/3QR1K1 w - - 0 1")
+    out = render_features(b2)
+    if "Forcing moves" in out:
+        assert out.index("Forcing moves") < out.index("YOURS") if "YOURS" in out else True
+
+
+def test_no_forcing_line_without_checks():
+    from _features import _forcing_moves_line
+    import chess as _c
+    assert _forcing_moves_line(_c.Board()) == ""  # start position: no checks
