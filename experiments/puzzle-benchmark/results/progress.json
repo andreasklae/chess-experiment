@@ -2106,26 +2106,37 @@
     ]
   },
   "A3WM4": {
-    "status": "failed",
+    "status": "solved",
     "topic": "hanging-piece",
     "difficulty": "medium",
     "rating": 1367,
-    "solved_plies": 0,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "agent played e1b1, expected f3a8",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:33:19",
+    "aborted_reason": null,
+    "run_id": "run_1782416086",
+    "ts": "2026-06-25T21:35:25",
     "attempts": [
       {
         "ply": 0,
         "fen_before": "r5k1/3q1pp1/4pn1p/8/3P4/1pP2QN1/5PPP/1r2R1K1 w - - 0 29",
         "expected_uci": "f3a8",
         "expected_san": "Qxa8+",
+        "played_uci": "f3a8",
+        "played_san": "Qxa8+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The rook on a8 is undefended and capturing it with check is forcing. Per my calculation (Qxa8+, Kh7, Rxb1), I can then capture the undefended rook on b1, turning a decisive material deficit into a decisive material lead. This sequence removes both of black's active rooks and secures a winning advantage. \u00b7 goal: Capture the undefended rook on a8 and then the rook on b1 to swing the material advantage. \u00b7 plan: Win material by capturing the undefended rooks on a8 and b1. Once material is regained, stabilize the position by creating luft for the king and blockading the b3 pawn."
+      },
+      {
+        "ply": 1,
+        "fen_before": "Q7/3q1ppk/4pn1p/8/3P4/1pP3N1/5PPP/1r2R1K1 w - - 1 30",
+        "expected_uci": "e1b1",
+        "expected_san": "Rxb1",
         "played_uci": "e1b1",
         "played_san": "Rxb1",
-        "correct": false,
-        "accepted_as": null,
-        "reasoning": "The rook on e1 is pinned and attacked by the rook on b1. Capturing on b1 (Rxb1) removes the immediate threat, restores material balance (bringing the eval to 0.00), and places my rook in a position to attack the passed pawn on b3. I considered other moves, but allowing the exchange on e1 or moving the rook away would leave me at a decisive material disadvantage. \u00b7 goal: Stabilize material and neutralize the b3 pawn. \u00b7 plan: Immediate objective: eliminate the active rook on b1 to regain material balance and stop the immediate threat to e1. Long-term: blockade the passed b3 pawn and create counterplay using the c3 passer and potential king-side pressure."
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The Safety Check warned that my rook on e1 is hanging. However, capturing the rook on a8 with check (Qxa8+) is a forcing move that wins a full rook and maintains the initiative. Even if Black captures the rook on e1 in reply, I have already gained a rook and will likely be able to recover more material or deliver mate. More importantly, my calculated line (Qxa8+, Kh7, Rxb1) shows that I can capture both rooks in two moves, which is far more valuable than saving the e1 rook alone. The forced sequence 1. Qxa8+ Kh7 (or other) 2. Rxb1 wins two rooks for one, netting a full rook and equalizing/winning the game. \u00b7 goal: Capture both undefended rooks to swing the material balance. \u00b7 plan: Win material by capturing the undefended rooks on a8 and b1. Once material is regained, stabilize the position by creating luft for the king and blockading the b3 pawn."
       }
     ]
   },
@@ -3187,6 +3198,100 @@
         "correct": false,
         "accepted_as": null,
         "reasoning": "The immediate threat is the back-rank mate (Qe1#). I cannot play Ra8+ because after Kb7, capturing the rook on h8 allows Qe1# immediately. Similarly, any passive move like h3 or Qa4 also loses to Qe1#. Moving the queen to a6 creates counterplay by attacking c6 and e6 while maintaining a defender for the rook on a7 and pawn on a2. Importantly, it removes the queen from the a3 square, potentially preparing to challenge the black queen or defend the back rank more effectively in subsequent moves, though the primary goal here is to create immediate tactical pressure to force black to respond rather than deliver mate. Wait, I just realized Qa6 doesn't stop Qe1#. However, it is the only move that creates a meaningful threat (attacking c6/e6) while not immediately hanging a piece. Actually, checking the position again, I MUST address the back-rank mate. But since I have no way to create luft or defend e1 in one move without losing material or allowing the mate, I must create a threat that is more pressing. Actually, if I play Qa6, black still has Qe1#. I need a move that stops the mate or gives a check. Ra8+ was a check, but led to mate. I need to find a way to survive. Let's look at the legal moves again. Only Ra8+ is a check. If I don't check, I'm mated. But Ra8+ Kb7 Rxh8 Qe1# is a disaster. Is there any other way? If I play Ra8+ Kb7, and instead of Rxh8, I play something else? If Ra8+ Kb7, then maybe Qb4+? Let's calculate that. \u00b7 plan: Avoid back-rank mate while maintaining pressure on the black king. Use the queen and rook to create forcing checks and threats to displace the black queen from d2."
+      }
+    ]
+  },
+  "NLnda": {
+    "status": "solved",
+    "topic": "hanging-piece",
+    "difficulty": "medium",
+    "rating": 1192,
+    "solved_plies": 1,
+    "total_plies": 1,
+    "aborted_reason": null,
+    "run_id": "run_1782415859",
+    "ts": "2026-06-25T21:31:31",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "2b2r1k/8/r5pP/pp1Bp1N1/7q/P1NPP1nP/1PP5/2K2RR1 w - - 5 27",
+        "expected_uci": "f1f8",
+        "expected_san": "Rxf8#",
+        "played_uci": "f1f8",
+        "played_san": "Rxf8#",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The rook on f8 is undefended. Capturing it delivers immediate checkmate, as the king is trapped on h8 and has no legal moves. This was flagged as a checkmate in the imagine_move output. \u00b7 plan: Deliver immediate checkmate via Rxf8# to win the game."
+      }
+    ]
+  },
+  "KlCVK": {
+    "status": "solved",
+    "topic": "hanging-piece",
+    "difficulty": "medium",
+    "rating": 1387,
+    "solved_plies": 2,
+    "total_plies": 2,
+    "aborted_reason": null,
+    "run_id": "run_1782415859",
+    "ts": "2026-06-25T21:31:54",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "b2r2k1/p1p2ppp/1p1b4/4r3/5N1P/3P2P1/q1P2Q1K/R3R3 w - - 0 28",
+        "expected_uci": "a1a2",
+        "expected_san": "Rxa2",
+        "played_uci": "a1a2",
+        "played_san": "Rxa2",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The opponent's queen on a2 is completely undefended. Capturing it with Rxa2 immediately shifts the material balance from a decisive disadvantage (-5.45) to a decisive advantage (+4.00). Imagine_move confirms there are no immediate tactical refutations or traps associated with this capture. \u00b7 goal: Consolidate material advantage and simplify. \u00b7 plan: Material recovery: capture the undefended queen on a2. Once material parity or advantage is achieved, simplify by trading pieces and use the back-rank/smothered mate threats to maintain initiative."
+      },
+      {
+        "ply": 1,
+        "fen_before": "b2r2k1/p1p2ppp/1p1b4/8/5N1P/3P2P1/R1P2Q1K/4r3 w - - 0 29",
+        "expected_uci": "f2e1",
+        "expected_san": "Qxe1",
+        "played_uci": "f2e1",
+        "played_san": "Qxe1",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan to consolidate material advantage and simplify, I am capturing the undefended rook on e1. This immediately restores material parity (actually putting me ahead) and removes black's most active piece. Imagine_move confirms no immediate tactical traps for black. \u00b7 goal: Maintain material lead and neutralize black's bishop pair. \u00b7 plan: Material advantage: secure the win by trading pieces and using the back-rank weakness. Once the board is simplified, use the queen and rook to drive the king to the edge for mate."
+      }
+    ]
+  },
+  "Wu3M2": {
+    "status": "solved",
+    "topic": "hanging-piece",
+    "difficulty": "medium",
+    "rating": 1342,
+    "solved_plies": 2,
+    "total_plies": 2,
+    "aborted_reason": null,
+    "run_id": "run_1782415859",
+    "ts": "2026-06-25T21:32:34",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "2r2k2/5ppp/B7/3p4/P3pPn1/4q3/6PP/Q4R1K w - - 1 29",
+        "expected_uci": "a6c8",
+        "expected_san": "Bxc8",
+        "played_uci": "a6c8",
+        "played_san": "Bxc8",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Capturing the undefended rook on c8 gives white a decisive material advantage (+5.00). Calculation with imagine_line shows that black's most forcing replies (Nf2+ and Qg1+) are easily handled: Nf2+ can be met by Kg1 or Rxf2 (though the tool warns about Rxf2, Kg1 is safe), and Qg1+ is simply a blunder that loses the queen immediately. Other moves like a5 or the queen skewers are significantly slower and less impactful than winning a full rook for free. \u00b7 plan: Win decisive material by capturing the undefended rook on c8, then simplify the position by trading pieces and pushing the passed a-pawn."
+      },
+      {
+        "ply": 1,
+        "fen_before": "2B2k2/5ppp/8/3p4/P3pP2/4q3/5nPP/Q4R1K w - - 1 30",
+        "expected_uci": "f1f2",
+        "expected_san": "Rxf2",
+        "played_uci": "f1f2",
+        "played_san": "Rxf2",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Opponent played Nf2+, putting me in check. I have two options: Kg1 or Rxf2. If I play Kg1, the knight remains a nuisance and continues to coordinate with the queen. If I play Rxf2, I eliminate the knight. While the rook on f2 will be hanging (recapturable by the queen), this simplifies the position. My calculations show that if black plays Qxf2, I remain significantly up in material (+1.55 to +3.30 relative lead) and keep my queen. If black tries checks like Qe1+ or Qc1+, I simply capture the queen with my own queen (Qxe1 or Qxc1), winning the game immediately. Therefore, Rxf2 is the most forcing and beneficial way to resolve the check and maintain my advantage. \u00b7 plan: Simplify the position by trading pieces and utilizing the material lead. Use the passed a-pawn as a decisive weapon to force the opponent's pieces into passive defense or promote it."
       }
     ]
   }

@@ -569,11 +569,23 @@ def detect_loose_pieces(board: chess.Board, perspective: bool | None = None) -> 
                     # (rendered first, in YOUR block), NOT a low "potential". The
                     # only caveat is a trap — taking it loses more elsewhere —
                     # which detect_traps flags separately and the wording points at.
+                    caps = _winning_captures_of(board, sq, stm)
+                    check_caps = _checking_captures_of(board, sq, stm)
+                    forcing = ""
+                    if check_caps:
+                        # Capturing this piece WITH CHECK is more forcing than a
+                        # quiet recapture elsewhere — the zwischenzug nudge. If you
+                        # have a free piece AND another recapture, take the CHECK
+                        # first (you keep the recapture next move). General hint,
+                        # not a move order the tool computes for you.
+                        forcing = (f" NOTE: {', '.join(check_caps)} captures it WITH CHECK — that is more "
+                                   f"forcing; if you also have a quiet recapture available elsewhere, play the "
+                                   f"checking capture FIRST (zwischenzug) — you usually still get the other one.")
                     findings.append(Finding(True, "win",
                         f"FREE MATERIAL: opponent's {PIECE_NAME[p.piece_type]} on {_sq(sq)} is UNDEFENDED and you "
                         f"attack it — capturing it wins a piece (this is NOT a trade; it costs you nothing). "
-                        f"Take it unless imagine_move shows it is a trap (you lose more material right after).",
-                        moves=_winning_captures_of(board, sq, stm), wiki="forks"))
+                        f"Take it unless imagine_move shows it is a trap (you lose more material right after).{forcing}",
+                        moves=caps, wiki="forks"))
             elif not defenders and not attackers and p.piece_type in (chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT):
                 # Loose but not yet attacked — only flag as a *latent* target when
                 # it's a real one: an active (developed) piece, not a rook sitting
@@ -601,6 +613,24 @@ def _winning_captures_of(board: chess.Board, target: int, color: bool) -> list[s
                 out.append(board.san(m))
             except Exception:
                 pass
+    return sorted(set(out))
+
+
+def _checking_captures_of(board: chess.Board, target: int, color: bool) -> list[str]:
+    """SAN of legal captures of `target` by `color` that ALSO give check (only on
+    color's turn). A checking capture is more forcing than a quiet one — used to
+    nudge the zwischenzug (capture-with-check before a quiet recapture)."""
+    if board.turn != color:
+        return []
+    out: list[str] = []
+    for m in board.legal_moves:
+        if m.to_square == target:
+            b = board.copy(stack=False); b.push(m)
+            if b.is_check():
+                try:
+                    out.append(board.san(m))
+                except Exception:
+                    pass
     return sorted(set(out))
 
 

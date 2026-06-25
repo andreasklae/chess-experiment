@@ -439,6 +439,17 @@ def test_material_down_advises_avoid_initiating_trades_but_keep_free_material():
     assert "free material" in txt and "always capture" in txt
 
 
+def test_win_finding_flags_checking_capture_as_zwischenzug():
+    # A3WM4: two free black rooks (a8, b1); Qxa8+ takes one WITH CHECK. The win
+    # finding for a8 must carry the zwischenzug nudge (capture-with-check first),
+    # the b1 one (quiet) must not.
+    from _features import detect_all
+    b = chess.Board("r5k1/3q1pp1/4pn1p/8/3P4/1pP2QN1/5PPP/1r2R1K1 w - - 0 29")
+    wins = {f.text.split(" on ")[1][:2]: f.text for f in detect_all(b) if f.kind == "win"}
+    assert "a8" in wins and "WITH CHECK" in wins["a8"] and "zwischenzug" in wins["a8"].lower()
+    assert "b1" in wins and "WITH CHECK" not in wins["b1"]
+
+
 def test_free_undefended_enemy_piece_is_top_win_finding():
     # YZ2IM position: White (down material) attacks an UNDEFENDED black knight on
     # f7 with the bishop on e6. This must surface as a top-priority WIN-material
