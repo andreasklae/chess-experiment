@@ -314,6 +314,48 @@ def _phase_is_opening(board: chess.Board) -> bool:
     return board.fullmove_number <= 12
 
 
+def detect_traps(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
+    """Trap / bait detection (only meaningful for the side to move): a capture
+    that LOOKS free — grabbing an enemy piece or pawn — but actually LOSES
+    material by static exchange. This is the mechanical heart of most opening
+    traps and the agent's documented weakness (grabbing material that's lost
+    right back). Pure SEE mechanics; the agent still decides.
+
+    Only runs from the side-to-move's seat (it reasons about *the agent's own*
+    tempting captures). Lists the baited capture(s) so the agent can see them
+    flagged BEFORE playing one.
+    """
+    try:
+        from _eval import static_exchange_eval
+    except Exception:
+        return []
+    stm = board.turn if perspective is None else perspective
+    if board.turn != stm:
+        return []  # we only assess the side actually on move
+    findings: list[Finding] = []
+    baited: list[str] = []
+    for mv in board.legal_moves:
+        victim = board.piece_at(mv.to_square)
+        if victim is None or victim.piece_type == chess.KING:
+            continue  # not a capture (en-passant handled below is rare; skip)
+        after = board.copy(); after.push(mv)
+        # SEE from the opponent's side on the landing square: how much they win back.
+        see_loss = static_exchange_eval(after, mv.to_square, not stm)
+        if see_loss >= 150:  # capturing here loses ~1.5+ pawns net → bait
+            try:
+                san = board.san(mv)
+            except Exception:
+                continue
+            baited.append(f"{san} (looks like it wins the {PIECE_NAME[victim.piece_type]}, "
+                          f"but loses ~{see_loss // 100} pawn(s) after recapture)")
+    if baited:
+        findings.append(Finding(True, "threat",
+            "TRAP / bait — a 'free' capture that actually loses material; verify with "
+            "imagine_move before grabbing material: " + "; ".join(baited[:4]),
+            wiki="traps"))
+    return findings
+
+
 def detect_development(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
     """Undeveloped minor pieces + castling status (opening-relevant)."""
     findings: list[Finding] = []
@@ -869,7 +911,7 @@ def detect_all(board: chess.Board, perspective: bool | None = None) -> list[Find
     for fn in (detect_phase_fundamentals, detect_pawn_structure, detect_files,
                detect_development, detect_bishop_pair, detect_outposts,
                detect_knight_forks, detect_loose_pieces, detect_pins_skewers,
-               detect_skewers, detect_discovered_attacks):
+               detect_skewers, detect_discovered_attacks, detect_traps):
         try:
             findings += fn(board, perspective)
         except Exception:

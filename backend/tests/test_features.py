@@ -397,3 +397,18 @@ def test_pin_and_hanging_on_real_puzzles():
                for f in detect_loose_pieces(b) + detect_loose_pieces(b, not b.turn)):
             h_hit += 1
     assert h_tot >= 50 and h_hit / h_tot >= 0.95, f"hanging recall {h_hit}/{h_tot}"
+
+
+def test_trap_detector_flags_baited_capture():
+    """A 'free' capture that loses material by SEE is flagged as a TRAP/bait,
+    and a genuinely free capture is not."""
+    from _features import detect_traps
+    # Rxd5 grabs a pawn but it's defended by the e6 pawn -> loses the rook.
+    bait = chess.Board("4k3/8/4p3/3p4/8/3R4/8/4K3 w - - 0 1")
+    fs = detect_traps(bait)
+    assert any("TRAP" in f.text and "Rxd5" in f.text for f in fs)
+    assert all(f.side for f in fs)  # it's the agent's own tempting capture
+
+    # An undefended pawn grab is safe -> no trap flagged.
+    safe = chess.Board("4k3/8/8/3p4/8/3R4/8/4K3 w - - 0 1")
+    assert detect_traps(safe) == []
