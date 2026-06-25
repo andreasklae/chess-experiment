@@ -1033,16 +1033,39 @@
     ]
   },
   "JslRl": {
-    "status": "failed",
+    "status": "solved",
     "topic": "discovered-attack",
     "difficulty": "easy",
     "rating": 887,
-    "solved_plies": 0,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "failed",
-    "run_id": "run_1782417871",
-    "ts": "2026-06-25T22:05:39",
-    "attempts": []
+    "aborted_reason": null,
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:18:06",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "2b1r1k1/p2r1p1p/1pp3p1/7q/3bNB2/1P2Q2P/1PP2RPK/5R2 w - - 2 30",
+        "expected_uci": "e4f6",
+        "expected_san": "Nf6+",
+        "played_uci": "e4f6",
+        "played_san": "Nf6+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The knight move Nf6+ is a forcing sacrifice. Although Black can capture with Bxf6, this removes the defender of the e8 rook, allowing Qxe8+ for a winning material gain (winning the exchange). I have verified with imagine_line that after 1. Nf6+ Bxf6 2. Qxe8+, I gain a clear material advantage. \u00b7 goal: Win the exchange by sacrificing the knight on f6 to capture the rook on e8. \u00b7 plan: Tactic: Sacrifice knight on f6 to remove the guard of e8, then capture the rook with the queen. After winning the exchange, coordinate pieces to pressure the black king."
+      },
+      {
+        "ply": 1,
+        "fen_before": "2b1r1k1/p2r1p1p/1pp2bp1/7q/5B2/1P2Q2P/1PP2RPK/5R2 w - - 0 31",
+        "expected_uci": "e3e8",
+        "expected_san": "Qxe8+",
+        "played_uci": "e3e8",
+        "played_san": "Qxe8+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "I have calculated the forced sequence with `chess__imagine_line`: 1. Nf6+ Bxf6 2. Qxe8+. This wins the exchange (rook for knight) and gives White a clear material advantage (+1.00). The safety check is based on the immediate loss of the knight, but the follow-up capture of the rook more than compensates. \u00b7 goal: Win the exchange by sacrificing the knight on f6 to capture the rook on e8. \u00b7 plan: Tactic: Sacrifice knight on f6 to remove the guard of e8, then capture the rook with the queen. After winning the exchange, coordinate pieces to pressure the black king."
+      }
+    ]
   },
   "VhRSK": {
     "status": "failed",
@@ -1052,8 +1075,8 @@
     "solved_plies": 0,
     "total_plies": 2,
     "aborted_reason": "agent played d3c4, expected d3h7",
-    "run_id": "run_1782417871",
-    "ts": "2026-06-25T22:05:58",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:18:24",
     "attempts": [
       {
         "ply": 0,
@@ -1064,7 +1087,7 @@
         "played_san": "Bxc4",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "The bishop on d3 is under attack. Moving it to c4 captures a pawn and creates a discovered attack on the black queen. If black takes my queen (Qxd1), I recapture (Raxd1) and emerge with a balanced material position and a strong rook on the open d-file. I rejected Bxh7+ as the radar explicitly warned it was a trap. \u00b7 goal: Exchange queens and stabilize the position. \u00b7 plan: Neutralize black's material lead by forcing a queen trade via the discovered attack. After exchanging queens, target the doubled c-pawns and the back-rank weakness."
+        "reasoning": "The bishop on d3 was under attack by the pawn on c4 and queen on d6. Capturing on c4 removes the immediate threat to the bishop, wins a pawn, and creates a discovered attack on the black queen on d6. Calculation shows that if black captures my queen (Qxd1), I recapture with the rook (Raxd1), resulting in a roughly balanced material position with an active rook on the open d-file. This is a forcing sequence that solves my defensive problem while improving my position. \u00b7 goal: eliminate the c4 pawn and neutralize the d6 queen \u00b7 plan: Target the doubled pawns on the c-file and coordinate pieces to regain material. Use the discovered attack on the d-file to force a favorable trade or win the queen."
       }
     ]
   },
@@ -1233,15 +1256,15 @@
     ]
   },
   "i52qF": {
-    "status": "failed",
+    "status": "solved",
     "topic": "discovered-check",
     "difficulty": "easy",
     "rating": 907,
-    "solved_plies": 1,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "failed",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:17:40",
+    "aborted_reason": null,
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:18:50",
     "attempts": [
       {
         "ply": 0,
@@ -1252,20 +1275,31 @@
         "played_san": "Bf6+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "I have a forced mate in two. First, Bf6+ forces the king to g8 (since it's the only legal move). Then, Rh8# delivers checkmate, as the rook is protected by the bishop on f6 and the king has no escape squares. Despite being down material, this tactical sequence wins the game immediately. \u00b7 goal: Deliver checkmate in two moves. \u00b7 plan: Forced mate in 2: 1. Bf6+ Kg8 2. Rh8#."
+        "reasoning": "I have found a forced mate in two. Bf6+ forces the black king to g8 (as it is the only legal move), and then Rh8 is checkmate, defended by the bishop on f6. I have verified this sequence using chess__imagine_line. \u00b7 plan: Force checkmate: deliver Bf6+ to force Kg8, then Rh8# for the win."
+      },
+      {
+        "ply": 1,
+        "fen_before": "5rk1/p4p2/1pr2Bb1/3pp3/2qP4/b1P2P2/P6R/4NRK1 w - - 2 34",
+        "expected_uci": "h2h8",
+        "expected_san": "Rh8#",
+        "played_uci": "h2h8",
+        "played_san": "Rh8#",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Overriding safety check because this is a forced checkmate in two: 1. Bf6+ Kg8 2. Rh8#. I have verified this sequence using chess__imagine_line and it results in an immediate win, making the material loss on f6 irrelevant. \u00b7 plan: Force checkmate: deliver Bf6+ to force Kg8, then Rh8# for the win."
       }
     ]
   },
   "7Xdqa": {
-    "status": "failed",
+    "status": "solved",
     "topic": "discovered-check",
     "difficulty": "easy",
     "rating": 999,
-    "solved_plies": 1,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "failed",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:18:05",
+    "aborted_reason": null,
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:19:16",
     "attempts": [
       {
         "ply": 0,
@@ -1276,7 +1310,18 @@
         "played_san": "Nf6+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "The position features a powerful discovered check alignment (Qb7, Nd7, Kh7). I played Nf6+ to force the black king to move (only legal move is Kh8), which creates a fork attacking the knight on h5. Although Nxh5 allows gxh5, the primary goal is to disrupt Black's coordination and utilize the forcing nature of the checks to regain initiative. Rejected Qxa7 as it hangs the e4 pawn immediately and is less forcing. \u00b7 goal: Leverage discovered check to regain material or create mating threats. \u00b7 plan: Use discovered check engine: move the knight to force the king to move, then target loose pieces (like the knight on h5) or create tactical pressure to compensate for the material deficit."
+        "reasoning": "The knight on d7 screens the queen's line to the king. By playing Nf6+, I deliver a discovered check and simultaneously attack the knight on h5. Black's only legal move is Kh8, after which I can capture the knight (Nxh5). While gxh5 is possible, it simplifies the position and recovers material, reducing Black's decisive advantage. I rejected Qxa7 as it leaves e4 undefended and lacks the immediate forcing power of the discovered check. \u00b7 goal: Win material or create a mating net using discovered checks. \u00b7 plan: Utilize the discovered check from the queen on b7 to win the knight on h5 or create a forcing sequence that recovers material. Target: eliminate the h5 knight and disrupt Black's coordination."
+      },
+      {
+        "ply": 1,
+        "fen_before": "3r3k/pQ6/3p1Np1/2p1p1Pn/2P1P2P/P3q3/1P5K/8 w - - 2 41",
+        "expected_uci": "b7h7",
+        "expected_san": "Qh7#",
+        "played_uci": "b7h7",
+        "played_san": "Qh7#",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The opponent's king is trapped on h8. Moving the queen to h7 delivers checkmate, supported by the knight on f6. This immediately wins the game, overriding the previous plan to win material. \u00b7 plan: none"
       }
     ]
   },
@@ -1285,22 +1330,22 @@
     "topic": "discovered-check",
     "difficulty": "medium",
     "rating": 1069,
-    "solved_plies": 1,
+    "solved_plies": 0,
     "total_plies": 2,
-    "aborted_reason": "failed",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:18:33",
+    "aborted_reason": "agent played e4c5, expected e4f6",
+    "run_id": "run_1782421278",
+    "ts": "2026-06-25T23:01:50",
     "attempts": [
       {
         "ply": 0,
         "fen_before": "r4q2/pbp1b1pk/3p4/1p2p1Pp/2n1Nr1P/3Q1PK1/P7/4R2R w - - 2 32",
         "expected_uci": "e4f6",
         "expected_san": "Nf6+",
-        "played_uci": "e4f6",
-        "played_san": "Nf6+",
-        "correct": true,
-        "accepted_as": "exact",
-        "reasoning": "I am playing Nf6+. This is a discovered check from the queen on d3. The imagine_line calculation shows that if the black king moves to h8, it is immediate checkmate with Qh7#. The only other legal reply listed in imagine_move was Kh8, which I've verified leads to mate. Even though the knight on f6 is attacked, it is a winning tactical sequence. \u00b7 goal: Deliver checkmate on h7. \u00b7 plan: Execute a discovered check sequence to force the black king into a mating net. Immediate goal: move the knight to f6 to check the king and prepare Qh7# if the king moves to h8."
+        "played_uci": "e4c5",
+        "played_san": "Nc5+",
+        "correct": false,
+        "accepted_as": null,
+        "reasoning": "The position is materially lost (-10), so I must create immediate complications. Nf6+ is a forcing move that gives check and attacks the undefended h5 pawn. While it appears to lose the knight, the opponent's only legal reply in the imagine_move output was Kh8 (since the knight is defended by g5 and captures by g7, e7, f4, f8 are currently not providing check-escapes or are tactically complex). By forcing the king to h8, I can capture the h5 pawn with Nxh5, putting the knight on a strong square attacking the Rf4 and g7, and creating significant pressure on the kingside. This is my best chance to generate the activity needed to stay in the game. \u00b7 plan: Seek complications and counterplay to recover material. Use the discovered check of the Ne4 to create threats against the king and win back pawns. Target: expose the black king and potentially set up a hook mate or similar mating net."
       }
     ]
   },
@@ -1340,26 +1385,37 @@
     ]
   },
   "KFCGk": {
-    "status": "failed",
+    "status": "solved",
     "topic": "deflection",
     "difficulty": "easy",
     "rating": 825,
-    "solved_plies": 0,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "agent played d2c4, expected d4d5",
-    "run_id": "run_1782418118",
-    "ts": "2026-06-25T22:09:01",
+    "aborted_reason": null,
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:19:55",
     "attempts": [
       {
         "ply": 0,
         "fen_before": "8/p7/2n1kb1p/2P2p2/3P2pP/2B1K1P1/3N4/8 w - - 2 39",
         "expected_uci": "d4d5",
         "expected_san": "d5+",
-        "played_uci": "d2c4",
-        "played_san": "Nc4",
-        "correct": false,
-        "accepted_as": null,
-        "reasoning": "I analyzed d5+ and found it to be a blunder as it hangs the bishop on c3 after Kxd5, and the resulting tactical sequence doesn't regain enough material. Ne4 is also risky due to fxe4. Nc4 is a solid improving move that centralized the knight, defends the king, and keeps my passed pawns flexible while maintaining the protection of the c3-bishop via the d4-pawn. \u00b7 goal: Improve knight position and prepare to advance passed pawns. \u00b7 plan: Endgame Strategy: Activate king, push passed pawns (c5, d4), and blockade opponent's a-pawn. Avoid premature tactical blunders (like d5+)."
+        "played_uci": "d4d5",
+        "played_san": "d5+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The move d5+ is a powerful discovered attack. It gives check and attacks the undefended knight on c6. If the king captures (Kxd5), the bishop on f6 becomes undefended, and I play Bxf6, winning a bishop for a pawn. If the king moves away (e.g., Ke7), I play dxc6, winning the knight. In both main lines, I emerge with a significant material advantage (roughly +2). I have verified this with imagine_line. \u00b7 goal: Win material by forcing a choice between losing the knight or the bishop. \u00b7 plan: Endgame conversion: use the passed pawns and the discovered attack on the f6-bishop to win material. After d5+, if black plays Kxd5, I play Bxf6; if black plays Ke7/Kd7/Kf7, I play dxc6."
+      },
+      {
+        "ply": 1,
+        "fen_before": "8/p7/2n2b1p/2Pk1p2/6pP/2B1K1P1/3N4/8 w - - 0 40",
+        "expected_uci": "c3f6",
+        "expected_san": "Bxf6",
+        "played_uci": "c3f6",
+        "played_san": "Bxf6",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "I am overriding the safety check because I have calculated the forced lines. 1. d5+ Kxd5 2. Bxf6 (winning a bishop for a pawn) OR 1. d5+ Ke7/Kd7/Kf7 2. dxc6 (winning a knight). In all cases, White wins a minor piece for a pawn, which is a decisive material gain. The 'hanging' bishop on c3 is only temporary and is resolved by capturing the bishop on f6 (if Kxd5) or by winning the knight (if the king moves), keeping the advantage. \u00b7 goal: Win material by forcing a choice between losing the knight or the bishop. \u00b7 plan: Endgame conversion: use the passed pawns and the discovered attack on the f6-bishop to win material. After d5+, if black plays Kxd5, I play Bxf6; if black plays Ke7/Kd7/Kf7, I play dxc6."
       }
     ]
   },
@@ -1371,8 +1427,8 @@
     "solved_plies": 0,
     "total_plies": 2,
     "aborted_reason": "agent played f4e4, expected g4g5",
-    "run_id": "run_1782418118",
-    "ts": "2026-06-25T22:09:16",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:20:12",
     "attempts": [
       {
         "ply": 0,
@@ -1383,7 +1439,7 @@
         "played_san": "Kxe4",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "Capturing the undefended pawn on e4 is the most concrete way to reduce black's material advantage and remove a dangerous passed pawn. While black may respond with Re2+ to check the king, the king remains centralized and can maneuver. This is superior to passive rook moves as it actively improves the material balance. \u00b7 goal: eliminate black's central passer and improve king centralisation \u00b7 plan: Eliminate black's passed pawns to reduce material disadvantage, then use the rook on f7 and pawns on g4/h4 to create mating threats or a draw. Focus on not allowing the b3 and a4 pawns to promote."
+        "reasoning": "The e4 pawn is isolated and undefended. Capturing it with Kxe4 reduces black's material advantage and centralizes the king. While black can check with Re2+, white has multiple safe squares (d3, d4, d5, f3, f4) and black does not have an immediate winning follow-up. This is the most direct way to improve the position. \u00b7 goal: eliminate the isolated e4 pawn and neutralize black's passed pawns. \u00b7 plan: Endgame: activate the king to eliminate isolated pawns (e4), then use the rook to blockade or capture the passed pawns on a4/b3. Maintain the rook to preserve mating potential."
       }
     ]
   },
@@ -1482,15 +1538,15 @@
     ]
   },
   "fi3sN": {
-    "status": "failed",
+    "status": "solved",
     "topic": "attraction",
     "difficulty": "easy",
     "rating": 906,
-    "solved_plies": 1,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "failed",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:21:28",
+    "aborted_reason": null,
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:20:46",
     "attempts": [
       {
         "ply": 0,
@@ -1501,7 +1557,18 @@
         "played_san": "Rxf8+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "Calculated a forcing sequence leading to mate. 1. Rxf8+ forces 1... Kxf8, which then allows 2. d8=Q#. This uses the deflection of the king from the d8 square and the back-rank mate geometry. \u00b7 plan: Forced mate: 1. Rxf8+ Kxf8 2. d8=Q#. Target: checkmate the king on the back rank."
+        "reasoning": "Calculated a forced mate sequence: 1. Rxf8+ Kxf8 2. d8=Q#. This deflects the black king to f8, clearing the path for the passed pawn on d7 to promote with checkmate. Verified with chess__imagine_line. \u00b7 plan: Forcing sequence: sacrifice rook on f8 to deflect the king, then promote the d-pawn to queen for checkmate."
+      },
+      {
+        "ply": 1,
+        "fen_before": "5k2/pprP1ppp/4b3/8/8/8/P4PPP/3R2K1 w - - 0 22",
+        "expected_uci": "d7d8q",
+        "expected_san": "d8=Q#",
+        "played_uci": "d7d8q",
+        "played_san": "d8=Q#",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Forced mate in 2: 1. Rxf8+ Kxf8 (only legal move) 2. d8=Q#. The rook sacrifice on f8 is a deflection to allow the d7 pawn to promote with checkmate. Verified via chess__imagine_line. \u00b7 plan: Forcing sequence: sacrifice rook on f8 to deflect the king, then promote the d-pawn to queen for checkmate."
       }
     ]
   },
@@ -1513,8 +1580,8 @@
     "solved_plies": 0,
     "total_plies": 3,
     "aborted_reason": "agent played d3e4, expected d3f5",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:21:46",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:21:06",
     "attempts": [
       {
         "ply": 0,
@@ -1525,31 +1592,42 @@
         "played_san": "Be4",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "I am playing Be4 to create a discovered attack on the d-file and set up a skewer against the c6 and b7 pawns. My calculation shows that if Black trades rooks (Rxd1+), I recapture (Rxd1) and maintain the skewer threat while controlling the only open file. I rejected Bxh7 because the radar warned it was a trap. I also considered the Opera Mate geometry, but the king's position currently makes the skewer more concrete. \u00b7 goal: Win material through a skewer on c6/b7 or penetrate the d-file. \u00b7 plan: Leverage the open d-file and the bishop's diagonal activity. Use the Be4 skewer to win the b7 pawn or force the king into a worse position, while maintaining rook control of the d-file."
+        "reasoning": "I am moving the bishop to e4 to centralize it, create a skewer threat on c6/b7, and open the d-file for my rook (discovered attack on Rd8). I rejected Ba6 because it hangs the bishop. I imagined the line Be4, Rxd1+, Rxd1, which confirms that trading rooks leaves me with strong control of the d-file and a well-placed bishop, whereas the bishop on d3 was slightly passive. \u00b7 goal: Trade rooks on the d-file to secure control and create threats against the exposed black king. \u00b7 plan: Activate pieces and exploit the exposed black king. Use the bishop on e4 to control the center and skewer c6/b7, while using the rook to control the open d-file. Goal is to simplify into a favorable endgame or create a mating net."
       }
     ]
   },
   "Hnwt6": {
-    "status": "failed",
+    "status": "solved",
     "topic": "attraction",
     "difficulty": "easy",
     "rating": 780,
-    "solved_plies": 0,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "agent played f3f4, expected e8f8",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:22:04",
+    "aborted_reason": null,
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:21:29",
     "attempts": [
       {
         "ply": 0,
         "fen_before": "4Rnk1/1pr3pp/p2N1p2/8/1P1n4/5PPq/P6P/4R1K1 w - - 0 32",
         "expected_uci": "e8f8",
         "expected_san": "Rxf8+",
-        "played_uci": "f3f4",
-        "played_san": "f4",
-        "correct": false,
-        "accepted_as": null,
-        "reasoning": "I am down significant material (-7.65), so I must avoid trading pieces and seek active counterplay. The opponent has a dangerous threat of Nf3+, which would fork my king and rook on e1. By playing f4, I occupy the f3 square with a pawn, removing the knight's ability to land there and stabilizing my king's defense. I rejected Rxf8+ because it is a blunder (Kxf8 wins a rook for a knight). I rejected R8e7 because while it creates a skewer on g7/h7, it doesn't address the immediate tactical threat of Nf3+ which is more urgent. \u00b7 goal: create counterplay and stabilize the king's position \u00b7 plan: Down significant material; avoid trades, maintain piece activity, and seek complications. Immediate priority is to remove the f3 fork threat and prevent the knight from landing there."
+        "played_uci": "e8f8",
+        "played_san": "Rxf8+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Calculated a forced mate in two moves. First, Rxf8+ forces the king to capture (Kxf8), then Re8# delivers checkmate, defended by the knight on d6. This overrides the material disadvantage. \u00b7 plan: Back-rank mate: force king to f8 then deliver mate with Re8#. Target: rank 8."
+      },
+      {
+        "ply": 1,
+        "fen_before": "5k2/1pr3pp/p2N1p2/8/1P1n4/5PPq/P6P/4R1K1 w - - 0 33",
+        "expected_uci": "e1e8",
+        "expected_san": "Re8#",
+        "played_uci": "e1e8",
+        "played_san": "Re8#",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Forced checkmate in 2: 1. Rxf8+ Kxf8 (only legal move) 2. Re8#. The rook on f8 is sacrificed to remove the knight and pull the king into a mating net on the back rank. Verified via imagine_line. \u00b7 plan: Back-rank mate: force king to f8 then deliver mate with Re8#. Target: rank 8."
       }
     ]
   },
@@ -1585,8 +1663,8 @@
     "solved_plies": 0,
     "total_plies": 3,
     "aborted_reason": "agent played h2a2, expected h2h6",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:22:40",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:21:44",
     "attempts": [
       {
         "ply": 0,
@@ -1597,7 +1675,7 @@
         "played_san": "Ra2",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "The opponent has a dangerous passed pawn on a4 that is 3 moves from promotion. Per the wiki on passed pawns, the most effective way to stop it is to get the rook behind it or blockade it. Ra2 puts the rook on the a-file, directly attacking the pawn and preparing to stop its advance. I rejected Rxh7 because the radar warned it was a trap and would lead to losing material. \u00b7 goal: Blockade and target the a4 passed pawn. \u00b7 plan: Prevent the a4 pawn from promoting by getting the rook behind it (per `positional/pawn-strengths.md`). Maintain the rook's activity to seek counterplay and avoid trading pieces since I am down material."
+        "reasoning": "The opponent has a dangerous passed pawn on a4, only 3 moves from promotion. Following endgame principles (Rooks belong BEHIND passed pawns), I move the rook to a2 to blockade and pressure the pawn. This also creates a relative pin on the a4 pawn against the rook on a7. I rejected Rxh7 because the radar warned it is a trap that loses material. \u00b7 goal: Blockade or capture the a4 pawn. \u00b7 plan: Endgame strategy: Stop the passed a4 pawn by placing the rook behind it. Once stabilized, use the king to support the rook or attack the a-pawn, while keeping an eye on the h7 pawn."
       }
     ]
   },
@@ -1606,22 +1684,33 @@
     "topic": "interference",
     "difficulty": "easy",
     "rating": 948,
-    "solved_plies": 0,
+    "solved_plies": 1,
     "total_plies": 2,
-    "aborted_reason": "agent played b4b3, expected f3f4",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:23:02",
+    "aborted_reason": "agent played f4f3, expected f4f5",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:22:12",
     "attempts": [
       {
         "ply": 0,
         "fen_before": "8/8/8/2r2p1p/1K1k3P/5RP1/8/8 w - - 0 66",
         "expected_uci": "f3f4",
         "expected_san": "Rf4+",
-        "played_uci": "b4b3",
-        "played_san": "Kb3",
+        "played_uci": "f3f4",
+        "played_san": "Rf4+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Rf4+ is a forcing move that improves the rook's position, protects h4, and puts immediate pressure on the black king and the isolated f5 pawn. I rejected Rd3+ (blunder, loses rook) and Ka4 (passive). Watch for the opponent trying to skewer the rook with Rc3. \u00b7 goal: Restrict the black king and protect the g3 pawn while preparing to pressure the isolated f5 pawn. \u00b7 plan: Endgame conversion: Activate the king and use the rook to pressure isolated pawns (f5, h5) while maintaining a safe position. Avoid traps like Rxf5."
+      },
+      {
+        "ply": 1,
+        "fen_before": "8/8/8/2rk1p1p/1K3R1P/6P1/8/8 w - - 2 67",
+        "expected_uci": "f4f5",
+        "expected_san": "Rxf5+",
+        "played_uci": "f4f3",
+        "played_san": "Rf3",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "Analyzed several candidates: Rxf5 is a blunder losing the rook; Rd3+ and Re3 are blunders losing the rook to the king on d4. Ka4 is passive. Kb3 is the safest move, removing the king from the b4 square (where it was attacking c5 but also vulnerable) and placing it on a square defended by the rook on f3, while avoiding immediate tactical pitfalls. It prepares to stabilize before deciding how to attack the isolated pawns. \u00b7 goal: stabilize king position and neutralize the rook on c5 \u00b7 plan: Endgame strategy: Maintain material balance and neutralize black's activity. Avoid the Rxf5 bait, improve king safety to prevent skewers/checks, and look for opportunities to target the isolated f5 and h5 pawns."
+        "reasoning": "Rxf5+ seemed attractive, but imagine_line revealed that capturing h5 afterwards would hang the rook to the black rook on c5. Similarly, moves like Rc4 or Rd4+ simply hang the rook. Rf3 is a solid move that defends the g3 pawn (part of my short-term goal) while keeping an eye on f5 and maintaining flexibility. It avoids immediate tactical blunders and prepares to reorganize my pieces for a more secure approach to the isolated pawns."
       }
     ]
   },
@@ -1633,8 +1722,8 @@
     "solved_plies": 0,
     "total_plies": 2,
     "aborted_reason": "agent played b4b5, expected b4g4",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:23:32",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:22:36",
     "attempts": [
       {
         "ply": 0,
@@ -1645,7 +1734,7 @@
         "played_san": "Qb5",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "Qb5 is a strong active move that creates a skewer threat on the knight at c5 and the pawn at e5. I have calculated the most forcing replies: 1) Nd3+ is met by Qxd3, winning a knight for a pawn (if any); 2) Nb3+ is met by Qxb3, also winning the knight; 3) Qxb6 is met by Qxb6, trading a rook for a queen. Other candidates like Rb8 were blunders (loses rook), and pawn pushes (a4, c3) were either too slow or weakened the king's shield. Qb5 forces black to react to the skewer while keeping the position sharp. \u00b7 goal: Control d3 and coordinate pieces to pressure black's center/king. \u00b7 plan: Improve piece activity and target black's loose pieces. First, create a skewer on c5/e5 with Qb5; if black plays Nd3+, capture the knight; if black takes on b6, recapture the queen. Long-term goal: utilize passed pawns and target the exposed king on g7."
+        "reasoning": "I analyzed several options. Rb7 was a blunder (loses the rook). Rd1 is a safe developing move, but Qb5 is more active. Qb5 creates a skewer on the knight at c5 and pawn at e5. I checked the opponent's most dangerous reply, Nd3+, and found that I can simply capture the knight with Qxd3, winning a piece. This move improves my queen's position, puts pressure on c5, and remains tactically sound against the primary threat. \u00b7 goal: Force the knight on c5 to move or win material via the skewer on b5. \u00b7 plan: Improve piece activity and target weaknesses: Use the queen to pressure the c5-knight and e5-pawn, and eventually leverage the passed pawns on the queenside."
       }
     ]
   },
@@ -1657,8 +1746,8 @@
     "solved_plies": 0,
     "total_plies": 2,
     "aborted_reason": "agent played b4c5, expected a4c6",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:23:55",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:22:54",
     "attempts": [
       {
         "ply": 0,
@@ -1669,7 +1758,7 @@
         "played_san": "bxc5",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "The bishop on g4 is currently undefended. By playing bxc5, I create a discovered attack from my queen on a4 to the bishop on g4. Even if black recaptures on c5 (e.g., Nxc5), I can then play Qxg4, winning a piece. I verified this line with imagine_line: bxc5, Nxc5, Qxg4 leaves me with a clear material lead (+2.50). Other candidates like Qa6 were too passive. \u00b7 goal: Win the loose bishop on g4 by forcing a sequence that removes its protection or deflects defenders. \u00b7 plan: Exploit the discovered attack on the loose bishop at g4. After bxc5, the queen on a4 attacks g4; regardless of how black recaptures on c5, white captures the bishop on g4 to gain a significant material advantage."
+        "reasoning": "Playing bxc5 creates a discovered attack on the undefended bishop on g4. Calculation shows that if black recaptures on c5 (Nxc5, dxc5, or bxc5), I can play Qxg4 winning a piece for a pawn. I checked the top replies in imagine_line and the result is a significant material lead (+2.50) with no immediate devastating counter-threats (Nd3+ is a check but not winning). This is a strong tactical sequence to seize the initiative and material. \u00b7 plan: Win material by creating a discovered attack on the bishop on g4. After bxc5, the queen on a4 attacks Bg4. If black recaptures (e.g., Nxc5), I will capture the undefended bishop (Qxg4), gaining a clear material advantage. Then simplify the position and secure the king."
       }
     ]
   },
@@ -1715,20 +1804,20 @@
     "rating": 897,
     "solved_plies": 0,
     "total_plies": 2,
-    "aborted_reason": "agent played e4d2, expected e4f6",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:24:57",
+    "aborted_reason": "agent played e4c3, expected e4f6",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:23:13",
     "attempts": [
       {
         "ply": 0,
         "fen_before": "r3rbk1/1b3pp1/p4n1p/1p2q3/4N3/P2QBP1P/1PB3P1/1R2R1K1 w - - 1 25",
         "expected_uci": "e4f6",
         "expected_san": "Nxf6+",
-        "played_uci": "e4d2",
-        "played_san": "Nd2",
+        "played_uci": "e4c3",
+        "played_san": "Nc3",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "The knight on e4 was heavily pressured by the queen on e5 and bishop on b7 (skewers). I rejected Nxf6+ because it allows Qxf6 and doesn't lead to an immediate win of material after the trade. I rejected Nc5 because it simply hangs the knight to Bxc5 or Qxc5. Nd2 removes the knight from the danger zone, defends the rook on b1 and pawn on f3, and prepares for a more stable middlegame. \u00b7 goal: Relieve the pressure on the Ne4 and improve king safety. \u00b7 plan: Avoid immediate tactical blunders (like Nxf6+ or Nc5), remove the knight from the x-ray skewers on the e-file and a1-h8 diagonal, and stabilize the position before looking for winning opportunities."
+        "reasoning": "The knight on e4 was under significant pressure and skewed by the enemy queen and bishop. Moving it to c3 removes it from the x-ray threats on the e-file and diagonal while keeping it defended by the queen and b2 pawn. Rejected Nc5 as it hangs the piece to Bxc5. Rejected Qd4 as it doesn't address the immediate knight threat. \u00b7 goal: Safely reposition the knight on e4 and improve piece coordination. \u00b7 plan: Maintain a solid position by removing the knight from the e-file skewered line. Focus on controlling the center and utilizing the open files for rooks while keeping the king safe."
       }
     ]
   },
@@ -1775,8 +1864,8 @@
     "solved_plies": 0,
     "total_plies": 2,
     "aborted_reason": "agent played g5f3, expected e4f6",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:26:19",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:23:34",
     "attempts": [
       {
         "ply": 0,
@@ -1787,7 +1876,7 @@
         "played_san": "Nf3",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "The knight on g5 was under attack by the h6 pawn. Retiring it to f3 saves the piece, defends the d4 pawn and e1 king, and keeps the position stable. I rejected Nxe6 as it loses a knight for a pawn after fxe6. O-O was rejected because it allows hxg5, losing the knight for nothing. \u00b7 goal: get king safe and develop the dark-squared bishop \u00b7 plan: Maintain a solid center, improve king safety by castling soon, and develop the remaining pieces (Bc1) while monitoring potential smothered mate patterns."
+        "reasoning": "The knight on g5 was attacked by the pawn on h6. Moving it to f3 saves the piece, reinforces d4, and prepares for castling. I rejected O-O because it allows ...hxg5, losing a knight for a pawn. I rejected Nxf7 because it is a trade that doesn't yield a clear advantage. Nf3 is the safest move that preserves material and maintains the position. \u00b7 goal: Secure the king and stabilize the center. \u00b7 plan: Maintain central control and secure the king. While the smothered mate geometry is present, the forced Philidor sequence is not immediately available as the queen isn't on a checking square like e6. I will prioritize stabilizing my pieces (saving the knight on g5) and then look for opportunities to castle and complete development."
       }
     ]
   },
@@ -1799,8 +1888,8 @@
     "solved_plies": 0,
     "total_plies": 2,
     "aborted_reason": "failed",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:27:09",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:24:30",
     "attempts": []
   },
   "r4kBB": {
@@ -1835,8 +1924,8 @@
     "solved_plies": 0,
     "total_plies": 2,
     "aborted_reason": "agent played e4e5, expected d1d8",
-    "run_id": "run_1782418012",
-    "ts": "2026-06-25T22:07:12",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:24:49",
     "attempts": [
       {
         "ply": 0,
@@ -1847,7 +1936,7 @@
         "played_san": "Re5",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "My rook on e4 was under attack by the knight on f6. Moving it to e5 removes the threat, defends the f5 pawn, and maintains control of the e-file. I rejected Qxd8 as a mere trade and Re6 as a blunder (fxe6). \u00b7 goal: Safeguard the rook and stabilize the center. \u00b7 plan: Address immediate threats (rook on e4) and prepare for a kingside attack using the f5 pawn and potential queen pins on f7 or g7. Prevent back-rank mate by creating luft in the near future."
+        "reasoning": "My rook on e4 was undefended and attacked by the knight on f6. Moving it to e5 puts it on a safe square while simultaneously providing defense for the f5 pawn, which was also under attack by the knight on e7. I rejected Re6 as it blunders the rook to ...fxe6. I also rejected Qd5 as it hangs the queen. Re5 is a solid move that maintains my piece activity on the e-file without sacrificing material. \u00b7 goal: consolidate material and secure the king's safety (luft) \u00b7 plan: Address the immediate threat to the rook on e4 by moving it to e5, which also defends the f5 pawn. Subsequently, create luft for the king to prevent back-rank mate threats, and look for opportunities to utilize the open e-file."
       }
     ]
   },
@@ -1894,8 +1983,8 @@
     "solved_plies": 0,
     "total_plies": 3,
     "aborted_reason": "agent played g6g4, expected d2d8",
-    "run_id": "run_1782418012",
-    "ts": "2026-06-25T22:08:04",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:25:19",
     "attempts": [
       {
         "ply": 0,
@@ -1906,7 +1995,7 @@
         "played_san": "Qg4",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "My queen on g6 was under attack by the bishop on e8. I calculated Rxd8 and Rd7, but both were tactical blunders that lost material. I have chosen Qg4 as a safe retreat that keeps the queen active, defends g2, and prepares to maintain pressure on the black king's position. \u00b7 goal: Improve queen position and stabilize the king's side while maintaining pressure on the d-file. \u00b7 plan: Stabilize the position by moving the queen from the attack of the bishop on e8, then look for ways to exploit the open d-file and the backward g7 pawn."
+        "reasoning": "Calculated Rxd8. Black must recapture (Rxd8 or Bxd8). If 1. Rxd8 Rxd8 2. Rxd8 Bxd8, the position remains roughly balanced but the d-file is cleared of Black's active rook. I avoided the tempting captures on g7, h6, and f6 because the radar flagged them as traps. Rxd8 is a solid exchange that maintains control. \u00b7 goal: Trade rooks on d8 and potentially target the e8 bishop. \u00b7 plan: Simplify the position by trading rooks on the d-file, then leverage the centralized knight and queen to pressure Black's back rank and the e8 bishop. Avoid 'free' captures on g7/h6/f6 as warned by the radar."
       }
     ]
   },
@@ -1976,20 +2065,20 @@
     "rating": 985,
     "solved_plies": 0,
     "total_plies": 2,
-    "aborted_reason": "agent played f2f3, expected e2g4",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:29:35",
+    "aborted_reason": "agent played e2f1, expected e2g4",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:25:58",
     "attempts": [
       {
         "ply": 0,
         "fen_before": "3r1rk1/pb3p1p/2q1pp2/2p5/2P5/P3P3/1B2QPPP/1R2R1K1 w - - 0 22",
         "expected_uci": "e2g4",
         "expected_san": "Qg4+",
-        "played_uci": "f2f3",
-        "played_san": "f3",
+        "played_uci": "e2f1",
+        "played_san": "Qf1",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "The most urgent priority is the mate threat on g2 (Qxg2#). I imagined several candidates: Bxf6, g3, and Red1 all lose immediately to Qxg2#. Qf3 allows the opponent to trade queens or potentially creates new weaknesses. f3 successfully blocks the queen's path to g2 and provides a more solid defensive structure, though it creates a slight weakness on the long diagonal which I will monitor. \u00b7 goal: Secure the kingside and remove the immediate mate threat on g2. \u00b7 plan: Prevent back-rank and g2 mate threats (referencing mates/back-rank-mate.md), then stabilize the center and look for opportunities to exploit Black's doubled f-pawns and isolated c/a pawns."
+        "reasoning": "The most urgent threat is Qxg2# (as seen in imagine_move for almost all other candidates). Moving the queen to f1 provides a solid defense of g2 and maintains back-rank coverage. I rejected Bxf6 and Red1 because they allowed immediate mate. Qf1 is a safe move that stabilizes the position before I can execute active plans like Rbd1 or Bd4. \u00b7 goal: Prevent Qxg2# and prepare to challenge the d-file or pressure f6. \u00b7 plan: Phase: Late Middlegame. Goal: Neutralize black's battery on c6/b7 targeting g2, secure the back rank, and then coordinate pieces (Rooks on d-file, Bishop on d4) to target black's isolated and doubled pawns."
       }
     ]
   },
@@ -2001,8 +2090,8 @@
     "solved_plies": 0,
     "total_plies": 2,
     "aborted_reason": "agent played e2f3, expected e4f6",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:29:52",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:26:19",
     "attempts": [
       {
         "ply": 0,
@@ -2013,7 +2102,7 @@
         "played_san": "Qf3",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "My queen on e2 was undefended and attacked by the queen on h5. Moving to f3 removes the threat, defends the knight on e4, and creates a potential skewer on f6. I rejected Qxh5 because it allows Nxh5, winning my queen and losing material overall. \u00b7 goal: Safely reposition the queen while maintaining pressure on the center and king. \u00b7 plan: Neutralize the immediate threat to the queen on e2 and look for opportunities to apply pressure on f6. I have read `mates/smothered-mate.md`, but the current position does not yet allow for the forced Philidor sequence; I will prioritize stability first."
+        "reasoning": "The queen on e2 was undefended and attacked by the queen on h5. I rejected Qxh5 because it's a direct trade that doesn't improve my position and leaves the knight on e4 hanging. I rejected Qg4 as it blunders the queen. Qf3 is a safe move that defends the knight on e4 and places the queen on a more active square where it eyes f6 and h5. \u00b7 goal: Neutralize the threat to the queen while maintaining central control and coordinating pieces. \u00b7 plan: Solidify the position by moving the queen to a safe square (f3) that defends the knight on e4 and pressures f6. Avoid the 'bait' of immediate captures (Qxh5 or Nxf6+) which lead to unfavorable trades. Maintain a solid center and look for an opportunity to activate the rooks or execute a tactical sequence if Black missteps."
       }
     ]
   },
@@ -2025,8 +2114,8 @@
     "solved_plies": 0,
     "total_plies": 2,
     "aborted_reason": "agent played b1c3, expected f3c6",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:30:17",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:26:42",
     "attempts": [
       {
         "ply": 0,
@@ -2037,7 +2126,7 @@
         "played_san": "Nc3",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "I've analyzed several candidates. Qxd4 and Bxc6+ both lead to immediate material loss after recaptures. Be3 looks interesting but leaves b2 hanging to Qxb2. Nc3 is the most solid developing move; it defends the queen on d1, prepares to challenge the center, and develops a piece. While the black queen remains active and eyes f2, Nc3 improves my position without creating immediate tactical vulnerabilities. \u00b7 goal: Develop the queenside pieces and neutralize the black queen on d4. \u00b7 plan: Complete development (Nc3, Be3/Bg5) and challenge the active black queen on d4 to reclaim the center and neutralize black's initiative."
+        "reasoning": "I analyzed the candidate moves and decided against Qxd4 and Bxc6+ as they are simple trades that don't improve my position significantly. Nc3 develops a piece toward the center, defends the d1 square, and asks the black queen what its plan is. While it allows the queen to potentially move to f2+ or e3, I have sufficient defenders (Rf1, Kg1) and the move prioritizes completing development. \u00b7 plan: Develop the queenside pieces (Nc3, Bd2/Be3) and challenge the active black queen on d4. Once developed, look for opportunities to use the bishop pair to open the position."
       }
     ]
   },
@@ -2269,22 +2358,22 @@
     "topic": "sacrifice",
     "difficulty": "easy",
     "rating": 834,
-    "solved_plies": 1,
+    "solved_plies": 0,
     "total_plies": 2,
-    "aborted_reason": "failed",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:33:46",
+    "aborted_reason": "agent played h2g3, expected d5d8",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:27:05",
     "attempts": [
       {
         "ply": 0,
         "fen_before": "k5r1/ppp3r1/6q1/3Q4/4p3/6p1/PP5P/2RR2K1 w - - 0 33",
         "expected_uci": "d5d8",
         "expected_san": "Qd8+",
-        "played_uci": "d5d8",
-        "played_san": "Qd8+",
-        "correct": true,
-        "accepted_as": "exact",
-        "reasoning": "The enemy king is trapped on the back rank. I am executing a deflection sacrifice: Qd8+ forces Rxd8, which removes the defender of the back rank, allowing Rxd8# for checkmate. I verified this forced line with chess__imagine_line. \u00b7 goal: Deliver mate in 2 moves. \u00b7 plan: Back-rank mate: deflect the g8-rook using the queen sacrifice on d8, then deliver mate with the rook on d1."
+        "played_uci": "h2g3",
+        "played_san": "hxg3",
+        "correct": false,
+        "accepted_as": null,
+        "reasoning": "The pawn on g3 is a critical threat, acting as a screen for a discovered check by the black queen against my king on g1. Capturing it with hxg3 removes this immediate tactical danger and simplifies the defense of my king. While the pawn on g3 becomes a target for the black queen, eliminating the discovered check is the highest priority for safety. \u00b7 plan: Eliminate the immediate discovered check threat by capturing the g3 pawn. Then seek to activate rooks or utilize pins on the a-file/b-file to regain material and create counterplay against the black king."
       }
     ]
   },
@@ -2296,8 +2385,8 @@
     "solved_plies": 0,
     "total_plies": 2,
     "aborted_reason": "agent played d3c3, expected e4f6",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:34:08",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:27:30",
     "attempts": [
       {
         "ply": 0,
@@ -2308,7 +2397,7 @@
         "played_san": "Qc3",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "The queen on d3 was attacked by the knight on f4. I considered Nf6+ (blunder), Qd2 (blunder - loses queen to Nxd2), and Bb3 (blunder - loses queen to Nxd3). Qc3 is the safest and most active square, defending the queen, keeping an eye on d4, and creating a potential skewer on the c-file (Knight c4 -> Pawn c7). Although it allows Ne2+ (forking K+Q), the knight on f3 and e4 provide some stability, and it's the only move among candidates that doesn't immediately lose the queen. \u00b7 goal: Secure the queen and prepare to challenge the c4 knight/f4 knight. \u00b7 plan: Maintain material balance, neutralize Black's active knights (c4, f4), and leverage the open e-file. Avoid traps like Qxc4."
+        "reasoning": "The queen on d3 was under attack by the knight on f4. Moving to c3 removes the queen from immediate danger, maintains defense of a3 and d4, and puts pressure on the knight on c4, creating a potential skewer against the pawn on c7. I rejected Nf6+ as it blunders the knight for nothing. Watch for Ne2+ fork if the queen stays on c3 without other precautions. \u00b7 goal: Secure the queen, neutralize the knight on f4, and prepare a counter-attack on the c-file. \u00b7 plan: Consolidate the center: first move the queen from the f4-knight's attack to c3 to pressure the c4-knight and protect the a3-pawn; then address the h3-pawn vulnerability and the exposed king."
       }
     ]
   },
@@ -2320,8 +2409,8 @@
     "solved_plies": 0,
     "total_plies": 2,
     "aborted_reason": "agent played c4f7, expected h4g6",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:34:31",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:27:54",
     "attempts": [
       {
         "ply": 0,
@@ -2332,7 +2421,7 @@
         "played_san": "Qf7",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "The enemy king is trapped on the back rank (read `mates/back-rank-mate.md`). By playing Qf7, I attack the bishop on f8 and create a lethal threat. If Black tries to counter with Qe4+, I can trade and deliver checkmate with Qxf8#. Other responses are slower and don't resolve the back-rank pressure. \u00b7 goal: Force checkmate using the back-rank vulnerability. \u00b7 plan: Execute a back-rank mating sequence. The move Qf7 targets the f8 bishop and restricts the king, setting up a forced mate if the opponent captures on e4 (Qf7, Qe4+, Rxe4, Rxe4, Qxf8#)."
+        "reasoning": "I've calculated a forced mating sequence: 1. Qf7. If Black plays 1... Qe4+ (the most challenging reply), I play 2. Rxe4 Rxe4. Now the rook on e4 no longer defends f8, and 3. Qxf8# is checkmate. Other Black replies (like ...Be7 or ...Rd8) also leave the king vulnerable or allow me to maintain strong pressure on the back rank. By playing Qf7, I create an immediate threat of mate and deflect the defender of the back rank. \u00b7 goal: Deliver checkmate on f8 after deflecting the black rook. \u00b7 plan: Execute a back-rank mate sequence: move queen to f7 to eye f8, invite the black queen/rook to e4 to deflect the rook from e8, and then deliver Qxf8# after the exchange."
       }
     ]
   },
@@ -2343,20 +2432,20 @@
     "rating": 736,
     "solved_plies": 0,
     "total_plies": 2,
-    "aborted_reason": "agent played e6f6, expected e6e8",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:34:55",
+    "aborted_reason": "agent played e6d5, expected e6e8",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:28:17",
     "attempts": [
       {
         "ply": 0,
         "fen_before": "1k5r/ppp5/4Qpn1/3p1n2/PP1P2q1/2P2N2/6BP/4R1K1 w - - 12 29",
         "expected_uci": "e6e8",
         "expected_san": "Qe8+",
-        "played_uci": "e6f6",
-        "played_san": "Qxf6",
+        "played_uci": "e6d5",
+        "played_san": "Qxd5",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "The smothered mate geometry is present but not currently forced. Capturing the isolated pawn on f6 is a concrete gain that creates immediate pressure on both black knights (f5 and g6), which are only defended by the loose queen on g4. I've calculated that after 1. Qxf6 Qxd4+, I can simply play 2. Nxd4, winning the queen for a pawn. This puts me in a dominant position. \u00b7 plan: Win material and create threats: first capture the isolated pawn on f6, then use the queen to pressure the loose knights on f5 and g6. Once the material advantage is secure, consolidate the king's safety and push the h-pawn."
+        "reasoning": "The pawn on d5 is undefended. Capturing it gains material (+1.20 eval) and creates a strong central queen. I have calculated the line where black plays Qxd4+, and I can recapture with Nxd4, winning the queen. Other replies do not seem to create immediate counter-threats that outweigh this gain. \u00b7 goal: simplify and convert the material advantage \u00b7 plan: Capture the free pawn on d5 to gain a material advantage. If the opponent captures on d4 with the queen, I will recapture with the knight, winning the queen for a pawn and reaching a decisive advantage."
       }
     ]
   },
@@ -2609,8 +2698,8 @@
     "solved_plies": 1,
     "total_plies": 3,
     "aborted_reason": "agent played b5b4, expected g4g5",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:38:23",
+    "run_id": "run_1782421658",
+    "ts": "2026-06-25T23:08:06",
     "attempts": [
       {
         "ply": 0,
@@ -2621,7 +2710,7 @@
         "played_san": "a6",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "Following the radar's suggestion and the technique in `endgames/king-pawn-endings.md`, I am pushing the passed a-pawn. The king on b5 protects the pawn's advance. I rejected Kb4 as it allows the black king to potentially obstruct the pawn or attack b2. The move a6 puts the pawn two squares from promotion and keeps the pressure on Black to react. \u00b7 goal: Promote the a-pawn to a queen in the next 2 moves. \u00b7 plan: Escort the passed a-pawn to promotion following `endgames/king-pawn-endings.md`. Use the king to guard the pawn's path and push it to a8 to convert to a won queen endgame."
+        "reasoning": "Per the radar and king-pawn ending principles, the immediate priority is to push the most advanced passed pawn. a6 is safe, defended by the king, and brings me closer to promotion (3 moves away). Rejected Kb4 as it allows Black to maintain the blockade more easily. \u00b7 goal: Advance the a-pawn to a7 and a8. \u00b7 plan: Promote the a-pawn: use the king to escort the a-pawn to promotion, coordinating with the g-pawn as a distraction or second threat. Refer to endgames/king-pawn-endings.md for escort technique."
       },
       {
         "ply": 1,
@@ -2632,7 +2721,7 @@
         "played_san": "Kb4",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "Per my plan to escort the a-pawn, I need to move my king to support it while avoiding immediate losses. I cannot play a7 immediately because the bishop on e3 captures it. Moving Kb4 removes the king from a possible direct blockade of the pawn while still keeping the king close. If black plays Bc5+, I move Ka5, and if they play Bb6+, I capture the bishop, winning the game. \u00b7 goal: Establish king support for the a-pawn or win the opponent's bishop."
+        "reasoning": "Per my plan: promote the a-pawn. However, imagining a7 revealed the bishop on e3 can immediately capture the pawn (Bxa7), so I cannot push it yet. Moving Kb4 prepares to support the pawn while also putting pressure on the c4 pawn, potentially forcing the black king to stay passive or creating a diversion. If Black plays Bc5+, I can relocate to a5 to defend the a6 pawn. \u00b7 plan: Promote the a-pawn: use the king to escort the a-pawn to promotion, coordinating with the g-pawn as a distraction or second threat."
       }
     ]
   },
@@ -2729,26 +2818,48 @@
     ]
   },
   "OzFfj": {
-    "status": "failed",
+    "status": "solved",
     "topic": "pawn-endgame",
     "difficulty": "easy",
     "rating": 948,
-    "solved_plies": 0,
+    "solved_plies": 3,
     "total_plies": 3,
-    "aborted_reason": "agent played e4e3, expected e4e5",
-    "run_id": "run_1782418355",
-    "ts": "2026-06-25T22:12:50",
+    "aborted_reason": null,
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:28:52",
     "attempts": [
       {
         "ply": 0,
         "fen_before": "8/8/p3p3/1p3pk1/1P2K3/P4P2/8/8 w - - 0 53",
         "expected_uci": "e4e5",
         "expected_san": "Ke5",
-        "played_uci": "e4e3",
-        "played_san": "Ke3",
-        "correct": false,
-        "accepted_as": null,
-        "reasoning": "My king was under attack by the f5 pawn. Moving to e3 secures the f3 pawn, preventing Black from capturing it and creating a passed pawn. Kd3 was considered, but Ke3 is more active in defending the kingside structure. \u00b7 goal: Secure the f3 pawn and maintain central stability. \u00b7 plan: Following endgames/king-pawn-endings.md: maintain king activity and protect isolated pawns. The goal is to prevent Black from creating a passed pawn on the f-file while looking for a way to activate the queenside pawns or create a passed pawn of my own."
+        "played_uci": "e4e5",
+        "played_san": "Ke5",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Ke5 is the most active move, centralizing the king and attacking both e6 and f5. Compared to Ke3 (passive) or Kd4 (less pressure), Ke5 forces black to decide how to defend the pawns and restricts the enemy king's mobility (from 5 to 4). I have verified there are no immediate tactical blunders or mating threats for black after Ke5. \u00b7 goal: Centralize the king and put pressure on the black pawn chain (e6/f5). \u00b7 plan: Following endgames/king-pawn-endings.md: maximize king activity. Objective is to restrict the black king and create a passed pawn on the queenside or force a mistake in the black pawn structure."
+      },
+      {
+        "ply": 1,
+        "fen_before": "8/8/p3p3/1p2Kp2/1P5k/P4P2/8/8 w - - 2 54",
+        "expected_uci": "e5e6",
+        "expected_san": "Kxe6",
+        "played_uci": "e5e6",
+        "played_san": "Kxe6",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan to centralize the king and put pressure on the pawn chain, Kxe6 is a direct gain of material. The e6 pawn was undefended, and capturing it allows me to immediately threaten the f5 pawn, forcing the black king to respond or lose more material. \u00b7 goal: Capture the f5 pawn and centralize the king to dominate the board. \u00b7 plan: Maximize king activity by capturing the weak e6 pawn, then target f5. Use the king to restrict the black king and prepare a queenside pawn advance if possible."
+      },
+      {
+        "ply": 2,
+        "fen_before": "8/8/p3K3/1p3p2/1P6/P4Pk1/8/8 w - - 1 55",
+        "expected_uci": "e6f5",
+        "expected_san": "Kxf5",
+        "played_uci": "e6f5",
+        "played_san": "Kxf5",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan, I am capturing the weak f5 pawn to centralize my king and create a material advantage. While Black can respond with Kxf3, eliminating my f3 pawn, the resulting position leaves White with a slight edge or equality in a simplified king-and-pawn endgame where my king remains more active and I have prospects on the queenside. Failing to take f5 allows Black to keep their pawn and potentially support an advance or maintain a blockade. \u00b7 goal: Stabilize the position after the pawn exchange and look for an advantage on the queenside."
       }
     ]
   },
@@ -2887,8 +2998,8 @@
     "solved_plies": 1,
     "total_plies": 2,
     "aborted_reason": "agent played c3d4, expected e6e7",
-    "run_id": "run_1782418299",
-    "ts": "2026-06-25T22:12:31",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:29:24",
     "attempts": [
       {
         "ply": 0,
@@ -2899,7 +3010,7 @@
         "played_san": "Bc3+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "The bishop on e1 is undefended and under attack by the rook on e2. Bc3+ saves the piece with a forcing check, restricting the black king's mobility and gaining a tempo. While black may capture the f5 pawn (Kxf5), it centralizes the bishop and keeps the e6 passer alive, maintaining counterplay in a material-down endgame. \u00b7 goal: Save the bishop and maintain the central passed pawns. \u00b7 plan: Endgame strategy: Activate the king and advance the passed pawns (e6, f5) to create promotion threats, while neutralizing black's material advantage through tactical complications."
+        "reasoning": "The bishop on e1 was attacked and undefended. Bc3+ saves the piece with tempo by checking the king. While Black can capture the f5 pawn (Kxf5), saving the bishop is more urgent than preserving a single pawn. I reject e7 because it hangs the pawn immediately and leaves the bishop vulnerable to Rxe1. \u00b7 goal: Save the bishop, restrict the enemy king, and prepare to advance the e-pawn. \u00b7 plan: Defend the bishop on e1 first to avoid immediate material loss, then use the passed pawns on e6 and f5 to create winning chances or force a draw in the endgame."
       },
       {
         "ply": 1,
@@ -2910,7 +3021,7 @@
         "played_san": "Bd4",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "Per my plan to save the bishop and maintain passed pawns, Bd4 moves the bishop to a safe and active square. It now defends the e3 pawn and creates a skewer threat against the b6 and a7 pawns, while avoiding the immediate capture on c3 if the king moves to h4 after a possible Rxe3+ check. \u00b7 goal: Defend e3, threaten b6/a7, and prepare to advance e6."
+        "reasoning": "Per my plan to save the bishop and restrict the enemy, Bd4 is the most active move. It protects e3 and prepares a skewer on b6. Most importantly, it creates a tactical trap: if Black plays Rxe3+, I simply play Bxe3, winning the exchange and turning the game in my favor. This is far superior to e7, which allowed Rxe3+ with a winning attack for Black. \u00b7 plan: Defend the e3 pawn by moving the bishop to d4, which simultaneously creates a skewer threat on b6/a7. If the rook captures on e3, I recapture with the bishop, gaining a decisive material advantage. Once the rook is dealt with or moved, I will push the e6 pawn to e7 to force promotion or a draw."
       }
     ]
   },
@@ -3027,8 +3138,8 @@
     "solved_plies": 0,
     "total_plies": 2,
     "aborted_reason": "agent played c2d4, expected e1e8",
-    "run_id": "run_1782418188",
-    "ts": "2026-06-25T22:10:05",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:29:43",
     "attempts": [
       {
         "ply": 0,
@@ -3039,7 +3150,7 @@
         "played_san": "Nd4",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "My knight on c2 was undefended and attacked by the queen on b2. Moving it to d4 puts it on a safe square (defended by the queen on d6) and centralizes the piece. I rejected Qb8 as it blundered the queen. I'll now focus on supporting the d7 pawn. \u00b7 goal: Secure the knight and prepare to utilize the passed pawn on d7. \u00b7 plan: Address the immediate threat to the knight on c2. Then, coordinate the queen and rook to support the d7 pawn and potentially engineer a back-rank mate or promote the pawn."
+        "reasoning": "The knight on c2 was undefended and under attack by the queen on b2. Moving it to d4 removes the immediate threat and centralizes the piece, defended by the queen on d6. I rejected Qb8 because it loses the queen immediately without a forced mate. I will now focus on maintaining the d7 pawn and looking for back-rank opportunities. \u00b7 goal: Secure the knight and then leverage the d7 passed pawn or back-rank threats. \u00b7 plan: Safeguard the undefended knight on c2 first to avoid immediate material loss. Then, utilize the strong passed pawn on d7 and the enemy's back-rank vulnerability (as noted in the back-rank mate wiki) to create winning threats, while keeping an eye on the opponent's a3/c3 passed pawns."
       }
     ]
   },
@@ -3213,8 +3324,8 @@
     "solved_plies": 0,
     "total_plies": 3,
     "aborted_reason": "agent played f6f7, expected g5h7",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:45:11",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:30:00",
     "attempts": [
       {
         "ply": 0,
@@ -3225,20 +3336,20 @@
         "played_san": "f7",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "I am pushing my passed pawn to f7, which puts it one square from promotion and restricts the black king's movement (from 2 squares to 1). I've calculated the reply Rb6+, and I can simply move my king to d7 or e5, maintaining the pressure. The pawn on f7 is well-defended by both the king on e6 and the knight on g5. \u00b7 goal: Promote the f-pawn while restricting the enemy king. \u00b7 plan: Escort the f-pawn to promotion using the King and Knight. Blockade or capture the enemy a-pawn if it becomes too dangerous."
+        "reasoning": "The radar and position assessment strongly recommend pushing the passed pawn f6 to f7. This restricts the black king to only one legal move (Kg7) or forces the rook to check, which can be managed by the king. By placing the pawn on f7, I create a decisive threat of promotion and narrow the opponent's options. I checked the reply Rb6+, and I have safe king moves (Kd7, Ke5) to maintain the pressure. \u00b7 goal: Promote the f-pawn or create a winning mating net. \u00b7 plan: Push the passed f-pawn to f7 to restrict the black king and prepare promotion. Coordinate the knight and king to defend f7 and neutralize the a4 pawn if it becomes too dangerous."
       }
     ]
   },
   "KkdFc": {
-    "status": "failed",
+    "status": "solved",
     "topic": "exposed-king",
     "difficulty": "easy",
     "rating": 941,
-    "solved_plies": 1,
+    "solved_plies": 3,
     "total_plies": 3,
-    "aborted_reason": "agent played f8f7, expected h5f6",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:45:46",
+    "aborted_reason": null,
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:30:36",
     "attempts": [
       {
         "ply": 0,
@@ -3249,18 +3360,29 @@
         "played_san": "Rf8+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "I have calculated a winning forcing line: 1. Rf8+ (check) forcing the king to h7 (or Bg8 which doesn't save the queen), 2. Nf6+ (check and fork) attacking the king and the undefended queen on d7. This sequence wins the queen and transforms a decisive material disadvantage into a decisive advantage (+6.35). I verified the line with imagine_line and confirmed that black has no way to avoid the fork or counter-attack effectively during the check sequence. \u00b7 goal: Win the queen via Rf8+ and Nf6+ fork. \u00b7 plan: Execute forcing sequence to win black's queen: Rf8+ forces the king to move, followed by Nf6+ which forks the king and queen. Once the queen is captured, simplify to a won endgame by trading pieces."
+        "reasoning": "The position allows a powerful forced sequence. Rf8+ forces the king to h7 (or Bg8), enabling Nf6+ which forks the king and the undefended queen on d7. Calculation shows this wins the queen regardless of the black king's move, turning a material deficit into a winning advantage. \u00b7 goal: win the queen via Nf6+ fork \u00b7 plan: Execute a forcing sequence to win the black queen: Rf8+ followed by Nf6+, then capture the queen on d7. After gaining a decisive material advantage, simplify and convert the endgame."
       },
       {
         "ply": 1,
         "fen_before": "5R2/2pq3k/p1p4p/6pN/3PP1P1/2P4P/bP4K1/8 w - - 8 32",
         "expected_uci": "h5f6",
         "expected_san": "Nf6+",
-        "played_uci": "f8f7",
-        "played_san": "Rf7+",
-        "correct": false,
-        "accepted_as": null,
-        "reasoning": "Following the plan to win the queen. Rf7+ is a forcing move that restricts the king and sets up the Nf6+ fork. If the king moves to g8, Nf6+ forks the king and queen. Even if the king captures the rook (Kxf7), the knight still captures the queen (Nxd7), resulting in a decisive material advantage for white (Knight vs Bishop)."
+        "played_uci": "h5f6",
+        "played_san": "Nf6+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan: win the queen via Nf6+ fork. The move Nf6+ gives check to the king on h7 and simultaneously attacks the undefended queen on d7. Since black must move the king, the queen will be lost on the next move regardless of where the king moves (Kg6 or Kg7). \u00b7 goal: capture the queen on d7 next move"
+      },
+      {
+        "ply": 2,
+        "fen_before": "5R2/2pq2k1/p1p2N1p/6p1/3PP1P1/2P4P/bP4K1/8 w - - 10 33",
+        "expected_uci": "f6d7",
+        "expected_san": "Nxd7",
+        "played_uci": "f6d7",
+        "played_san": "Nxd7",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan and current goal, I am capturing the undefended black queen on d7. This move gains a decisive material advantage (+9.40 eval) and also provides a defender for my rook on f8, which was previously under attack by the king. \u00b7 goal: Consolidate the position, protect the rook, and start simplifying the endgame. \u00b7 plan: Convert the massive material advantage: simplify by trading pieces, push the passed e-pawn, and coordinate the rook and knight to create mating threats or promote."
       }
     ]
   },
@@ -3311,15 +3433,15 @@
     ]
   },
   "PwbPM": {
-    "status": "failed",
+    "status": "solved",
     "topic": "exposed-king",
     "difficulty": "easy",
     "rating": 985,
-    "solved_plies": 2,
+    "solved_plies": 3,
     "total_plies": 3,
-    "aborted_reason": "failed",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:47:10",
+    "aborted_reason": null,
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:31:24",
     "attempts": [
       {
         "ply": 0,
@@ -3330,7 +3452,7 @@
         "played_san": "Rf6+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "White is down significant material and needs to create complications. Rf6+ is a forcing move that restricts the black king. If the king moves to g7, I can capture the pinned bishop on g5 with check (Qxg5+), regaining a piece and keeping the initiative. This is the most active way to fight back given the material deficit. \u00b7 goal: Regain material and put pressure on the black king. \u00b7 plan: Attack the exposed black king using forcing checks to recover material (specifically the g5 bishop) and create mating threats."
+        "reasoning": "White is significantly down in material and needs immediate counterplay. The bishop on g5 is pinned to the king on g6. By playing Rf6+, I force the king to g7 (the only legal move), which allows me to follow up with Qg4. This pins the bishop on g5 against the king on g7, making it impossible for the bishop to move, and allows me to win the piece. This sequence reduces the material deficit and creates attacking chances. \u00b7 goal: Win the bishop on g5 by pinning it to the king. \u00b7 plan: Exploit the pin on the bishop at g5. Force the king to g7 with Rf6+, then play Qg4 to pin the bishop and win it."
       },
       {
         "ply": 1,
@@ -3341,7 +3463,18 @@
         "played_san": "Qxg5+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "I am intentionally sacrificing some material value on f6 to gain a decisive attack. The forced sequence is: 1. Rf6+ Kg7 2. Qxg5+ Kh8. This regains the bishop on g5 and places the black king in a very precarious position, allowing White to maintain the initiative and seek a mating net or further material gains, which is necessary given the current material deficit. \u00b7 goal: Regain material and put pressure on the black king. \u00b7 plan: Attack the exposed black king using forcing checks to recover material (specifically the g5 bishop) and create mating threats."
+        "reasoning": "I am overriding the safety check because this is a calculated tactical sequence to win material back. Line: 1. Rf6+ Kg7 2. Qg4. After Qg4, the bishop on g5 is pinned to the king on g7 and cannot move. White will then capture the bishop on g5, winning a piece. The temporary loss of material on f6 (if black were to capture, though Kg7 is the only legal move here) is irrelevant because the forced sequence results in winning the bishop on g5. \u00b7 goal: Win the bishop on g5 by pinning it to the king. \u00b7 plan: Exploit the pin on the bishop at g5. Force the king to g7 with Rf6+, then play Qg4 to pin the bishop and win it."
+      },
+      {
+        "ply": 2,
+        "fen_before": "r2n3k/pp5p/4pR2/1b1pP1Q1/3P4/4P3/1q2BKPP/8 w - - 1 31",
+        "expected_uci": "f6f8",
+        "expected_san": "Rf8#",
+        "played_uci": "f6f8",
+        "played_san": "Rf8#",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan, I intended to win the bishop on g5. The bishop is currently undefended. Capturing it with Qxg5+ not only wins the piece but also delivers check, forcing the king to h8. My calculations show that after 1. Qxg5+ Kh8, I have a forced mate with 2. Rf8#. This is a decisive tactical sequence. \u00b7 goal: Deliver checkmate on the next move."
       }
     ]
   },
@@ -3587,6 +3720,439 @@
         "correct": true,
         "accepted_as": "exact",
         "reasoning": "The rook on b1 was under attack by the king on a2. By playing Rxb5, I save the rook, win a pawn, and remove the defender of the rook on c4. Calculations show that if Black plays Bxe4+ or Rxc3+, I can simply recapture the rook on c4 or c3, resulting in a decisive material advantage. \u00b7 goal: Capture the rook on c4 (or c3 if they capture there) to secure a winning material advantage."
+      }
+    ]
+  },
+  "nJY6X": {
+    "status": "solved",
+    "topic": "defensive-move",
+    "difficulty": "easy",
+    "rating": 789,
+    "solved_plies": 2,
+    "total_plies": 2,
+    "aborted_reason": null,
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:31:43",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "5k2/8/1r3p2/1K4pp/2P5/6P1/7P/8 w - - 0 39",
+        "expected_uci": "b5b6",
+        "expected_san": "Kxb6",
+        "played_uci": "b5b6",
+        "played_san": "Kxb6",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The rook on b6 is undefended and capturing it immediately swings the material balance in white's favor (+0.30). I imagined the move and confirmed there are no immediate threats or traps after the capture. \u00b7 plan: Capture the rook to neutralize black's material advantage and then utilize the passed c-pawn to create winning chances. Target: promote the c-pawn."
+      },
+      {
+        "ply": 1,
+        "fen_before": "8/4k3/1K3p2/6pp/2P5/6P1/7P/8 w - - 1 40",
+        "expected_uci": "c4c5",
+        "expected_san": "c5",
+        "played_uci": "c4c5",
+        "played_san": "c5",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The previous plan to capture a rook is now obsolete as no rook exists; I am in a pure king-and-pawn endgame. According to 'endgames/king-pawn-endings.md', the goal is to promote the passed pawn. I push c5 to advance the pawn and restrict the enemy king's access to the center, keeping the pawn supported by my king on b6. \u00b7 plan: Promote the c-pawn: use the king to escort the pawn while preventing black's king from blockading. Target: c8 promotion."
+      }
+    ]
+  },
+  "5geSX": {
+    "status": "failed",
+    "topic": "defensive-move",
+    "difficulty": "easy",
+    "rating": 895,
+    "solved_plies": 1,
+    "total_plies": 2,
+    "aborted_reason": "agent played b4c4, expected b4c5",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:32:05",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "8/6k1/2P5/1B5p/1K6/8/8/7r w - - 7 56",
+        "expected_uci": "c6c7",
+        "expected_san": "c7",
+        "played_uci": "c6c7",
+        "played_san": "c7",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Following the radar's advice and king-pawn ending principles, the most urgent goal is to promote the c-pawn. c7 puts the pawn one square from promotion and forces black to react immediately to stop it. I've verified the move is safe; while black has checks (Rh4+, Rb1+), they do not prevent the eventual promotion or win material. \u00b7 goal: Promote the c-pawn to a queen. \u00b7 plan: Promote the c6 passed pawn: push it to c7 and c8=Q. Use the bishop to guard the promotion square or obstruct the rook, and keep the king close to support."
+      },
+      {
+        "ply": 1,
+        "fen_before": "8/2P3k1/8/1B5p/1K6/8/8/1r6 w - - 1 57",
+        "expected_uci": "b4c5",
+        "expected_san": "Kc5",
+        "played_uci": "b4c4",
+        "played_san": "Kc4",
+        "correct": false,
+        "accepted_as": null,
+        "reasoning": "The opponent played Rb1+, creating a skewer on the king and bishop. Moving the king to c3 would leave the bishop on b5 undefended (Rxb5), but moving to c4 defends the bishop. This preserves my material and keeps my king near the c7 pawn to support its eventual promotion."
+      }
+    ]
+  },
+  "PN2HA": {
+    "status": "solved",
+    "topic": "defensive-move",
+    "difficulty": "easy",
+    "rating": 939,
+    "solved_plies": 2,
+    "total_plies": 2,
+    "aborted_reason": null,
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:32:26",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "r4b1r/2RPp1pp/p4pk1/1bP5/6q1/4R3/Q4P2/2B3K1 w - - 0 31",
+        "expected_uci": "e3g3",
+        "expected_san": "Rg3",
+        "played_uci": "e3g3",
+        "played_san": "Rg3",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The rook on g3 pins the black queen against the king on g6. While black can play Qxg3+, white recaptures with fxg3, winning the queen for a rook. This significantly reduces black's attacking potential and improves white's material standing in a position where black currently has a decisive material lead. \u00b7 goal: Win the enemy queen by forcing a trade of the rook on g3 for the queen on g4. \u00b7 plan: Trade the rook on g3 for the black queen to eliminate black's most powerful attacker and recover material. Once the queen is gone, focus on promoting the passed pawns on c5 and d7."
+      },
+      {
+        "ply": 1,
+        "fen_before": "r4b1r/2RPp1pp/p4pk1/1bP5/8/6q1/Q4P2/2B3K1 w - - 0 32",
+        "expected_uci": "f2g3",
+        "expected_san": "fxg3",
+        "played_uci": "f2g3",
+        "played_san": "fxg3",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan, I am winning the enemy queen. The queen on g3 is undefended, and capturing it with fxg3 immediately removes Black's most powerful attacker and restores material parity, as confirmed by the imagine_move output."
+      }
+    ]
+  },
+  "Dgvor": {
+    "status": "failed",
+    "topic": "defensive-move",
+    "difficulty": "easy",
+    "rating": 991,
+    "solved_plies": 0,
+    "total_plies": 2,
+    "aborted_reason": "agent played e1d1, expected c1d2",
+    "run_id": "run_1782418650",
+    "ts": "2026-06-25T22:32:42",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "r3kbnr/p2n1ppp/4p3/qB6/3P4/1p2PQ2/5PPP/1RB1K1NR w Kkq - 2 12",
+        "expected_uci": "c1d2",
+        "expected_san": "Bd2",
+        "played_uci": "e1d1",
+        "played_san": "Kd1",
+        "correct": false,
+        "accepted_as": null,
+        "reasoning": "The king is under check from the queen on a5. I have very few legal moves. Moving to d1 removes the check and protects the bishop on c1. While the bishop on b5 remains undefended and the opponent can play Qxb5, this is the safest relative position compared to the alternatives, as it maintains the bishop pair potential and avoids immediate tactical disaster. \u00b7 goal: Escape check and stabilize the king's position. \u00b7 plan: Address king safety and coordinate pieces. Once the king is stabilized, look for ways to challenge the passed pawn on b3 and utilize the pinned knight on d7."
+      }
+    ]
+  },
+  "Os2Am": {
+    "status": "failed",
+    "topic": "discovered-check",
+    "difficulty": "medium",
+    "rating": 1148,
+    "solved_plies": 0,
+    "total_plies": 3,
+    "aborted_reason": "agent played e1e2, expected e1e6",
+    "run_id": "run_1782421278",
+    "ts": "2026-06-25T23:02:09",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "1r6/6p1/1p3k1p/p1pB1p2/b1Pp4/5PPP/2P2K2/4R3 w - - 0 34",
+        "expected_uci": "e1e6",
+        "expected_san": "Re6+",
+        "played_uci": "e1e2",
+        "played_san": "Re2",
+        "correct": false,
+        "accepted_as": null,
+        "reasoning": "The pawn on c2 is currently undefended and attacked by the bishop on a4. I considered Ra1 to skewer the bishop, but imagining the line showed that black can simply play Bxc2, and Ra4 would then hang the rook to the bishop on c2. Similarly, Re6+ was a tempting check, but capturing on h6 loses the rook. Re2 safely defends the c2 pawn and keeps the rook on the e-file. \u00b7 goal: defend the c2 pawn and maintain rook activity on the e-file \u00b7 plan: Defend the weak c2 pawn to avoid further material loss, then look for opportunities to activate the rook or utilize the bishop on d5 to create counterplay. Avoid trading pieces unless it gains material or simplifies to a drawable endgame."
+      }
+    ]
+  },
+  "VNPyA": {
+    "status": "failed",
+    "topic": "discovered-check",
+    "difficulty": "medium",
+    "rating": 1226,
+    "solved_plies": 0,
+    "total_plies": 3,
+    "aborted_reason": "agent played c4c6, expected d4d5",
+    "run_id": "run_1782421278",
+    "ts": "2026-06-25T23:02:27",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "8/5p2/4p1p1/p3P2p/2RPk3/3r2P1/4K2P/8 w - - 6 50",
+        "expected_uci": "d4d5",
+        "expected_san": "d5+",
+        "played_uci": "c4c6",
+        "played_san": "Rc6",
+        "correct": false,
+        "accepted_as": null,
+        "reasoning": "Moving the rook to c6 creates a skewer on the e6 and g6 pawns, forcing black to decide how to protect them or move the e-pawn. I considered d5+, but the resulting lines allowed black to capture and simplified the position in their favor without a clear win of material. Rc6 maintains the pressure and activates the rook on a more aggressive square while keeping the d4 pawn defended for now (though it becomes loose, black's options are restricted). \u00b7 goal: Apply pressure to e6 and g6; limit the enemy king. \u00b7 plan: Improve rook activity and create targets. Target the e6-g6 pawn structure via skewer/pressure. Blockade or target the a5 passed pawn."
+      }
+    ]
+  },
+  "ggisK": {
+    "status": "failed",
+    "topic": "discovered-check",
+    "difficulty": "medium",
+    "rating": 1194,
+    "solved_plies": 0,
+    "total_plies": 2,
+    "aborted_reason": "agent played c4c2, expected c4c7",
+    "run_id": "run_1782421278",
+    "ts": "2026-06-25T23:03:04",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "1kr2r2/ppp5/6p1/1b1P3p/2R5/1P2P1QP/Pq3PP1/2R3K1 w - - 5 27",
+        "expected_uci": "c4c7",
+        "expected_san": "Rxc7",
+        "played_uci": "c4c2",
+        "played_san": "R4c2",
+        "correct": false,
+        "accepted_as": null,
+        "reasoning": "The rook on c1 was undefended and the pawn on a2 was hanging to the queen on b2. Moving the rook to c2 defends both the rook itself (now defended by Rc4) and the f2 pawn, while attacking the queen on b2. I rejected Qxc7+ and Qf4 as they lost the queen, and Rb4 as it hung the rook on c1. R1c2 is a solid consolidating move that forces the black queen to move or be captured. \u00b7 goal: Secure the rook on c1 and the pawn on a2 while maintaining pressure on c7. \u00b7 plan: Consolidate the position: protect the rook on c1 and a2 pawn from the queen on b2, then look to exploit the pin on c7 or advance the passed pawn on e3."
+      }
+    ]
+  },
+  "ZkzYU": {
+    "status": "failed",
+    "topic": "pawn-endgame",
+    "difficulty": "medium",
+    "rating": 1157,
+    "solved_plies": 1,
+    "total_plies": 3,
+    "aborted_reason": "agent played d4d5, expected e4e5",
+    "run_id": "run_1782421618",
+    "ts": "2026-06-25T23:07:35",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "8/8/1p2p1p1/6P1/P1kP4/4K3/8/8 w - - 7 43",
+        "expected_uci": "e3e4",
+        "expected_san": "Ke4",
+        "played_uci": "e3e4",
+        "played_san": "Ke4",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Centralized the king to e4, which maintains the defense of the d4 pawn and restricts the black king's mobility (reduced from 4 to 3 squares). Rejected a5 as it allows bxa5, creating a passed pawn for black; rejected Kf4 as it hangs the d4 pawn. Ke4 is a solid improving move that prepares further progress. \u00b7 goal: centralize king and prepare passed pawn creation on a-file while defending d4 \u00b7 plan: Following king-pawn endings drill: activate the king to support pawns and maintain opposition. Primary objective is to create a passed pawn on the a-file or kingside and escort it to promotion."
+      },
+      {
+        "ply": 1,
+        "fen_before": "8/8/1p2p1p1/6P1/P2PK3/1k6/8/8 w - - 9 44",
+        "expected_uci": "e4e5",
+        "expected_san": "Ke5",
+        "played_uci": "d4d5",
+        "played_san": "d5",
+        "correct": false,
+        "accepted_as": null,
+        "reasoning": "Opponent's Kb3 attacks a4. Moving the king to d3 (as imagined) allows Kxa4. Moving a5 loses the pawn immediately. By playing d5, I challenge the center. If 44... exd5 45. Kxd5, I have a centralized king. If Black then takes 45... Kxa4, I am in a position to attack Black's remaining pawns (b6, g6) or advance my own g-pawn. The goal is to transform the static advantage into a dynamic one where the centralized king outweighs the lost a-pawn. \u00b7 plan: Create a passed pawn or simplify the center to activate the king. If Black takes on d5, I capture back to centralize the king and potentially target the b6 and g6 pawns, accepting the loss of the a4 pawn if it facilitates king activity."
+      }
+    ]
+  },
+  "kbGzn": {
+    "status": "solved",
+    "topic": "pawn-endgame",
+    "difficulty": "medium",
+    "rating": 1135,
+    "solved_plies": 4,
+    "total_plies": 4,
+    "aborted_reason": null,
+    "run_id": "run_1782421388",
+    "ts": "2026-06-25T23:04:11",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "8/7p/5K2/7P/6k1/8/8/8 w - - 3 76",
+        "expected_uci": "h5h6",
+        "expected_san": "h6",
+        "played_uci": "h5h6",
+        "played_san": "h6",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The pawn on h5 is under attack by the king on g4. Moving it to h6 removes the immediate threat and puts the pawn on a square where it is safer for now. I rejected Kg7 because it allows Kxh5, losing my only pawn. \u00b7 goal: Defend the h5 pawn and advance the king toward h7. \u00b7 plan: Following king-pawn-endings technique: maintain the pawn's safety, advance the king to blockade h7, and eventually promote the h-pawn."
+      },
+      {
+        "ply": 1,
+        "fen_before": "8/7p/5K1P/8/5k2/8/8/8 w - - 1 77",
+        "expected_uci": "f6g7",
+        "expected_san": "Kg7",
+        "played_uci": "f6g7",
+        "played_san": "Kg7",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan to blockade h7 and maintain pawn safety, Kg7 is the only move that achieves the immediate goal of attacking the h7 pawn. The opponent's king at f4 is too far to defend h7 or threaten h6 immediately. By moving to g7, I force the black king to make a decision: either abandon h7 (resulting in my win) or try to approach, while my king is ideally placed to promote the h6 pawn if the black pawn falls."
+      },
+      {
+        "ply": 2,
+        "fen_before": "8/6Kp/7P/5k2/8/8/8/8 w - - 3 78",
+        "expected_uci": "g7h7",
+        "expected_san": "Kxh7",
+        "played_uci": "g7h7",
+        "played_san": "Kxh7",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The black pawn on h7 is undefended. Capturing it immediately eliminates the opponent's only remaining piece other than the king, leaving me with a winning king-and-pawn advantage. This directly achieves the goal of removing threats and secures the path for the h6 pawn to promote. \u00b7 goal: Push the h6 pawn to h7 and h8 while using the king to block the black king's approach. \u00b7 plan: King-pawn endgame: promote the h-pawn. Now that black's pawn is gone, drive the black king away and escort the h6 pawn to h8."
+      },
+      {
+        "ply": 3,
+        "fen_before": "8/7K/5k1P/8/8/8/8/8 w - - 1 79",
+        "expected_uci": "h7g8",
+        "expected_san": "Kg8",
+        "played_uci": "h7g8",
+        "played_san": "Kg8",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan: escort the h6 pawn to h8. The radar notes that the kings are not in opposition, so I should move to take the opposition or force the black king to step aside. By playing Kg8, I maintain a flexible position and prepare to either push the pawn or shift the king depending on Black's response, while keeping the king active. Moving to h8 would be too passive and block my own pawn's path."
+      }
+    ]
+  },
+  "Xvg9f": {
+    "status": "solved",
+    "topic": "pawn-endgame",
+    "difficulty": "medium",
+    "rating": 1004,
+    "solved_plies": 2,
+    "total_plies": 2,
+    "aborted_reason": null,
+    "run_id": "run_1782421388",
+    "ts": "2026-06-25T23:04:33",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "8/8/5K1p/6p1/2k5/6P1/8/8 w - - 0 63",
+        "expected_uci": "f6g6",
+        "expected_san": "Kg6",
+        "played_uci": "f6g6",
+        "played_san": "Kg6",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Moving the king to g6 immediately puts pressure on both g5 and h6. This forces black to either defend passively (e.g., h5) or allow a capture, potentially creating a path for my own g-pawn to advance. Rejected Ke6 as it is too passive and doesn't create immediate threats. \u00b7 goal: Attack the g5 and h6 pawns to simplify the position or create a passed pawn. \u00b7 plan: Follow king-pawn-endings guide: use the king to activate and attack opponent pawns. Aim to eliminate the g5/h6 pawns to draw or win by promoting the g3 pawn."
+      },
+      {
+        "ply": 1,
+        "fen_before": "8/8/6Kp/8/2k3p1/6P1/8/8 w - - 0 64",
+        "expected_uci": "g6h6",
+        "expected_san": "Kxh6",
+        "played_uci": "g6h6",
+        "played_san": "Kxh6",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan to eliminate the h6 and g5 pawns, Kxh6 immediately removes one of them and reduces Black's material advantage. While Black's king is active (Kd3), capturing the pawn is the most direct way to simplify and move toward a draw or win. \u00b7 goal: Blockade the g4 pawn or attack it after securing the h-file."
+      }
+    ]
+  },
+  "IX6dG": {
+    "status": "failed",
+    "topic": "quiet-move",
+    "difficulty": "medium",
+    "rating": 1246,
+    "solved_plies": 0,
+    "total_plies": 3,
+    "aborted_reason": "agent played h4h5, expected f4f5",
+    "run_id": "run_1782421658",
+    "ts": "2026-06-25T23:08:21",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "8/pp6/8/3p3p/3k1P1K/1P5P/P7/8 w - - 0 49",
+        "expected_uci": "f4f5",
+        "expected_san": "f5",
+        "played_uci": "h4h5",
+        "played_san": "Kxh5",
+        "correct": false,
+        "accepted_as": null,
+        "reasoning": "Capturing the h5 pawn eliminates a black asset, balances the material, and creates a potential passed pawn for white on h3. It is a safe move that improves white's winning chances in the pawn race. Rejected f5 as it might be premature before securing the h-file. Watch for black's king moving toward the center or pushing d5. \u00b7 goal: Eliminate h5 pawn and prepare to escort f4 or h3 pawns while monitoring the d5 passer. \u00b7 plan: Following endgames/king-pawn-endings.md: Win by promoting a passed pawn. Use king to eliminate opponent pawns, then escort f4/h3 pawns to promotion, while preventing the d5 pawn from advancing."
+      }
+    ]
+  },
+  "Bci1H": {
+    "status": "solved",
+    "topic": "quiet-move",
+    "difficulty": "medium",
+    "rating": 1034,
+    "solved_plies": 3,
+    "total_plies": 3,
+    "aborted_reason": null,
+    "run_id": "run_1782421474",
+    "ts": "2026-06-25T23:05:53",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "8/2p4p/8/1p2K3/k4P1P/8/6P1/8 w - - 0 37",
+        "expected_uci": "f4f5",
+        "expected_san": "f5",
+        "played_uci": "f4f5",
+        "played_san": "f5",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Pushed the passed pawn to f5, advancing it toward promotion. The king on e5 already supports it and is well-positioned to escort. Black's king on a4 is too far to intervene immediately, and their passed pawns (b5, c7) are further from promotion than f5. Rejected Ke6 as it doesn't make concrete progress toward the promotion goal. \u00b7 goal: Push the f-pawn to promotion while monitoring black's b/c pawns. \u00b7 plan: Following king-pawn-endings guide: create and escort a passed pawn. Objective is to promote the f-pawn, using the king to support it, while ensuring black's b5/c7 pawns do not outrun white's promotion. Target: f8 promotion."
+      },
+      {
+        "ply": 1,
+        "fen_before": "8/2p4p/8/4KP2/kp5P/8/6P1/8 w - - 0 38",
+        "expected_uci": "f5f6",
+        "expected_san": "f6",
+        "played_uci": "f5f6",
+        "played_san": "f6",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan: push the passed f-pawn. Calculation shows a direct pawn race: if Black pushes b3, I push f7, then b2, then f8=Q. I queen first, and although Black can queen on b1 immediately after, my queen is far more active and the position is decisively won (+7.15 eval). f6 is the fastest path to promotion."
+      },
+      {
+        "ply": 2,
+        "fen_before": "8/2p4p/5P2/4K3/k6P/1p6/6P1/8 w - - 0 39",
+        "expected_uci": "f6f7",
+        "expected_san": "f7",
+        "played_uci": "f6f7",
+        "played_san": "f7",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan to promote the f-pawn, I am pushing it to f7. In a pawn race, every tempo is critical. If Black pushes b2, I promote to a Queen on f8 on the next move (f7-f8=Q vs b3-b2-b1=Q), winning the race since I queen first and my Queen will be able to control the b1 promotion square or immediately check the king."
+      }
+    ]
+  },
+  "cQJ0i": {
+    "status": "solved",
+    "topic": "quiet-move",
+    "difficulty": "medium",
+    "rating": 1156,
+    "solved_plies": 2,
+    "total_plies": 2,
+    "aborted_reason": null,
+    "run_id": "run_1782421474",
+    "ts": "2026-06-25T23:06:20",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "8/7p/7P/3p4/5P2/3k1K2/8/8 w - - 3 45",
+        "expected_uci": "f4f5",
+        "expected_san": "f5",
+        "played_uci": "f4f5",
+        "played_san": "f5",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Following the guide for king-pawn endings, pushing the passed pawn on f4 creates immediate pressure and brings it closer to promotion. This move also creates a potential passed pawn race. I rejected Kg4 as it gives the black king more mobility (8 vs 5) and allows Ke4, putting the king in a more aggressive position to stop my pawn. f5 forces black to decide how to respond to the advancing pawn. \u00b7 goal: Advance the f-pawn and restrict the black king. \u00b7 plan: Promote the f-pawn: follow the guide for king-pawn endings by keeping the king active and calculating pawn races. My objective is to promote f4 or h6 before Black promotes d5."
+      },
+      {
+        "ply": 1,
+        "fen_before": "8/7p/7P/5P2/3p4/3k1K2/8/8 w - - 0 46",
+        "expected_uci": "f5f6",
+        "expected_san": "f6",
+        "played_uci": "f5f6",
+        "played_san": "f6",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan to promote the f-pawn, f6 is the most direct way to create immediate pressure. Calculation shows that even if Black pushes the d-pawn (e.g., 46... Kd2 47. f7 d3 48. f8=Q), White queens first and secures a winning material advantage. The opponent's king cannot stop the f-pawn without abandoning the d-pawn."
       }
     ]
   }
