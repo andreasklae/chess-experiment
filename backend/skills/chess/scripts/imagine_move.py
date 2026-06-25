@@ -631,7 +631,7 @@ def render_imagine(
         )
         out.append("")
     else:
-        out.append(f"**{render_eval_delta_line(board_before, board_after)}**")
+        out.append(f"**{render_eval_delta_line(board_before, board_after, move)}**")
         out.append(EVAL_WARNING)
         out.append("")
     out.append("```")

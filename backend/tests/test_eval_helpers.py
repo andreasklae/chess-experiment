@@ -568,3 +568,23 @@ def test_confine_state_drives_a_terminating_mate(ev):
         assert seen[k] < 3, f"repetition at ply {plies}"
     assert b.is_checkmate(), f"did not mate (result {b.result()}, {plies} plies)"
     assert plies <= 40
+
+
+def test_eval_delta_warns_when_captured_piece_will_be_recaptured(ev):
+    # Qxf6+ (RmLbH): grabs the queen (+900 static) but the queen hangs to Kxf6.
+    # The delta line must carry the SEE-aware caveat with a realistic balance,
+    # so the agent is not lured by a phantom decisive lead it cannot keep.
+    b = chess.Board("r7/1p3pk1/p2p1qpn/2pP4/5QP1/3P1N1P/PP6/4R1K1 w - - 1 25")
+    mv = chess.Move.from_uci("f4f6")
+    after = b.copy(); after.push(mv)
+    line = ev.render_eval_delta_line(b, after, mv)
+    assert "hanging on f6" in line and "realistic balance" in line
+
+
+def test_eval_delta_no_warning_for_safe_capture(ev):
+    # A capture whose piece is NOT hanging gets no caveat (don't cry wolf).
+    b = chess.Board("4k3/8/8/3q4/8/8/8/3QK3 w - - 0 1")  # Qxd5 wins queen, safe
+    mv = chess.Move.from_uci("d1d5")
+    after = b.copy(); after.push(mv)
+    line = ev.render_eval_delta_line(b, after, mv)
+    assert "realistic balance" not in line
