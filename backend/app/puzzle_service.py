@@ -100,19 +100,21 @@ class PuzzlePlayer(Player):
         # by diffing this `before` against the received post-move board.
         self._before = chess.Board(spec.start_fen)
 
-    async def get_move(self, board: chess.Board, last_san: str | None = None) -> chess.Move:
-        # The board passed here is the position AFTER the agent's move. The
-        # agent's move is the one at solver index self._idx (even = solver ply).
-        # Derive it by finding the legal move from self._before that reaches this
-        # board (the bot loop gives us a stackless copy, so no move_stack).
+    def _record_agent_move(self, board: chess.Board) -> bool:
+        """Score the agent's just-played move (the one that produced `board`)
+        against the expected solver move at self._idx, append the attempt, and
+        advance internal state past it. Returns True if correct.
+
+        Raises PuzzleFailed on a wrong move (terminal for the puzzle). Shared by
+        get_move (mid-line) and finalize (the agent's move ended the game, so
+        get_move is never called again to score it). Does NOT raise
+        PuzzleComplete — the caller decides whether the line is complete."""
         if self._idx % 2 != 0:
             raise PlayerError(f"puzzle desync at idx {self._idx}")
-
         expected_solver = self._line[self._idx]
         before = self._before.copy()
         played = _derive_move(before, board)
         expected_san = before.san(expected_solver)
-
         correct, accepted = self._score(before, played, expected_solver)
         ply = self._idx // 2
         self.attempts.append({
@@ -125,18 +127,24 @@ class PuzzlePlayer(Player):
             "correct": correct,
             "accepted_as": accepted,
         })
-
         if not correct:
             self.done = True
             raise PuzzleFailed(
                 f"agent played {played.uci() if played else 'None'}, expected {expected_solver.uci()}",
                 ply=ply, expected=expected_solver.uci(),
                 played=played.uci() if played else None)
-
         self.solved_plies += 1
-        # Advance our tracked position past the agent's (correct) move.
-        self._before.push(expected_solver)
+        # Advance our tracked position past the agent's (accepted) move. Use the
+        # move the agent actually played (may differ from `expected_solver` on an
+        # accepted alt-mate) so internal state matches the real board.
+        self._before.push(played if played is not None else expected_solver)
         self._idx += 1  # consume the solver ply
+        return True
+
+    async def get_move(self, board: chess.Board, last_san: str | None = None) -> chess.Move:
+        # The board passed here is the position AFTER the agent's move. Score
+        # that move, then either play the scripted reply or finish the puzzle.
+        self._record_agent_move(board)
 
         # Is there an opponent reply? If the agent's move ended the game, none.
         if self._before.is_game_over() or self._idx >= len(self._line):
@@ -148,6 +156,33 @@ class PuzzlePlayer(Player):
         self._before.push(reply)   # advance past the opponent's scripted reply
         self._idx += 1
         return reply
+
+    def finalize(self, board: chess.Board) -> bool:
+        """Score the agent's FINAL move when it ended the game (checkmate,
+        stalemate, etc.), so the bot loop never calls get_move again. `board` is
+        the terminal position after the agent's move. Idempotent and safe to call
+        even if the puzzle already finished mid-line. Returns self.solved.
+
+        This closes the false-negative where a puzzle whose last solver move is
+        mate was scored as failed because the scoring call (get_move) is skipped
+        when the game is already over."""
+        if self.done:
+            return self.solved
+        # Only score if it's the agent's turn to be scored (even idx) and there
+        # is still an expected solver move pending.
+        if self._idx % 2 == 0 and self._idx < len(self._line):
+            try:
+                self._record_agent_move(board)
+            except PuzzleFailed:
+                # A wrong terminal move: _record_agent_move already set done and
+                # recorded the attempt. Mark unsolved and swallow (finalize never
+                # raises — the game is already ending).
+                self.done = True
+                self.solved = False
+                return False
+        self.done = True
+        self.solved = (self.solved_plies == self._spec.total_solver_plies)
+        return self.solved
 
     def _score(self, before: chess.Board, played: chess.Move | None,
                expected: chess.Move) -> tuple[bool, str | None]:

@@ -1977,15 +1977,15 @@
     ]
   },
   "868Fk": {
-    "status": "failed",
+    "status": "solved",
     "topic": "hanging-piece",
     "difficulty": "easy",
     "rating": 954,
-    "solved_plies": 1,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "failed",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:31:59",
+    "aborted_reason": null,
+    "run_id": "run_1782414594",
+    "ts": "2026-06-25T21:10:26",
     "attempts": [
       {
         "ply": 0,
@@ -1996,7 +1996,18 @@
         "played_san": "Qxf8+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "The rook on f8 is undefended. Capturing it with Qxf8+ immediately gives check and puts White in a commanding material position (+2.00). I've calculated that if Black replies with Qe8, then Qxe8# is checkmate. If Black replies with Qd8 or Qc8, White remains up significant material with a crushing position. While the rook on c1 becomes undefended, the immediate check and potential mate take absolute priority. \u00b7 goal: Capture the rook on f8 and deliver checkmate. \u00b7 plan: Tactical sequence: use the undefended rook on f8 to force the black queen into a losing position or deliver immediate back-rank mate. After Qxf8+, if Black plays Qe8, Qxe8# is mate. If Black plays Qd8, the queen is still dominating the back rank."
+        "reasoning": "I have identified a back-rank mate opportunity. By playing Qxf8+, I remove the only defender of the 8th rank. If black replies with Qe8, I play Qxe8# for mate. If black replies with Qd8 or Qc8, the king is still trapped and I maintain a massive material lead while keeping the initiative. The loss of the rook on c1 (attacked by the knight) is irrelevant if I can force mate or gain a decisive advantage. \u00b7 goal: Deliver checkmate on e8 \u00b7 plan: Execute a back-rank mate: first, deflect the f8-rook with Qxf8+, then capture the defending queen on e8 if it blocks, or deliver mate immediately."
+      },
+      {
+        "ply": 1,
+        "fen_before": "k1q2Q2/pp4pp/5p2/3P4/8/3n4/P4PPP/2R3K1 w - - 1 27",
+        "expected_uci": "c1c8",
+        "expected_san": "Rxc8#",
+        "played_uci": "c1c8",
+        "played_san": "Rxc8#",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The SAFETY CHECK is triggered because I am leaving the rook on c1 hanging to the knight on d3. However, this is a forced mating sequence or decisive material gain. After 1. Qxf8+, black's only options are to block with the queen. If 1... Qe8, then 2. Qxe8# is checkmate. If 1... Qd8 or 1... Qc8, white remains up a rook and maintains a winning attack. The back-rank mate logic overrides the loss of the rook on c1 as the sequence is forcing and leads to mate or a crushing lead. \u00b7 goal: Deliver checkmate on e8 \u00b7 plan: Execute a back-rank mate: first, deflect the f8-rook with Qxf8+, then capture the defending queen on e8 if it blocks, or deliver mate immediately."
       }
     ]
   },

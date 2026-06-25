@@ -776,6 +776,21 @@ class GameService:
                     if game.is_over():
                         logger.info("game over · %s result=%s moves=%d",
                                     game.game_id[:8], game.result(), len(game.uci_moves))
+                        # Puzzle benchmark: if the agent's final move ENDED the
+                        # game (checkmate/stalemate), get_move is never called
+                        # again to score it. Finalize here so a perfect mating
+                        # solution isn't recorded as failed. See
+                        # app/puzzle_service.PuzzlePlayer.finalize.
+                        pp = getattr(game, "puzzle_player", None)
+                        if pp is not None and game.puzzle_solved is None:
+                            try:
+                                solved = pp.finalize(game.board)
+                            except Exception:
+                                logger.exception("puzzle finalize failed · %s",
+                                                 game.game_id[:8])
+                                solved = False
+                            game.puzzle_solved = solved
+                            game.puzzle_detail = "solved" if solved else "failed"
                         # Pre-CSV hook: lets BatchRunner stamp ELO updates
                         # onto the Game before the row is written.
                         if self._on_game_finished is not None:
