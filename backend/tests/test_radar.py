@@ -116,6 +116,19 @@ class TestPassedPawns:
         out = radar("6k1/p4ppp/P7/8/8/8/5PPP/6K1 w - - 0 1") or ""
         assert "Your passed pawn" not in out
 
+    def test_safe_passer_push_surfaced(self):
+        # pWCJd (advanced-pawn): the win is to push the e6 passer to e7. The
+        # radar must surface the concrete safe push move, not just note the pawn.
+        out = radar("8/p1p4p/1p2P3/3P1k2/P3p3/2B1P1K1/4r3/8 w - - 0 45")
+        assert "Push it now: e7" in out
+
+    def test_unsafe_passer_push_not_surfaced(self):
+        # A passer whose advance square is guarded by the enemy → no push prompt.
+        out = radar("6k1/8/8/8/8/8/r3P3/4K3 w - - 0 1") or ""
+        # e2-e4 is safe here actually; use a blockaded/guarded case:
+        out2 = radar("4r3/4P3/8/8/8/8/8/4K1k1 w - - 0 1") or ""  # e7 push blocked by Re8 control
+        assert "Push it now" not in out2
+
 
 class TestDrawRules:
     def test_repetition_warning(self):

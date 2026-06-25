@@ -1215,12 +1215,49 @@ def _passed_pawn_lines(board: chess.Board, own: bool) -> list[str]:
                 out.append(f"{chess.square_name(sq)} ({dist} move(s) from promotion)")
         return out
 
+    def safe_pushes(color: bool) -> list[str]:
+        """SAN of a passed pawn's single-step advance when the pawn is close
+        (≤3 from promotion) and the advance square is safe (empty and not lost to
+        SEE) — the concrete 'push the passer' move so the agent acts, not just
+        notes the pawn. Only when it's `color`'s turn."""
+        if board.turn != color:
+            return []
+        out = []
+        for sq in board.pieces(chess.PAWN, color):
+            if not passed(sq, color):
+                continue
+            r = chess.square_rank(sq)
+            dist = (7 - r) if color == chess.WHITE else r
+            if dist > 3:
+                continue
+            fwd = sq + 8 if color == chess.WHITE else sq - 8
+            if not (0 <= fwd < 64) or board.piece_at(fwd) is not None:
+                continue
+            mv = chess.Move(sq, fwd)
+            # promotion move needs a promotion piece to be legal
+            if dist == 1:
+                mv = chess.Move(sq, fwd, promotion=chess.QUEEN)
+            if mv not in board.legal_moves:
+                continue
+            after = board.copy(stack=False); after.push(mv)
+            # advance is safe if the pawn/queen isn't simply lost on the new sq
+            if _eval.static_exchange_eval(after, fwd, not color) < 150:
+                try:
+                    out.append(board.san(mv))
+                except Exception:
+                    pass
+        return sorted(set(out))
+
     mine, theirs = describe(own), describe(not own)
     lines = []
     if mine:
+        pushes = safe_pushes(own)
+        push_note = (f" **Push it now: {', '.join(pushes)}** (the advance is safe) — a passer "
+                     f"that runs is decisive; every tempo counts in a pawn race."
+                     if pushes else "")
         lines.append(
             f"- Your passed pawn(s): {', '.join(mine)}. A passed pawn escorted "
-            f"by its king promotes — read `{_PAGE_KP}`."
+            f"by its king promotes — read `{_PAGE_KP}`.{push_note}"
         )
     if theirs:
         # Categorize opponent pawns by urgency: 2 moves away, 1 move away, or already promoting
