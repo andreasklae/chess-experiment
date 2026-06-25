@@ -905,13 +905,168 @@ def detect_phase_fundamentals(board: chess.Board, perspective: bool | None = Non
 # TOP-LEVEL ASSEMBLER
 # ============================================================================
 
+def _material_count(board: chess.Board, color: bool) -> int:
+    return sum(PIECE_VALUE[pt] * len(board.pieces(pt, color))
+               for pt in (chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN))
+
+
+def detect_material(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
+    """Material balance → trading advice (principles/material-and-trading).
+    Up material: trade pieces (not pawns), keep a rook/queen for mating. Down
+    material: avoid trades, seek complications. Advisory heuristic, not a fact."""
+    findings: list[Finding] = []
+    stm = board.turn if perspective is None else perspective
+    diff = _material_count(board, stm) - _material_count(board, not stm)
+    if diff >= 2:
+        findings.append(Finding(True, "strength",
+            f"you are UP ~{diff} points of material — trade PIECES (not pawns) to simplify "
+            f"toward a won endgame; keep at least one rook or the queen for mating",
+            wiki="material"))
+    elif diff <= -2:
+        findings.append(Finding(True, "weakness",
+            f"you are DOWN ~{-diff} points of material — AVOID trades, keep pieces on, "
+            f"seek complications and counterplay (a passed pawn, an attack on the king)",
+            wiki="material"))
+    return findings
+
+
+def detect_king_safety(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
+    """King exposure for BOTH sides (positional/king-safety). Flags an uncastled
+    king with the game still open, a king on a (half-)open file, and a missing
+    pawn shield — for you (defend) and the opponent (attack)."""
+    findings: list[Finding] = []
+    stm = board.turn if perspective is None else perspective
+    fullmove = board.fullmove_number
+
+    def shield_intact(color: bool, ksq: int) -> bool:
+        kf, kr = chess.square_file(ksq), chess.square_rank(ksq)
+        home = 1 if color == chess.WHITE else 6
+        step = 1 if color == chess.WHITE else -1
+        if kr not in (0, 7):
+            return True  # king already off the back rank; different question
+        cnt = 0
+        for f in (kf - 1, kf, kf + 1):
+            if 0 <= f <= 7:
+                sq = chess.square(f, home)
+                p = board.piece_at(sq)
+                if p and p.piece_type == chess.PAWN and p.color == color:
+                    cnt += 1
+        return cnt >= 2
+
+    for color in (chess.WHITE, chess.BLACK):
+        mine = (color == stm)
+        ksq = board.king(color)
+        if ksq is None:
+            continue
+        kf = chess.square_file(ksq)
+        # king on an open / half-open file (no own pawn on it)
+        own_pawn_on_file = any(chess.square_file(s) == kf for s in board.pieces(chess.PAWN, color))
+        on_back = chess.square_rank(ksq) in (0, 7)
+        exposed_file = not own_pawn_on_file
+        broken_shield = on_back and not shield_intact(color, ksq)
+        # only meaningful while there is attacking material (queens or rooks on)
+        heavy_on = bool(board.pieces(chess.QUEEN, not color)) or len(board.pieces(chess.ROOK, not color)) >= 1
+        if (exposed_file or broken_shield) and heavy_on:
+            if mine:
+                findings.append(Finding(True, "weakness",
+                    f"your KING on {_sq(ksq)} is exposed ("
+                    + ("no pawn on its file" if exposed_file else "broken pawn shield")
+                    + ") with enemy heavy pieces on — get it safe (castle if you can), keep the "
+                    "pawn shield, trade off the enemy's attackers", wiki="king_safety"))
+            else:
+                findings.append(Finding(False, "potential",
+                    f"opponent's KING on {_sq(ksq)} is exposed ("
+                    + ("open file" if exposed_file else "broken shield")
+                    + ") — open lines toward it, bring a rook to that file, DON'T trade your "
+                    "attackers", wiki="king_safety"))
+    return findings
+
+
+def detect_overloaded_defenders(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
+    """A single defender guarding two (or more) of its own attacked pieces is
+    OVERLOADED — attack one and the other falls (tactics/removing-the-defender).
+    Reported for both sides. Pure mechanics: a defender that is the sole guard of
+    2+ pieces which are themselves attacked by the enemy."""
+    findings: list[Finding] = []
+    stm = board.turn if perspective is None else perspective
+    for color in (chess.WHITE, chess.BLACK):
+        mine = (color == stm)
+        enemy = not color
+        # for each of `color`'s pieces, who is its defender and is it attacked?
+        guard_load: dict[int, list[int]] = {}
+        for sq in chess.SQUARES:
+            p = board.piece_at(sq)
+            if not p or p.color != color or p.piece_type == chess.KING:
+                continue
+            if not board.attackers(enemy, sq):
+                continue  # not attacked → not a live duty
+            defenders = [d for d in board.attackers(color, sq) if d != sq]
+            if len(defenders) == 1:
+                guard_load.setdefault(defenders[0], []).append(sq)
+        for guard, duties in guard_load.items():
+            if len(duties) >= 2:
+                gp = board.piece_at(guard)
+                duty_str = ", ".join(f"{PIECE_NAME[board.piece_at(d).piece_type]} on {_sq(d)}" for d in duties)
+                if not mine:
+                    findings.append(Finding(False, "potential",
+                        f"opponent's {PIECE_NAME[gp.piece_type]} on {_sq(guard)} is OVERLOADED — it is "
+                        f"the only defender of {duty_str}; attack/remove it (or one duty) and another "
+                        f"falls", wiki="removing"))
+                else:
+                    findings.append(Finding(True, "weakness",
+                        f"your {PIECE_NAME[gp.piece_type]} on {_sq(guard)} is OVERLOADED — sole defender "
+                        f"of {duty_str}; add a defender or relieve it before they exploit it",
+                        wiki="removing"))
+    return findings
+
+
+def detect_own_back_rank(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
+    """Own king boxed on the back rank with no luft (principles/luft). Flags when
+    the king's three forward squares are all blocked by its own pawns and an enemy
+    rook/queen could reach the back rank."""
+    findings: list[Finding] = []
+    stm = board.turn if perspective is None else perspective
+    for color in (chess.WHITE, chess.BLACK):
+        mine = (color == stm)
+        ksq = board.king(color)
+        if ksq is None:
+            continue
+        back = 0 if color == chess.WHITE else 7
+        if chess.square_rank(ksq) != back:
+            continue
+        kf = chess.square_file(ksq)
+        fwd = back + (1 if color == chess.WHITE else -1)
+        blocked = True
+        for f in (kf - 1, kf, kf + 1):
+            if 0 <= f <= 7:
+                sq = chess.square(f, fwd)
+                p = board.piece_at(sq)
+                if not (p and p.color == color and p.piece_type == chess.PAWN):
+                    blocked = False
+                    break
+        heavy = bool(board.pieces(chess.QUEEN, not color)) or bool(board.pieces(chess.ROOK, not color))
+        if blocked and heavy:
+            if mine:
+                findings.append(Finding(True, "weakness",
+                    f"your king on {_sq(ksq)} has NO LUFT — boxed on the back rank by its own pawns; "
+                    f"make an escape square (a quiet rook-pawn move) to avoid a back-rank mate",
+                    wiki="luft"))
+            else:
+                findings.append(Finding(False, "potential",
+                    f"opponent's king on {_sq(ksq)} has no luft (back-rank box) — a rook/queen reaching "
+                    f"the back rank could be mate; look for it", wiki="forks"))
+    return findings
+
+
 def detect_all(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
     """Run every detector. Returns all findings (side=True == side to move)."""
     findings: list[Finding] = []
     for fn in (detect_phase_fundamentals, detect_pawn_structure, detect_files,
                detect_development, detect_bishop_pair, detect_outposts,
                detect_knight_forks, detect_loose_pieces, detect_pins_skewers,
-               detect_skewers, detect_discovered_attacks, detect_traps):
+               detect_skewers, detect_discovered_attacks, detect_traps,
+               detect_material, detect_king_safety, detect_overloaded_defenders,
+               detect_own_back_rank):
         try:
             findings += fn(board, perspective)
         except Exception:
@@ -1019,6 +1174,13 @@ def render_findings(findings: list[Finding], *, agent_color: bool, heading: str)
     yours = [f for f in findings if f.side]
     theirs = [f for f in findings if not f.side]
     out = [f"## {heading}"]
+    # Always point to the assessment-method page and (for quiet positions) the
+    # prophylaxis/convert pages — so 'evaluate-position' and 'prophylaxis' are
+    # reachable from every assessment, not only when a specific detector fires.
+    out.append(
+        f"_Full method: read `{WIKI['evaluate']}`. Quiet position with no forcing "
+        f"move? read `{WIKI['prophylaxis']}`. These are suggestions — you are free "
+        f"to calculate your own ideas and read further on your own._")
 
     def block(title: str, items: list[Finding]) -> None:
         if not items:

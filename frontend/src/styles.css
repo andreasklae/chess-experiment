@@ -127,7 +127,7 @@ select {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  align-items: start;
+  align-items: stretch;   /* board column and agent log share the same row height */
 }
 
 /* Older 3-column "with-agent" rule is no longer needed — the agent panel
@@ -265,6 +265,12 @@ dd {
   max-width: 860px;
   margin: 0 auto;
   padding: 24px 20px;
+}
+
+/* The puzzle page hosts the board + agent-log side by side, so it needs the
+   wide game layout, not the narrow lobby column. */
+.puzzle-page {
+  max-width: 1500px;
 }
 
 .lobby-header {
@@ -444,9 +450,11 @@ dd {
   display: flex;
   flex-direction: column;
   container-type: inline-size;
-  /* Match the board's responsive sizing so chat and board are visually
-     paired. Same min() shape as .board-frame and .eval-bar. */
-  height: min(80vh, 100cqw);
+  /* Stretch to the board column's height (align-items: stretch on the grid),
+     so the log is exactly as tall as the board. The min() is now only a CAP for
+     the rare case the panel is the taller sibling. */
+  height: 100%;
+  max-height: min(80vh, 100cqw);
 }
 
 .agent-panel h2 {
@@ -1344,3 +1352,40 @@ dd {
 .puzzle-attempt-topic { font-weight: 600; text-transform: capitalize; min-width: 130px; }
 .puzzle-attempt-meta { color: #8a978c; }
 .puzzle-attempt-fail { color: #b1493f; margin-left: auto; }
+
+/* ── Puzzle benchmark: run modes + persistent progress overview ── */
+.puzzle-modes { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+.puzzle-mode-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
+  border: 1px solid var(--border, #3a3a3a); border-radius: 999px;
+  background: transparent; color: inherit; cursor: pointer; font-size: 0.9rem;
+}
+.puzzle-mode-chip.is-active { background: #2b6cb0; border-color: #2b6cb0; color: #fff; }
+.puzzle-mode-chip .puzzle-chip-count {
+  background: rgba(255,255,255,0.15); border-radius: 999px; padding: 0 7px; font-size: 0.8rem;
+}
+.puzzle-overview-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.puzzle-overview-totals { display: inline-flex; gap: 10px; font-size: 0.85rem; }
+.puzzle-overview-totals .seg.solved { color: #57c777; }
+.puzzle-overview-totals .seg.failed { color: #e2705a; }
+.puzzle-overview-totals .seg.untested { color: #9aa0a6; }
+.puzzle-topic-track.stacked { display: flex; overflow: hidden; border-radius: 4px; background: #2a2a2a; }
+.puzzle-topic-track.stacked .seg-fill { height: 100%; }
+.seg-fill.solved { background: #57c777; }
+.seg-fill.failed { background: #e2705a; }
+.seg-fill.untested { background: #4a4a4a; }
+
+/* Puzzle difficulty filter + per-topic slider */
+.puzzle-difficulties { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.puzzle-diff-chip {
+  padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border, #3a3a3a);
+  background: transparent; color: inherit; cursor: pointer; font-size: 0.85rem;
+  text-transform: capitalize; opacity: 0.5;
+}
+.puzzle-diff-chip.is-active { opacity: 1; font-weight: 600; }
+.puzzle-diff-chip.easy.is-active   { border-color: #57c777; background: rgba(87,199,119,0.18); }
+.puzzle-diff-chip.medium.is-active { border-color: #d4b14a; background: rgba(212,177,74,0.18); }
+.puzzle-diff-chip.hard.is-active   { border-color: #e09a4a; background: rgba(224,154,74,0.18); }
+.puzzle-diff-chip.expert.is-active { border-color: #e2705a; background: rgba(226,112,90,0.18); }
+.puzzle-slider { display: inline-flex; align-items: center; gap: 10px; font-size: 0.9rem; }
+.puzzle-slider input[type="range"] { width: 160px; }

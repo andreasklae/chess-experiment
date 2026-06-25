@@ -306,7 +306,11 @@ function StreamingMarkdown({ content, complete, label, className }: {
 
 export function AgentPanel({ gameId }: { gameId: string }) {
   const [entries, setEntries] = useState<ChatEntry[]>([]);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const feedRef = useRef<HTMLDivElement>(null);
+  // Whether the user was scrolled to (near) the bottom of the LOG just before
+  // the latest update. We only auto-scroll when this is true, so reading back
+  // through the log is never interrupted by new content.
+  const stickToBottomRef = useRef(true);
   // Refs survive setState batching and don't trigger re-renders. They carry
   // state that spans events: which tool was called last, and whether the move
   // has been committed (text after that point is post-hoc commentary).
@@ -331,14 +335,28 @@ export function AgentPanel({ gameId }: { gameId: string }) {
     return () => source.close();
   }, [gameId]);
 
+  // Track whether the user is at the bottom of the LOG (within a small slack),
+  // updated on every scroll. This decides whether new content auto-scrolls.
+  const onFeedScroll = () => {
+    const el = feedRef.current;
+    if (!el) return;
+    const slack = 40; // px from the bottom still counts as "at the bottom"
+    stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight <= slack;
+  };
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Scroll ONLY the log container (never the page), and ONLY when the user was
+    // already at the bottom — so manual scroll-up to read history is preserved.
+    const el = feedRef.current;
+    if (el && stickToBottomRef.current) {
+      el.scrollTop = el.scrollHeight;
+    }
   }, [entries]);
 
   return (
     <aside className="agent-panel" aria-label="Agent activity">
       <h2>Agent</h2>
-      <div className="agent-feed">
+      <div className="agent-feed" ref={feedRef} onScroll={onFeedScroll}>
         {entries.length === 0 && <p className="agent-idle">Waiting for agent turn…</p>}
         {entries.map((entry, i) => {
           switch (entry.kind) {
@@ -413,7 +431,6 @@ export function AgentPanel({ gameId }: { gameId: string }) {
               );
           }
         })}
-        <div ref={bottomRef} />
       </div>
     </aside>
   );

@@ -26,12 +26,17 @@ logger = logging.getLogger("uvicorn.error")
 class PuzzleRun:
     """One run over a list of puzzles. Holds live state + a broadcast queue."""
 
-    def __init__(self, specs: list[PuzzleSpec], out_path: Path):
+    def __init__(self, specs: list[PuzzleSpec], out_path: Path, progress=None, mode: str = "all"):
         self.specs = specs
         self.out_path = out_path
+        self.progress = progress          # PuzzleProgress | None
+        self.mode = mode                  # the run mode that produced this set
+        self.run_id = out_path.stem       # e.g. run_1719...
         self.results: list[dict] = []
         self.idx = 0
         self.running = False
+        self.stop_requested = False       # set by the abort endpoint
+        self.current_game_id: str | None = None  # the in-flight puzzle game
         self.subscribers: set[asyncio.Queue] = set()
         self._current_reasonings: dict[int, str] = {}
 
@@ -55,10 +60,16 @@ async def run_puzzles(service: GameService, run: PuzzleRun) -> None:
     fout = run.out_path.open("w")
     try:
         for i, spec in enumerate(run.specs):
+            if run.stop_requested:
+                logger.info("puzzle run aborted before puzzle %d/%d", i, len(run.specs))
+                run._broadcast({"type": "run_aborted", "completed": len(run.results)})
+                break
             run.idx = i
             run._broadcast({"type": "puzzle_begin", "i": i, "n": len(run.specs),
                             "id": spec.id, "topic": spec.topic, "rating": spec.rating,
                             "band": spec.band, "fen": spec.start_fen,
+                            "title": spec.title, "difficulty": spec.difficulty,
+                            "lichess_url": spec.lichess_url,
                             "agent_color": "white" if spec.agent_color == chess.WHITE else "black"})
             try:
                 result = await _run_one(service, spec, run)
@@ -71,6 +82,12 @@ async def run_puzzles(service: GameService, run: PuzzleRun) -> None:
                           "aborted_reason": f"runner_error: {e}", "attempts": []}
             run.results.append(result)
             fout.write(json.dumps(result) + "\n"); fout.flush()
+            # Persist the outcome so progress survives across runs/restarts.
+            if run.progress is not None:
+                try:
+                    run.progress.record(result, run.run_id)
+                except Exception:
+                    logger.exception("failed to persist progress for %s", spec.id)
             run._broadcast({"type": "puzzle_result", "i": i, **result})
     finally:
         fout.close()
@@ -83,6 +100,7 @@ async def _run_one(service: GameService, spec: PuzzleSpec, run: PuzzleRun) -> di
     completion, assemble the scored result."""
     game = await service.create_puzzle_game(spec)
     puzzle_player = game.puzzle_player  # type: ignore[attr-defined]
+    run.current_game_id = game.game_id
 
     # Capture per-turn reasoning from the agent event stream. The make_move tool
     # result carries the agent's reasoning note; we also forward thinking/tool
@@ -208,6 +226,8 @@ def _result_dict(spec: PuzzleSpec, game, attempts: list[dict], solved: bool,
     return {
         "puzzle_id": spec.id, "topic": spec.topic, "band": spec.band,
         "rating": spec.rating, "themes": spec.themes,
+        "title": spec.title, "difficulty": spec.difficulty,
+        "lichess_url": spec.lichess_url,
         "agent_color": "white" if spec.agent_color == chess.WHITE else "black",
         "solved": solved,
         "solved_plies": solved_plies,

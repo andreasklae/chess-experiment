@@ -20,6 +20,18 @@ import random
 import sys
 from pathlib import Path
 
+import chess
+
+
+def _difficulty(rating: int) -> str:
+    if rating < 1000:
+        return "easy"
+    if rating < 1400:
+        return "medium"
+    if rating < 1800:
+        return "hard"
+    return "expert"
+
 CSV = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("/tmp/puz_xl.csv")
 OUT = Path(__file__).resolve().parent / "puzzles.json"
 
@@ -81,6 +93,16 @@ def main():
                 continue
             if pop < MIN_POPULARITY or plies > MAX_PLIES or plies < 2:
                 continue
+            # The agent ALWAYS plays White, so the puzzle's solver side (the side
+            # to move AFTER the opponent's setup move = moves[0]) must be White.
+            # Drop black-to-move puzzles — the agent can't solve them.
+            try:
+                b = chess.Board(row["FEN"])
+                b.push(chess.Move.from_uci(row["Moves"].split()[0]))
+                if b.turn != chess.WHITE:
+                    continue
+            except Exception:
+                continue
             band = next((i for i, (lo, hi) in enumerate(BANDS) if lo <= rating < hi), None)
             if band is None:
                 continue
@@ -101,15 +123,21 @@ def main():
                 if row["PuzzleId"] in seen_ids:
                     continue
                 seen_ids.add(row["PuzzleId"])
+                rating = int(row["Rating"])
                 selected.append({
                     "id": row["PuzzleId"],
                     "fen": row["FEN"],
                     "moves": row["Moves"].split(),
-                    "rating": int(row["Rating"]),
+                    "rating": rating,
+                    "difficulty": _difficulty(rating),
+                    # Human-readable label (Lichess puzzles have no titles): the
+                    # motif + difficulty, e.g. "Fork · easy (620)".
+                    "title": f"{topic.replace('-', ' ').title()} · {_difficulty(rating)} ({rating})",
                     "popularity": int(row["Popularity"]),
                     "themes": row["Themes"].split(),
                     "topic": topic,
                     "band": f"{BANDS[band][0]}-{BANDS[band][1]}",
+                    "lichess_url": f"https://lichess.org/training/{row['PuzzleId']}",
                 })
                 picked += 1
                 if picked >= PER_BAND:

@@ -412,3 +412,50 @@ def test_trap_detector_flags_baited_capture():
     # An undefended pawn grab is safe -> no trap flagged.
     safe = chess.Board("4k3/8/8/3p4/8/3R4/8/4K3 w - - 0 1")
     assert detect_traps(safe) == []
+
+
+# ── new detectors (king safety, material, overload, luft) — gap-fill audit ──
+
+def test_material_up_advises_trade():
+    from _features import detect_material
+    b = chess.Board("4k3/8/8/8/8/8/8/R3K3 w - - 0 1")  # White up a rook
+    fs = detect_material(b)
+    assert any("UP" in f.text and "trade" in f.text.lower() and f.side for f in fs)
+
+
+def test_material_down_advises_avoid_trades():
+    from _features import detect_material
+    b = chess.Board("r3k3/8/8/8/8/8/8/4K3 b - - 0 1")  # Black (to move) up a rook
+    # from White's perspective White is down
+    fs = detect_material(b, perspective=chess.WHITE)
+    assert any("DOWN" in f.text and "avoid trades" in f.text.lower() for f in fs)
+
+
+def test_king_safety_flags_both_sides():
+    from _features import detect_king_safety
+    b = chess.Board("3rk3/8/8/8/8/8/8/3QK2R w - - 0 1")
+    fs = detect_king_safety(b)
+    assert any(f.side and "KING" in f.text and "exposed" in f.text for f in fs)      # yours
+    assert any((not f.side) and "KING" in f.text for f in fs)                        # opponent's
+
+
+def test_own_back_rank_no_luft():
+    from _features import detect_own_back_rank
+    b = chess.Board("6k1/8/8/8/8/8/5PPP/r5K1 w - - 0 1")
+    fs = detect_own_back_rank(b)
+    assert any(f.side and "LUFT" in f.text for f in fs)
+
+
+def test_overloaded_defender_runs_clean():
+    # conservative detector: must never crash, fires only on a genuine overload.
+    from _features import detect_overloaded_defenders
+    b = chess.Board("r2q1rk1/pp1b1ppp/2n1pn2/2pp4/3P1B2/2PBPN2/PP1N1PPP/R2Q1RK1 w - - 0 9")
+    assert isinstance(detect_overloaded_defenders(b), list)
+
+
+def test_new_detectors_in_detect_all():
+    # the gap-fill detectors must be wired into the assembler used by the tools.
+    from _features import detect_all
+    b = chess.Board("3rk3/8/8/8/8/8/8/3QK2R w - - 0 1")
+    texts = " ".join(f.text for f in detect_all(b))
+    assert "KING" in texts  # king-safety reached via detect_all

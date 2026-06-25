@@ -237,7 +237,7 @@ export function listPuzzles(): Promise<{ total: number; topics: Record<string, n
   return fetch(`${API_BASE}/api/puzzles`).then((r) => r.json());
 }
 
-export function startPuzzleRun(body: { topics?: string[]; limit?: number; ids?: string[] }): Promise<{ started: boolean; n: number; out_path: string }> {
+export function startPuzzleRun(body: { mode?: PuzzleRunMode; topics?: string[]; difficulties?: string[]; per_topic?: number; limit?: number; ids?: string[] }): Promise<{ started: boolean; n: number; out_path: string }> {
   return fetch(`${API_BASE}/api/puzzles/run`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   }).then(async (r) => { if (!r.ok) throw new Error((await r.json()).detail || 'failed'); return r.json(); });
@@ -249,4 +249,24 @@ export function puzzleRunStatus(): Promise<{ running: boolean; idx: number; n: n
 
 export function puzzleRunEventsUrl(): string {
   return `${API_BASE}/api/puzzles/run/events`;
+}
+
+export type PuzzleRunMode = 'all' | 'unsolved' | 'untested' | 'failed';
+
+export interface PuzzleProgressOverview {
+  totals: { solved: number; failed: number; untested: number; total: number };
+  by_topic: Record<string, { solved: number; failed: number; untested: number; total: number }>;
+  by_difficulty: Record<string, { solved: number; failed: number; untested: number; total: number }>;
+  puzzles: { id: string; topic: string; difficulty: string; rating: number; title: string;
+             status: 'solved' | 'failed' | 'untested'; solved_plies: number | null;
+             total_plies: number; ts: string | null }[];
+}
+
+export function puzzleProgress(): Promise<PuzzleProgressOverview> {
+  return fetch(`${API_BASE}/api/puzzles/progress`).then((r) => r.json());
+}
+
+export function abortPuzzleRun(): Promise<{ aborting: boolean; completed: number }> {
+  return fetch(`${API_BASE}/api/puzzles/run/abort`, { method: 'POST' })
+    .then(async (r) => { if (!r.ok) throw new Error((await r.json()).detail || 'failed'); return r.json(); });
 }

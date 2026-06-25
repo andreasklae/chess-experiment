@@ -49,6 +49,9 @@ class PuzzleSpec:
     themes: list[str] = field(default_factory=list)
     topic: str = ""
     band: str = ""
+    title: str = ""
+    difficulty: str = ""
+    lichess_url: str = ""
 
     @property
     def start_fen(self) -> str:
@@ -188,4 +191,6 @@ def load_puzzle_set(path: str | Path) -> list[PuzzleSpec]:
     data = json.loads(Path(path).read_text())
     return [PuzzleSpec(id=p["id"], fen=p["fen"], moves=p["moves"],
                        rating=p.get("rating", 0), themes=p.get("themes", []),
-                       topic=p.get("topic", ""), band=p.get("band", "")) for p in data]
+                       topic=p.get("topic", ""), band=p.get("band", ""),
+                       title=p.get("title", ""), difficulty=p.get("difficulty", ""),
+                       lichess_url=p.get("lichess_url", "")) for p in data]
