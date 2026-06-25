@@ -457,6 +457,23 @@ def test_creatable_pin_no_false_positive_in_start_position():
     assert detect_creatable_pins(chess.Board()) == []
 
 
+def test_relative_pin_to_queen_surfaced_with_piling_move():
+    # Wkp7l (pin medium): black knight f6 is relatively pinned to the e7 queen by
+    # the white queen on g5. python-chess is_pinned only sees absolute pins, so
+    # this was invisible. Must surface with the piling move Nh5.
+    from _features import detect_pins_skewers
+    b = chess.Board("r2r2k1/1b2qppp/p3pn2/1ppp2Q1/7P/3P1PN1/PPP2PB1/2KR3R w - - 4 18")
+    rel = [f for f in detect_pins_skewers(b) if "RELATIVELY PINNED" in f.text and f.side]
+    assert rel, "expected a relative-pin finding for the f6 knight"
+    assert "knight on f6" in rel[0].text and "queen on e7" in rel[0].text
+    assert "Nh5" in (rel[0].moves or [])
+
+
+def test_relative_pin_no_false_positive_in_start_position():
+    from _features import detect_pins_skewers
+    assert not any("RELATIVELY" in f.text for f in detect_pins_skewers(chess.Board()))
+
+
 def test_win_finding_flags_checking_capture_as_zwischenzug():
     # A3WM4: two free black rooks (a8, b1); Qxa8+ takes one WITH CHECK. The win
     # finding for a8 must carry the zwischenzug nudge (capture-with-check first),

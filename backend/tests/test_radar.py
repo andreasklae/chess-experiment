@@ -83,6 +83,14 @@ class TestBackRank:
         out = radar("6k1/5pp1/7p/8/8/8/8/R5K1 w - - 0 1") or ""
         assert "trapped on its back rank" not in out
 
+    def test_back_rank_flagged_when_blocked_by_a_piece_not_only_pawns(self):
+        # m3xxZ (pin medium): black Kg8, f7 occupied by a ROOK (not a pawn),
+        # g7/h7 pawns; open d-file + white rook → Rd8+ back-rank mate. The old
+        # detector required all forward squares to be PAWNS and missed this.
+        out = radar("6k1/r1p2rpp/2b5/pp6/4P3/1B1R4/PPP3PP/6K1 w - - 0 25") or ""
+        assert "trapped on its back rank" in out
+        assert "back-rank-mate.md" in out
+
     def test_own_back_rank_warned_when_threatened(self):
         # White to move, own king h1 walled by g2/h2, black rook on open
         # d-file → defensive luft warning (game 9b0d7590 mate pattern).

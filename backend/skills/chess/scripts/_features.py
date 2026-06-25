@@ -689,7 +689,81 @@ def detect_pins_skewers(board: chess.Board, perspective: bool | None = None) -> 
                         f"literally cannot move, so pile attackers on it (a pawn is ideal) to win it, and "
                         f"treat anything it 'defends' as undefended",
                         wiki="pins"))
+
+    # RELATIVE pins (enemy piece pinned to a more-valuable enemy piece, not the
+    # king): python-chess's is_pinned only catches ABSOLUTE pins, so the common
+    # "knight pinned to the queen — can't move, pile on it" case was invisible.
+    # For each of my line pieces, _pin_from finds an enemy front pinned against a
+    # more valuable enemy rear. If I ALREADY attack the front, it's effectively
+    # winnable — surface it with the piling move (a fresh attacker).
+    seen_pinned = set()
+    for from_sq in [s for s in chess.SQUARES
+                    if board.piece_at(s) and board.piece_at(s).color == stm
+                    and board.piece_at(s).piece_type in (chess.ROOK, chess.BISHOP, chess.QUEEN)]:
+        pt = board.piece_at(from_sq).piece_type
+        # Check EVERY ray (not just _pin_from's first hit — a queen on a file pin
+        # would otherwise shadow a diagonal relative pin, the Wkp7l case).
+        for d in _dirs_for(pt):
+            res = _pin_on_ray(board, from_sq, d, stm)
+            if not res:
+                continue
+            front, rear = res
+            if front in seen_pinned:
+                continue
+            fp = board.piece_at(front); rp = board.piece_at(rear)
+            if rp.piece_type == chess.KING:
+                continue  # absolute pin already reported above
+            seen_pinned.add(front)
+            # A piling move = one that adds an attacker on the pinned `front`
+            # (more of my pieces hit it than before), without being the pinning
+            # piece itself. That's how you win a piece that can't safely move.
+            before_atk = len(board.attackers(stm, front))
+            piles = []
+            for mv in board.legal_moves:
+                if mv.from_square == from_sq or mv.to_square == front:
+                    continue
+                b2 = board.copy(stack=False); b2.push(mv)
+                if len(b2.attackers(stm, front)) > before_atk:
+                    try:
+                        piles.append(board.san(mv))
+                    except Exception:
+                        pass
+            findings.append(Finding(True, "potential",
+                f"opponent's {PIECE_NAME[fp.piece_type]} on {_sq(front)} is RELATIVELY PINNED to its "
+                f"{PIECE_NAME[rp.piece_type]} on {_sq(rear)} (your {PIECE_NAME[pt]} on {_sq(from_sq)} is "
+                f"behind it) — it can't move without losing the {PIECE_NAME[rp.piece_type]}, so add another "
+                f"attacker to win it",
+                moves=sorted(set(piles))[:4], wiki="pins"))
     return findings
+
+
+def _pin_on_ray(board: chess.Board, from_sq: int, d: int, color: bool):
+    """On direction `d` from `from_sq`, if a `color` slider there pins an enemy
+    front piece against a more-valuable enemy rear, return (front, rear); else
+    None. Single-ray version (the caller iterates all rays so no pin is shadowed
+    by an earlier-found one on a different ray)."""
+    enemy = not color
+    front = rear = None
+    for sq in _ray_squares(from_sq, d):
+        occ = board.piece_at(sq)
+        if occ is None:
+            continue
+        if front is None:
+            if occ.color != enemy:
+                return None  # own piece blocks
+            front = sq
+            continue
+        rear = sq if occ.color == enemy else None
+        break
+    if front is None or rear is None:
+        return None
+    front_pt = board.piece_at(front).piece_type
+    rear_pt = board.piece_at(rear).piece_type
+    if front_pt == chess.KING:
+        return None
+    if rear_pt == chess.KING or PIECE_VALUE[rear_pt] > PIECE_VALUE[front_pt]:
+        return front, rear
+    return None
 
 
 # ---- skewers ----

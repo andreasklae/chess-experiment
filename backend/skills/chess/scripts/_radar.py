@@ -1098,10 +1098,17 @@ def _back_rank_lines(board: chess.Board, own: bool) -> list[str]:
     f = chess.square_file(ksq)
     front_files = [x for x in (f - 1, f, f + 1) if 0 <= x <= 7]
     front_squares = [chess.square(x, back) + forward for x in front_files]
-    blocked = all(
-        (p := board.piece_at(sq)) is not None and p.color == opp and p.piece_type == chess.PAWN
-        for sq in front_squares
-    )
+    # The king has no forward luft if every forward square is occupied by one of
+    # its OWN pieces (a pawn is the classic case, but a friendly rook/bishop on
+    # f7 boxes the king just the same — m3xxZ) OR is covered by one of our
+    # pieces (it can't flee onto a guarded square). Either way the escape is
+    # denied; both make a back-rank mate real.
+    def _forward_blocked(sq: int) -> bool:
+        p = board.piece_at(sq)
+        if p is not None and p.color == opp:
+            return True                      # own piece boxes the king
+        return board.is_attacked_by(own, sq)  # or we cover the flight square
+    blocked = all(_forward_blocked(sq) for sq in front_squares)
     if not blocked:
         return []
 

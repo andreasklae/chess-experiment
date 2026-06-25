@@ -636,40 +636,120 @@
     ]
   },
   "m3xxZ": {
-    "status": "failed",
+    "status": "solved",
     "topic": "pin",
     "difficulty": "medium",
     "rating": 1008,
-    "solved_plies": 0,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "failed",
-    "run_id": "run_1782395372",
-    "ts": "2026-06-25T15:57:54",
-    "attempts": []
+    "aborted_reason": null,
+    "run_id": "run_1782417367",
+    "ts": "2026-06-25T21:56:30",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "6k1/r1p2rpp/2b5/pp6/4P3/1B1R4/PPP3PP/6K1 w - - 0 25",
+        "expected_uci": "d3d8",
+        "expected_san": "Rd8+",
+        "played_uci": "d3d8",
+        "played_san": "Rd8+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Found a forced mate in 2. Rd8+ forces the only legal reply Be8, followed by Rxe8# checkmate. This follows the back-rank mate pattern identified in the radar and wiki. \u00b7 plan: Back-rank mate: Use the undefended 8th rank to force the black king into a mating net. Immediate goal: deliver Rd8+, force Be8, then mate with Rxe8#."
+      },
+      {
+        "ply": 1,
+        "fen_before": "3Rb1k1/r1p2rpp/8/pp6/4P3/1B6/PPP3PP/6K1 w - - 2 26",
+        "expected_uci": "d8e8",
+        "expected_san": "Rxe8#",
+        "played_uci": "d8e8",
+        "played_san": "Rxe8#",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan: deliver the mating blow. The opponent's Be8 move placed the bishop on a square where it can be captured with checkmate, as the king is trapped on the back rank by its own pawns and the rook on e8 covers the escape squares."
+      }
+    ]
   },
   "1dHqe": {
-    "status": "failed",
+    "status": "solved",
     "topic": "pin",
     "difficulty": "medium",
     "rating": 1233,
-    "solved_plies": 0,
+    "solved_plies": 3,
     "total_plies": 3,
-    "aborted_reason": "failed",
-    "run_id": "run_1782395372",
-    "ts": "2026-06-25T15:58:00",
-    "attempts": []
+    "aborted_reason": null,
+    "run_id": "run_1782416864",
+    "ts": "2026-06-25T21:48:37",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "8/2p5/1p4p1/4p2p/Pk2P2P/1P1PB3/1qP2RK1/8 w - - 8 41",
+        "expected_uci": "c2c3",
+        "expected_san": "c3+",
+        "played_uci": "c2c3",
+        "played_san": "c3+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "I am playing c3+ as a discovered attack. By checking the king, I force it to move or capture, which unveils an attack from the rook on f2 against the undefended queen on b2. Even if black captures on c3 (Kxc3), I will play Rxb2, winning the queen for a rook and a pawn. This trade results in a decisive material advantage (White retains a bishop and several pawns against Black's remaining pawns). I have verified this line with `chess__imagine_line` and confirmed that it holds even after the exchange. \u00b7 goal: Win the black queen and simplify into a winning endgame. \u00b7 plan: Execute a discovered attack: play c3+ to force the king away from the queen, capture the queen with the rook on f2, and simplify into a decisive material advantage (B+pawns vs pawns)."
+      },
+      {
+        "ply": 1,
+        "fen_before": "8/2p5/1p4p1/4p2p/Pk2P2P/1PqPB3/5RK1/8 w - - 0 42",
+        "expected_uci": "e3d2",
+        "expected_san": "Bd2",
+        "played_uci": "e3d2",
+        "played_san": "Bd2",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan to win the queen: Bd2 creates an absolute pin on the queen against the king on b4. If black captures with Qxd2, I recapture Rxd2, winning the queen for a bishop. If black captures Kxb3, I capture Bxc3, winning the queen. Any other move leaves the queen pinned and lost to further pressure. \u00b7 plan: Win the black queen by pinning it to the king using the bishop on d2. Once the queen is pinned or forced to trade, simplify into a winning endgame (R+B vs pawns)."
+      },
+      {
+        "ply": 2,
+        "fen_before": "8/2p5/1p4p1/4p2p/Pk2P2P/1P1P4/3q1RK1/8 w - - 0 43",
+        "expected_uci": "f2d2",
+        "expected_san": "Rxd2",
+        "played_uci": "f2d2",
+        "played_san": "Rxd2",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my standing plan to win the queen and simplify, I capture the undefended black queen on d2. This removes black's most powerful piece and transforms the game into a winning Rook endgame for white. \u00b7 plan: Rook endgame: Win by leveraging the material advantage (R vs pawns), activating the king, and targeting black's isolated pawns."
+      }
+    ]
   },
   "Wkp7l": {
-    "status": "failed",
+    "status": "solved",
     "topic": "pin",
     "difficulty": "medium",
     "rating": 1284,
-    "solved_plies": 0,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "failed",
-    "run_id": "run_1782395372",
-    "ts": "2026-06-25T15:58:05",
-    "attempts": []
+    "aborted_reason": null,
+    "run_id": "run_1782417155",
+    "ts": "2026-06-25T21:53:30",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "r2r2k1/1b2qppp/p3pn2/1ppp2Q1/7P/3P1PN1/PPP2PB1/2KR3R w - - 4 18",
+        "expected_uci": "g3h5",
+        "expected_san": "Nh5",
+        "played_uci": "g3h5",
+        "played_san": "Nh5",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The radar suggested smothered mate geometry, which requires a knight on h6 or f7. While I can't force it immediately, Nh5 brings the knight closer to the action, attacks the pinned knight on f6, and prepares potential jumps to f6 or g7. I rejected Qg6 because it hangs the queen to hxg6 or fxg6. I rejected Ne4 because it allows Nxe4 or dxe4 with a material loss. Nh5 is a solid improving move that increases pressure on Black's kingside. \u00b7 goal: pile attackers on f6 and g7 to break the black defense \u00b7 plan: Create an attack on the kingside by utilizing the relative pin of the knight on f6 and the pin of the pawn on g7. Goal is to either win material or set up a mating net."
+      },
+      {
+        "ply": 1,
+        "fen_before": "r2r1qk1/1b3ppp/p3pn2/1ppp2QN/7P/3P1P2/PPP2PB1/2KR3R w - - 6 19",
+        "expected_uci": "h5f6",
+        "expected_san": "Nxf6+",
+        "played_uci": "h5f6",
+        "played_san": "Nxf6+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The knight on f6 is pinned to the rook on d8, and the pawn on g7 is pinned to the king. By capturing on f6, I force the king to h8 (as gxf6 is impossible due to the pin). This eliminates a key defender of the kingside and creates immediate tactical pressure. Per my plan to break the black defense on f6 and g7, this move removes the knight and forces the king into a more restricted position, potentially preparing further attacks or exploiting the back-rank weakness."
+      }
+    ]
   },
   "G13Ga": {
     "status": "failed",
