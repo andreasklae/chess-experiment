@@ -472,15 +472,15 @@
     ]
   },
   "YlFR1": {
-    "status": "failed",
+    "status": "solved",
     "topic": "pin",
     "difficulty": "easy",
     "rating": 951,
-    "solved_plies": 1,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "agent played e1g1, expected b5c6",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:08:50",
+    "aborted_reason": null,
+    "run_id": "run_1782416779",
+    "ts": "2026-06-25T21:46:55",
     "attempts": [
       {
         "ply": 0,
@@ -491,18 +491,18 @@
         "played_san": "Bb5",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "Developed the bishop to b5, which pins the black queen on c6 to the king on e8. This restricts the queen's mobility and creates tactical opportunities. While the bishop is technically attacked by the queen, the pin makes the capture costly or impossible without allowing a powerful follow-up. I rejected Qd8+ as it loses the queen for nothing and Bc4 as it hangs the bishop. \u00b7 goal: Pin the black queen on c6 and develop the kingside pieces. \u00b7 plan: Develop pieces and secure king safety. Use the pin on the queen on c6 (via Bb5) to gain a positional advantage or win material if black misplays."
+        "reasoning": "The position assessment identified a strong tactical opportunity: Bb5 creates an absolute pin on the black queen against the king on e8. According to `tactics/pins-and-skewers.md`, an absolute pin is rock-solid, and the pinned piece defends nothing. I imagined Bb5 and verified it restricts the queen's movement. While the bishop on b5 is attacked by the queen, the queen cannot move, making the bishop safe for now. I also checked the line Bb5, O-O and saw that while the pin breaks after castling, it forces black to deal with the immediate threat and creates a window for white to consolidate and potentially win material. I reject passive developing moves like Bd3 in favor of this forcing tactical shot. \u00b7 goal: Win the black queen or force major concessions by exploiting the pin on c6. \u00b7 plan: Exploit the absolute pin on the black queen on c6 using Bb5. Once pinned, I will aim to pile attackers on the queen (e.g., with a pawn or another piece) or exploit the fact that the queen no longer effectively defends its targets, while ensuring my own king gets to safety."
       },
       {
         "ply": 1,
         "fen_before": "r3k2r/pp1bbppp/2q1p3/1B6/P4P2/8/1PP3PP/R1BQK2R w KQkq - 3 12",
         "expected_uci": "b5c6",
         "expected_san": "Bxc6",
-        "played_uci": "e1g1",
-        "played_san": "O-O",
-        "correct": false,
-        "accepted_as": null,
-        "reasoning": "Per my plan to secure king safety, I am castling kingside. I have checked the opponent's most aggressive replies: Qxg2+ is a blunder as it simply loses the queen to Kxg2, and Bc5+ is easily handled by Kh1. Castling removes the king from the center and completes the safety objective while maintaining the pressure of the Bb5 pin on the queen."
+        "played_uci": "b5c6",
+        "played_san": "Bxc6",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan, I am exploiting the pin on c6. By capturing the queen with Bxc6, I win a queen for a bishop (net gain of ~6 points), which is a decisive material advantage. Even though black can recapture the bishop, the material trade is overwhelmingly in my favor. \u00b7 goal: Consolidate the material lead and get the king to safety."
       }
     ]
   },
@@ -542,38 +542,61 @@
     ]
   },
   "dDnhJ": {
-    "status": "failed",
+    "status": "solved",
     "topic": "pin",
     "difficulty": "easy",
     "rating": 830,
-    "solved_plies": 0,
+    "solved_plies": 1,
     "total_plies": 1,
-    "aborted_reason": "failed",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:09:32",
-    "attempts": []
+    "aborted_reason": null,
+    "run_id": "run_1782416554",
+    "ts": "2026-06-25T21:43:06",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "r1b3k1/pppp1rpp/2n5/8/2B5/8/P1qN1PPP/R3R1K1 w - - 0 15",
+        "expected_uci": "e1e8",
+        "expected_san": "Re8#",
+        "played_uci": "e1e8",
+        "played_san": "Re8#",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The opponent's back rank is completely exposed. The rook move to e8 delivers immediate checkmate as the king has no legal escape squares and the rook cannot be captured. I ignored the material deficit because checkmate ends the game immediately."
+      }
+    ]
   },
   "Jxmyy": {
-    "status": "failed",
+    "status": "solved",
     "topic": "pin",
     "difficulty": "easy",
     "rating": 869,
-    "solved_plies": 0,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "agent played a3c4, expected f1b5",
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:09:52",
+    "aborted_reason": null,
+    "run_id": "run_1782416779",
+    "ts": "2026-06-25T21:47:20",
     "attempts": [
       {
         "ply": 0,
         "fen_before": "r1b1k2r/pp2ppbp/2q2np1/8/8/N1P1B3/PP3PPP/R2QKB1R w KQkq - 0 10",
         "expected_uci": "f1b5",
         "expected_san": "Bb5",
-        "played_uci": "a3c4",
-        "played_san": "Nc4",
-        "correct": false,
-        "accepted_as": null,
-        "reasoning": "Bxa7 was a trap that would lose a bishop for a pawn. Be2 hangs the g2 pawn. Nc4 improves the knight's position from the rim, defends the e3 bishop, and prepares for further development. It's a safe, improving move. \u00b7 goal: Develop the light-squared bishop and castle to secure the king. \u00b7 plan: Solidify the position by improving piece activity (knight to c4) and preparing to castle. Avoid the Bxa7 trap and focus on completing development."
+        "played_uci": "f1b5",
+        "played_san": "Bb5",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "I played Bb5 to create an absolute pin on the black queen at c6 against the king at e8. While this leaves the g2 pawn undefended, the pin significantly restricts the queen's mobility and creates tactical opportunities to win material or force black into passive defense. I rejected Bxa7 because the radar warned it was a trap. \u00b7 goal: Establish a strong pin on the black queen and coordinate development. \u00b7 plan: Control the center and exploit pins. I will start by pinning the black queen with Bb5, then focus on king safety (castling) and improving my queen's position to pressure black's kingside/center."
+      },
+      {
+        "ply": 1,
+        "fen_before": "r1b1k2r/pp2ppbp/5np1/1q6/8/N1P1B3/PP3PPP/R2QK2R w KQkq - 0 11",
+        "expected_uci": "a3b5",
+        "expected_san": "Nxb5",
+        "played_uci": "a3b5",
+        "played_san": "Nxb5",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The opponent played Qxb5, leaving the queen undefended on b5. Per the position radar and imagine_move, capturing the queen with Nxb5 is a winning move that puts white in a decisive material lead. No immediate tactical threats from black are visible in the legal replies. \u00b7 plan: Win the queen, then secure the king by castling and use the material advantage to simplify and win."
       }
     ]
   },

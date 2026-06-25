@@ -439,6 +439,24 @@ def test_material_down_advises_avoid_initiating_trades_but_keep_free_material():
     assert "free material" in txt and "always capture" in txt
 
 
+def test_creatable_pin_against_king_is_surfaced():
+    # YlFR1 / Jxmyy (pin easy): Bb5 pins the black queen on c6 to the king on e8.
+    # This creatable pin (a winning motif) was previously invisible -- only
+    # already-existing pins were detected. Must surface with the Bb5 move.
+    from _features import detect_creatable_pins
+    for fen in ("r1b1k2r/pp2bppp/2q1p3/8/P4P2/8/1PP3PP/R1BQKB1R w KQkq - 1 11",
+                "r1b1k2r/pp2ppbp/2q2np1/8/8/N1P1B3/PP3PPP/R2QKB1R w KQkq - 0 10"):
+        b = chess.Board(fen)
+        mine = [f for f in detect_creatable_pins(b) if f.side]
+        assert any("PIN enemy queen" in f.text and "KING" in f.text and "Bb5" in (f.moves or [])
+                   for f in mine), fen
+
+
+def test_creatable_pin_no_false_positive_in_start_position():
+    from _features import detect_creatable_pins
+    assert detect_creatable_pins(chess.Board()) == []
+
+
 def test_win_finding_flags_checking_capture_as_zwischenzug():
     # A3WM4: two free black rooks (a8, b1); Qxa8+ takes one WITH CHECK. The win
     # finding for a8 must carry the zwischenzug nudge (capture-with-check first),

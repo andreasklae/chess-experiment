@@ -756,6 +756,100 @@ def _skewer_from(board: chess.Board, from_sq: int, piece_type: int, color: bool)
     return None
 
 
+def _pin_from(board: chess.Board, from_sq: int, piece_type: int, color: bool):
+    """If a line piece of `piece_type`/`color` on `from_sq` would PIN an enemy
+    piece (front) against a more valuable enemy piece or the king (rear) on the
+    same ray, return (front_sq, rear_sq, direction); else None. Pure geometry, so
+    it works for both a piece already there and a hypothetical landing square.
+
+    Pin vs skewer is the value order: pin = front LESS valuable than rear (the
+    front can't move without losing the rear, so it's stuck and you win it);
+    skewer = front at least as valuable (handled by _skewer_from). King behind =
+    absolute pin (front literally cannot move)."""
+    enemy = not color
+    for d in _dirs_for(piece_type):
+        front = rear = None
+        for sq in _ray_squares(from_sq, d):
+            occ = board.piece_at(sq)
+            if occ is None:
+                continue
+            if front is None:
+                if occ.color != enemy:
+                    break  # own piece blocks this ray
+                front = sq
+                continue
+            else:
+                rear = sq if occ.color == enemy else None
+                break
+        if front is None or rear is None:
+            continue
+        front_pt = board.piece_at(front).piece_type
+        rear_pt = board.piece_at(rear).piece_type
+        if front_pt == chess.KING:
+            continue  # king in front is a skewer/check, not a pin
+        # Pin proper: the rear is strictly more valuable than the front (or is the
+        # king) — moving the front loses the rear, so the front is stuck/winnable.
+        if rear_pt == chess.KING or PIECE_VALUE[rear_pt] > PIECE_VALUE[front_pt]:
+            return front, rear, d
+    return None
+
+
+def detect_creatable_pins(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
+    """Pins you (or the opponent) could CREATE next move: slide a line piece to a
+    square where it pins an enemy piece against a more valuable piece/king. The
+    high-value case — pinning the enemy QUEEN to its king (you then win the queen
+    by piling on) — is the whole `pin` motif and was previously invisible (only
+    *already-existing* pins were detected). Mirror of the potential-skewer scan."""
+    findings: list[Finding] = []
+    stm = board.turn if perspective is None else perspective
+    for color in (chess.WHITE, chess.BLACK):
+        mine = (color == stm)
+        line_pieces = [(s, board.piece_at(s).piece_type) for s in chess.SQUARES
+                       if board.piece_at(s) and board.piece_at(s).color == color
+                       and board.piece_at(s).piece_type in (chess.ROOK, chess.BISHOP, chess.QUEEN)]
+        seen = set()
+        for from_sq, pt in line_pieces:
+            for d in _dirs_for(pt):
+                for land in _ray_squares(from_sq, d):
+                    occ = board.piece_at(land)
+                    if occ is not None and occ.color == color:
+                        break
+                    res = _pin_from(board, land, pt, color)
+                    if res:
+                        front, rear, _dd = res
+                        if (front, rear) in seen:
+                            if occ is not None:
+                                break
+                            continue
+                        seen.add((front, rear))
+                        fp = board.piece_at(front); rp = board.piece_at(rear)
+                        # Only surface the strong cases: pin against the king
+                        # (absolute) or against the queen — piling on a pinned
+                        # queen/rook is a real win. Skip pinning a pawn to a rook.
+                        if rp.piece_type == chess.KING or fp.piece_type in (chess.QUEEN, chess.ROOK):
+                            if mine:
+                                findings.append(Finding(True, "potential",
+                                    f"your {PIECE_NAME[pt]} could move to {_sq(land)} to PIN enemy "
+                                    f"{PIECE_NAME[fp.piece_type]} on {_sq(front)} against "
+                                    f"{'the KING' if rp.piece_type == chess.KING else PIECE_NAME[rp.piece_type]} "
+                                    f"on {_sq(rear)} — the pinned {PIECE_NAME[fp.piece_type]} can't move, so "
+                                    f"pile attackers on it (a pawn is ideal) to win it. Calculate it; a small "
+                                    f"cost elsewhere is worth winning the {PIECE_NAME[fp.piece_type]}.",
+                                    moves=[board.san(chess.Move(from_sq, land))]
+                                          if chess.Move(from_sq, land) in board.legal_moves else [],
+                                    wiki="pins"))
+                            else:
+                                findings.append(Finding(False, "potential",
+                                    f"opponent could move their {PIECE_NAME[pt]} to {_sq(land)} to PIN your "
+                                    f"{PIECE_NAME[fp.piece_type]} on {_sq(front)} against your "
+                                    f"{'KING' if rp.piece_type == chess.KING else PIECE_NAME[rp.piece_type]} "
+                                    f"on {_sq(rear)} — pre-empt it (move a piece off the line or guard "
+                                    f"{_sq(land)})", wiki="pins"))
+                    if occ is not None:
+                        break
+    return findings
+
+
 def _axis_word(d: int) -> str:
     return "file" if d in (8, -8) else ("rank" if d in (1, -1) else "diagonal")
 
@@ -1120,6 +1214,7 @@ def detect_all(board: chess.Board, perspective: bool | None = None) -> list[Find
     for fn in (detect_phase_fundamentals, detect_pawn_structure, detect_files,
                detect_development, detect_bishop_pair, detect_outposts,
                detect_knight_forks, detect_loose_pieces, detect_pins_skewers,
+               detect_creatable_pins,
                detect_skewers, detect_discovered_attacks, detect_traps,
                detect_material, detect_king_safety, detect_overloaded_defenders,
                detect_own_back_rank):
