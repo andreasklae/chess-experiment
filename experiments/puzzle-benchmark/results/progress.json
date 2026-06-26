@@ -3273,8 +3273,8 @@
     "solved_plies": 0,
     "total_plies": 3,
     "aborted_reason": "agent played c7c6, expected c7d7",
-    "run_id": "run_1782499882",
-    "ts": "2026-06-26T21:10:39",
+    "run_id": "run_1782501663",
+    "ts": "2026-06-26T21:21:25",
     "category": {
       "legal_moves_count": 31,
       "in_check": false,
@@ -3299,7 +3299,7 @@
       "signature": "rook captures"
     },
     "tool_calls_total": 9,
-    "imagine_line_calls": 2,
+    "imagine_line_calls": 1,
     "imagine_move_calls": 3,
     "attempts": [
       {
@@ -3311,7 +3311,7 @@
         "played_san": "Rc6",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "My rook on c7 was undefended and attacked by the king on d8. I calculated the forcing moves Rc8+ and Rxd7+, but neither led to a forced mate or immediate winning material gain. Moving the rook to c6 saves the piece, maintains activity on the c-file, and creates a new skewer threat against the e6 pawn. \u00b7 plan: Safe endgame conversion: move the rook to safety while maintaining control of the c-file and creating new threats. I will aim to activate my king further and coordinate the knight and rook to create mating nets or win more material."
+        "reasoning": "The rook on c7 was undefended and attacked by the king on d8. I checked for tactical shots with Rc8+ and Rxd7+, but neither led to a forced win or mate. Rc6 moves the rook to safety while maintaining control of the c-file and creating a potential skewer against the e6-pawn and h6-pawn. This is the safest and most constructive move. \u00b7 plan: Endgame conversion: keep pieces active and restrict the enemy king. Immediate goal: save the rook from capture and create new threats (skewer on e6/h6 or pin on d7). Target: consolidate material lead and eventually coordinate for a mate."
       }
     ]
   },
@@ -16385,6 +16385,239 @@
         "correct": true,
         "accepted_as": "exact",
         "reasoning": "This is a forced checkmate sequence. 1. Qe8+ forces 1... Rxe8 (the only legal move), followed by 2. Rxe8# mate. I am overriding the safety check because this is a forced mate in two. \u00b7 goal: Deliver checkmate in two moves. \u00b7 plan: Execute forced mate: 1. Qe8+ Rxe8 2. Rxe8#"
+      }
+    ]
+  },
+  "52Fzm": {
+    "status": "solved",
+    "topic": "sacrifice",
+    "difficulty": "medium",
+    "rating": 1304,
+    "solved_plies": 3,
+    "total_plies": 3,
+    "aborted_reason": null,
+    "run_id": "run_1782501663",
+    "ts": "2026-06-26T21:22:08",
+    "category": {
+      "legal_moves_count": 51,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 5,
+      "solver_moves": 3,
+      "material_before": -1,
+      "mover_piece": "queen",
+      "first_move_is_capture": true,
+      "first_move_is_check": true,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Qxh7+",
+      "targets": [
+        "king"
+      ],
+      "n_targets": 1,
+      "targets_king": true,
+      "captured_value": 1,
+      "material_after_line": -6,
+      "ends_in_mate": true,
+      "signature": "queen captures"
+    },
+    "tool_calls_total": 17,
+    "imagine_line_calls": 4,
+    "imagine_move_calls": 4,
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "r4r1k/pp2bBpp/2p5/1q2P2Q/8/3R4/P5PP/5R1K w - - 3 21",
+        "expected_uci": "h5h7",
+        "expected_san": "Qxh7+",
+        "played_uci": "h5h7",
+        "played_san": "Qxh7+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Calculated a forced mating sequence: Qxh7+ forces Kxh7, then Rh3+ forces Bh4 (only legal move), and finally Rxh4# delivers checkmate. This tactical combination overrides the material loss of the queen. \u00b7 goal: Deliver checkmate via the queen sacrifice on h7 and rook check on h3. \u00b7 plan: Force checkmate through a tactical sequence: 1. Qxh7+ (sacrifice to draw king out), 2. Rh3+ (forcing the bishop to block), 3. Rxh4# (mate)."
+      },
+      {
+        "ply": 1,
+        "fen_before": "r4r2/pp2bBpk/2p5/1q2P3/8/3R4/P5PP/5R1K w - - 0 22",
+        "expected_uci": "d3h3",
+        "expected_san": "Rh3+",
+        "played_uci": "d3h3",
+        "played_san": "Rh3+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "This is a forced mating sequence calculated via imagine_line: 1. Qxh7+ Kxh7 2. Rh3+ Bh4 3. Rxh4#. I am overriding the safety check because it is a forced checkmate in 3 moves. \u00b7 goal: Deliver checkmate via the queen sacrifice on h7 and rook check on h3. \u00b7 plan: Force checkmate through a tactical sequence: 1. Qxh7+ (sacrifice to draw king out), 2. Rh3+ (forcing the bishop to block), 3. Rxh4# (mate)."
+      },
+      {
+        "ply": 2,
+        "fen_before": "r4r2/pp3Bpk/2p5/1q2P3/7b/7R/P5PP/5R1K w - - 2 23",
+        "expected_uci": "h3h4",
+        "expected_san": "Rxh4#",
+        "played_uci": "h3h4",
+        "played_san": "Rxh4#",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan: the opponent has captured the queen on h7. Now I execute the second step of the mating sequence by playing Rh3+. This forces the black bishop to block on h4 (the only legal move), which will then be captured for checkmate on the next turn. \u00b7 goal: Force the bishop to h4 and deliver mate on the following move."
+      }
+    ]
+  },
+  "kIKue": {
+    "status": "failed",
+    "topic": "sacrifice",
+    "difficulty": "medium",
+    "rating": 1398,
+    "solved_plies": 0,
+    "total_plies": 4,
+    "aborted_reason": "agent played f4e5, expected h3h7",
+    "run_id": "run_1782501663",
+    "ts": "2026-06-26T21:22:36",
+    "category": {
+      "legal_moves_count": 34,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 7,
+      "solver_moves": 4,
+      "material_before": 0,
+      "mover_piece": "queen",
+      "first_move_is_capture": true,
+      "first_move_is_check": true,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Qxh7+",
+      "targets": [
+        "king"
+      ],
+      "n_targets": 1,
+      "targets_king": true,
+      "captured_value": 1,
+      "material_after_line": -5,
+      "ends_in_mate": true,
+      "signature": "queen captures"
+    },
+    "tool_calls_total": 10,
+    "imagine_line_calls": 4,
+    "imagine_move_calls": 3,
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "4r1k1/1p3p1p/p1r2Bp1/2pqpnP1/5P2/1P1P1R1Q/P1P4P/R5K1 w - - 0 28",
+        "expected_uci": "h3h7",
+        "expected_san": "Qxh7+",
+        "played_uci": "f4e5",
+        "played_san": "fxe5",
+        "correct": false,
+        "accepted_as": null,
+        "reasoning": "I analyzed several forcing moves. Qxh7+ looked attractive but was a trap losing the queen for a pawn. fxe5 is a solid move that wins a pawn (or forces a trade that leaves white with a material advantage) and creates a discovered attack on the knight at f5 with the rook at f3. I also considered Re1 to solve the a1-rook problem, but taking the center first is more active. I've verified that after fxe5, the most dangerous reply Qd4+ can be met with Kg2, and while it attacks a1, white remains in a strong position with an extra pawn and a discovered attack on the knight. \u00b7 plan: Improve central control and piece activity: remove the e5 pawn to open the f-file for the rook and potentially create a target on e5, while maintaining king safety."
+      }
+    ]
+  },
+  "TkVpw": {
+    "status": "failed",
+    "topic": "sacrifice",
+    "difficulty": "medium",
+    "rating": 1155,
+    "solved_plies": 1,
+    "total_plies": 3,
+    "aborted_reason": "agent played f1f8, expected d1g4",
+    "run_id": "run_1782501663",
+    "ts": "2026-06-26T21:23:17",
+    "category": {
+      "legal_moves_count": 31,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 5,
+      "solver_moves": 3,
+      "material_before": -1,
+      "mover_piece": "knight",
+      "first_move_is_capture": false,
+      "first_move_is_check": true,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Nh6+",
+      "targets": [
+        "king"
+      ],
+      "n_targets": 1,
+      "targets_king": true,
+      "captured_value": 0,
+      "material_after_line": 1,
+      "ends_in_mate": true,
+      "signature": "knight check"
+    },
+    "tool_calls_total": 15,
+    "imagine_line_calls": 6,
+    "imagine_move_calls": 1,
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "5rk1/pp3Npp/4p3/1q1pP3/3P4/2b1P3/6PP/3Q1RK1 w - - 1 20",
+        "expected_uci": "f7h6",
+        "expected_san": "Nh6+",
+        "played_uci": "f7h6",
+        "played_san": "Nh6+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "I have found a forced mating line. If black plays Kh8 in response to Nh6+, Rxf8# is checkmate. If black plays gxh6, Rxf8+ continues the attack with decisive advantage. This forcing sequence is superior to any quiet move. \u00b7 goal: Checkmate the black king. \u00b7 plan: Forced mating sequence: now Nh6+, then if Kh8, Rxf8#; if gxh6, Rxf8+ followed by more checks to win."
+      },
+      {
+        "ply": 1,
+        "fen_before": "5rk1/pp5p/4p2p/1q1pP3/3P4/2b1P3/6PP/3Q1RK1 w - - 0 21",
+        "expected_uci": "d1g4",
+        "expected_san": "Qg4+",
+        "played_uci": "f1f8",
+        "played_san": "Rxf8+",
+        "correct": false,
+        "accepted_as": null,
+        "reasoning": "I am overriding the safety check because Nh6+ is a forcing move that leads to a direct mating sequence. Specifically: if 20... Kh8, then 21. Rxf8# is checkmate. If 20... gxh6, then 21. Rxf8+ forces the king to f8 or g7, continuing a winning attack. The immediate loss of the knight is a tactical sacrifice for a forced mate or decisive material gain. \u00b7 goal: Checkmate the black king. \u00b7 plan: Forced mating sequence: now Nh6+, then if Kh8, Rxf8#; if gxh6, Rxf8+ continues the attack with decisive advantage."
+      }
+    ]
+  },
+  "I5Hd8": {
+    "status": "failed",
+    "topic": "sacrifice",
+    "difficulty": "medium",
+    "rating": 1132,
+    "solved_plies": 0,
+    "total_plies": 3,
+    "aborted_reason": "agent played d7e6, expected d7f7",
+    "run_id": "run_1782501663",
+    "ts": "2026-06-26T21:23:43",
+    "category": {
+      "legal_moves_count": 40,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 5,
+      "solver_moves": 3,
+      "material_before": 0,
+      "mover_piece": "queen",
+      "first_move_is_capture": false,
+      "first_move_is_check": true,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Qf7+",
+      "targets": [
+        "king"
+      ],
+      "n_targets": 1,
+      "targets_king": true,
+      "captured_value": 0,
+      "material_after_line": -4,
+      "ends_in_mate": true,
+      "signature": "queen check"
+    },
+    "tool_calls_total": 10,
+    "imagine_line_calls": 4,
+    "imagine_move_calls": 2,
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "2r3k1/3Q2pp/8/8/8/2q5/6PP/5R1K w - - 0 33",
+        "expected_uci": "d7f7",
+        "expected_san": "Qf7+",
+        "played_uci": "d7e6",
+        "played_san": "Qe6+",
+        "correct": false,
+        "accepted_as": null,
+        "reasoning": "The enemy king is trapped on the back rank. Qe6+ is a forcing move that restricts the king to h8, allowing me to coordinate a mating attack (possibly involving Rf8+ as a deflection sacrifice). I've verified that the king has only one legal reply (Kh8), and the resulting geometry is highly favorable for White. \u00b7 plan: Exploit the back-rank vulnerability of the black king. Forced sequence: Qe6+ Kh8, then look for a mating net using the rook on f1 and queen coordination."
       }
     ]
   }

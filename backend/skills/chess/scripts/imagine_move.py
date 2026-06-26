@@ -712,6 +712,35 @@ def render_imagine(
                 f"Do NOT reject this check because it loses material at one ply — if it MATES, material "
                 f"is irrelevant."
             )
+            # SIBLING boxing checks: several checks can box the king equally, yet
+            # only ONE has a mating follow-up (I5Hd8: Qe6+ AND Qf7+ both force Kh8,
+            # only Qf7+ mates via Qf8+ Rxf8 Rxf8#). When the agent picks a boxing
+            # check that does NOT immediately mate, remind it the OTHER boxing checks
+            # exist and must each be calculated — it routinely commits to the first
+            # boxing check it tries. Mechanics only; the agent calculates which mates.
+            others = []
+            try:
+                allc = _uncalculated_mating_checks(board_before)
+                if allc is not None:
+                    others = [s for s in allc[0] if s != mv_san]
+            except Exception:
+                others = []
+            if others:
+                # List them all when few; when many, give the count + first several
+                # AND make explicit the list is partial, so the agent doesn't assume
+                # the winning check is among the shown ones (I5Hd8 has 8 boxing
+                # checks; only Qf7+ mates — a truncated list can hide the winner).
+                if len(others) <= 6:
+                    body = (f"Other checks also box the king: {', '.join(others)}. "
+                            f"**Calculate EACH of them.**")
+                else:
+                    body = (f"{len(others)} OTHER checks also box the king "
+                            f"({', '.join(others[:6])}, …) — **calculate EVERY boxing check, "
+                            f"not just these.** With this many, the mating one is easy to miss.")
+                out.append(
+                    f"**↳ {body}** This check may not be the one that mates — only ONE boxing "
+                    f"check may have a mating follow-up; don't commit to the first you try."
+                )
             out.append("")
     # Why this move may be STRONG: an unanswerable threat — e.g. it attacks a
     # valuable piece WHILE giving check, so the side to reply can't both answer
