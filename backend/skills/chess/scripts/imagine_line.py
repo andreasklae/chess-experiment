@@ -5,7 +5,7 @@ look-ahead for planning, where chess__imagine_move only sees one ply.
 Use it ONE MOVE AT A TIME. Do NOT type a whole 5-move line up front: add a
 single move, read the result, then decide the next move. You may **branch**
 (change the last move and call again) and **backtrack** (drop moves from the
-end). The line is at most **5 moves (plies) ahead** — that is the planning
+end). The line is at most **8 moves (plies) ahead** — that is the planning
 horizon; beyond it, commit a move and re-plan.
 
 You supply the moves yourself (yours AND the opponent's replies you expect),
@@ -48,7 +48,12 @@ from _eval import parse_move  # noqa: E402
 from _live import board_with_history, fetch_state  # noqa: E402
 from imagine_move import render_imagine  # noqa: E402
 
-_MAX_PLIES = 5
+# Planning horizon. Raised 5 → 8 (2026-06-27): forced lines — especially
+# endgame checks and mating nets — routinely run longer than 5 plies, and the
+# agent was hitting the cap mid-combination and abandoning sound sacrifices. 8
+# plies still fits the context budget (only the LAST move renders a full report;
+# earlier plies collapse to the breadcrumb).
+_MAX_PLIES = 8
 
 
 def _testing_replies(board: chess.Board, exclude: chess.Move | None = None,
@@ -242,6 +247,24 @@ def main() -> None:
                         "works against one reply is not calculated.",
                     ]
             else:
+                # It is YOUR move now at the leaf — show YOUR forcing continuations
+                # (checks, captures) so you carry the combination through instead
+                # of stopping. This is the CCT discipline applied mid-line.
+                forcing = [s for s in _testing_replies(board, k=4)
+                           if "+" in s or "#" in s or "x" in s]
+                if forcing:
+                    out += [
+                        "",
+                        "---",
+                        "",
+                        f"**⮕ It is YOUR move here — keep checking forcing moves (Checks, Captures, "
+                        f"Threats).** Your most forcing continuations are **{', '.join(forcing)}**. "
+                        f"A combination often needs one MORE forcing move to pay off — extend the line "
+                        f"with the promising one (you have up to {_MAX_PLIES} plies) and read the leaf "
+                        f"verdict before concluding the line fails.",
+                    ]
+                # fall through to the assumed-opponent-reply alternatives below
+            if not last_was_agent:
                 # You supplied ONE opponent reply — name the alternatives.
                 alts = _testing_replies(board_before_last, exclude=last_move, k=3)
                 if alts:

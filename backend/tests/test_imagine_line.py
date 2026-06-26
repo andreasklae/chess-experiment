@@ -82,13 +82,15 @@ class TestImagineLine:
         assert "OPPONENT" in r.stdout
         assert "Your (white) replies after this line" in r.stdout
 
-    def test_cap_at_five_plies(self):
-        r = _run(["--fen", FEN, "Rb8,Rf4,Ke5,Rf1,Kd4,Rf4"])  # 6 plies
+    def test_cap_at_eight_plies(self):
+        # 9 plies exceeds the (raised) 8-ply horizon.
+        r = _run(["--fen", FEN, "Rb8,Rf4,Ke5,Rf1,Kd4,Rf4,Ke5,Rf1,Kd4"])  # 9 plies
         assert r.returncode != 0
-        assert "at most 5 ahead" in r.stdout
+        assert "at most 8" in r.stdout
 
-    def test_five_plies_allowed(self):
-        r = _run(["--fen", FEN, "Rb8,Rf4,Ke5,Rf1,Kd4"])  # exactly 5
+    def test_eight_plies_allowed(self):
+        # exactly 8 plies (the raised horizon), a verified-legal sequence.
+        r = _run(["--fen", FEN, "Bb4,Kb1,Re5,Rxe5+,Kd3,Ka2,Kc4,Re6"])
         assert r.returncode == 0, r.stderr
         assert "## Move:" in r.stdout
 
@@ -176,3 +178,16 @@ class TestLeafVerdict:
         r = _run(["--fen", "6k1/8/8/8/8/8/r7/R3K3 w - - 0 1", "Rxa2"])
         assert r.returncode == 0
         assert "End-of-line material" in r.stdout
+
+
+def test_agent_side_cct_nudge_when_agent_to_move_at_leaf():
+    """When a line ends with it being the AGENT's move, imagine_line nudges it to
+    keep checking forcing moves (CCT) and lists its checks/captures — so it
+    carries a combination through. 3MIRf: after Qxh7+ Kxh7 it's White to move and
+    Rh4+ is the next move of the forced mate."""
+    fen = "6rk/4nbpp/p2b1p2/1p2pP2/3pP1RQ/q6P/5P2/3BK1R1 w - - 0 33"
+    r = _run(["--fen", fen, "Qxh7+,Kxh7"])
+    assert r.returncode == 0, r.stderr
+    assert "It is YOUR move here" in r.stdout
+    assert "forcing continuations" in r.stdout
+    assert "Rh4+" in r.stdout   # the mating continuation must be among them
