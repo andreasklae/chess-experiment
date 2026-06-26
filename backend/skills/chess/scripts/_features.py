@@ -1421,6 +1421,60 @@ def detect_overloaded_defenders(board: chess.Board, perspective: bool | None = N
     return findings
 
 
+def detect_removable_defender(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
+    """REMOVING THE DEFENDER: you attack an enemy piece (≥ a minor) that is
+    defended by exactly ONE piece — if you can CAPTURE or DEFLECT that sole
+    defender, the attacked piece falls. This is the capturingDefender / deflection
+    motif and it usually STARTS with a sacrifice-looking capture of the defender
+    (e.g. the e7 knight is defended only by the d8 rook → Qxd8 removes the guard,
+    then Rxe7 wins the knight). Surfaced because the agent, warned its own piece
+    hangs, plays safe instead of this winning capture.
+
+    Only the side to move (it has to play the removing move). Pure mechanics; the
+    agent still calculates the sequence."""
+    findings: list[Finding] = []
+    stm = board.turn if perspective is None else perspective
+    if board.turn != stm:
+        return findings
+    enemy = not stm
+    seen = set()
+    for tsq in chess.SQUARES:
+        ep = board.piece_at(tsq)
+        if not ep or ep.color != enemy or ep.piece_type in (chess.KING, chess.PAWN):
+            continue
+        if not board.attackers(stm, tsq):
+            continue                                   # I don't attack it
+        defenders = [d for d in board.attackers(enemy, tsq) if d != tsq]
+        if len(defenders) != 1:
+            continue                                   # need a SINGLE defender to remove
+        guard = defenders[0]
+        gp = board.piece_at(guard)
+        if gp is None or gp.piece_type == chess.KING:
+            continue                                   # can't capture the king as a "defender"
+        # Can I capture that sole defender, or attack it (deflect)? Prefer the
+        # concrete capture move(s) of the guard square.
+        cap_moves = []
+        for mv in board.legal_moves:
+            if mv.to_square == guard:
+                try:
+                    cap_moves.append(board.san(mv))
+                except Exception:
+                    pass
+        if not cap_moves:
+            continue
+        if (tsq, guard) in seen:
+            continue
+        seen.add((tsq, guard))
+        findings.append(Finding(True, "potential",
+            f"REMOVE THE DEFENDER: the {PIECE_NAME[ep.piece_type]} on {_sq(tsq)} is defended ONLY by the "
+            f"{PIECE_NAME[gp.piece_type]} on {_sq(guard)}. Capture/deflect that defender "
+            f"({', '.join(sorted(set(cap_moves)))}) — even as a sacrifice — and the {PIECE_NAME[ep.piece_type]} "
+            f"on {_sq(tsq)} then falls. Calculate the full sequence with `imagine_line` "
+            f"(take the defender → their recapture → you take the {PIECE_NAME[ep.piece_type]}).",
+            moves=sorted(set(cap_moves))[:4], wiki="removing"))
+    return findings
+
+
 def detect_own_back_rank(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
     """Own king boxed on the back rank with no luft (principles/luft). Flags when
     the king's three forward squares are all blocked by its own pawns and an enemy
@@ -1469,7 +1523,7 @@ def detect_all(board: chess.Board, perspective: bool | None = None) -> list[Find
                detect_creatable_pins,
                detect_skewers, detect_discovered_attacks, detect_traps,
                detect_material, detect_king_safety, detect_overloaded_defenders,
-               detect_own_back_rank):
+               detect_removable_defender, detect_own_back_rank):
         try:
             findings += fn(board, perspective)
         except Exception:

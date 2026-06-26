@@ -694,3 +694,25 @@ def test_forcing_moves_line_ignores_pawn_only_captures():
     import chess as _c
     b = _c.Board("4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1")  # exd5 = pawn x pawn
     assert _forcing_moves_line(b) == ""
+
+
+def test_remove_the_defender_surfaces_the_deflecting_capture():
+    # 7e5N5 (capturing-defender): the e7 knight is defended ONLY by the d8 piece;
+    # Qxd8 removes the defender, then Rxe7 wins it. The detector must surface this
+    # 'remove the defender' idea with the concrete capture (Qxd8) -- the agent was
+    # playing safe instead because no signal pointed at the deflection.
+    from _features import detect_removable_defender
+    import chess as _c
+    b = _c.Board("r2q1rk1/1p2nppp/p4n2/5P2/4R3/8/PPP2PPP/R2Q1BK1 w - - 1 16")
+    fs = detect_removable_defender(b)
+    assert any("REMOVE THE DEFENDER" in f.text and "e7" in f.text and "Qxd8" in (f.moves or [])
+               for f in fs)
+
+
+def test_remove_the_defender_no_false_positive_start_and_double_defended():
+    from _features import detect_removable_defender
+    import chess as _c
+    assert detect_removable_defender(_c.Board()) == []
+    # a piece defended by TWO pieces is not removable by eliminating one defender
+    b = _c.Board("4k3/8/8/3n4/8/2N1N3/8/4K3 w - - 0 1")
+    assert detect_removable_defender(b) == []
