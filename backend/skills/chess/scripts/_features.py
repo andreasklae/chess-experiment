@@ -1557,6 +1557,29 @@ def _forcing_moves_line(board: chess.Board) -> str:
     cap_checks = [c for c in checks if "x" in c]
     quiet_checks = [c for c in checks if "x" not in c]
     ordered = cap_checks + quiet_checks
+    # MATE-likely signal: if the enemy king has very few squares (it is in a
+    # mating net) AND you have a check, a FORCED MATE is often available — the
+    # commonest thing the agent misses (it won't enter a checking sac that mates).
+    # Pure mechanics: count the enemy king's legal moves and whether it is boxed
+    # on its back rank. This says "calculate for mate", never which move mates.
+    ek = board.king(not board.turn)
+    mate_hint = ""
+    if ek is not None:
+        # count the enemy king's escape squares mechanically (give it the move)
+        b2 = board.copy(stack=False)
+        try:
+            b2.push(chess.Move.null())
+            esc = sum(1 for m in b2.legal_moves if m.from_square == ek)
+        except Exception:
+            esc = 9
+        back = 7 if (not board.turn) == chess.BLACK else 0
+        on_back = chess.square_rank(ek) == back
+        if esc <= 2:
+            mate_hint = (f" ⚠ The enemy king has only {esc} escape square(s)"
+                         + (" and is on its back rank" if on_back else "")
+                         + " — a FORCED MATE may be available. Calculate your checks to the END with "
+                         "`chess__imagine_line` (a checking SACRIFICE that mates is worth any material — "
+                         "read the leaf verdict for 'CHECKMATE'); don't stop because a check 'loses' material.")
     return (
         "**Forcing moves — calculate these FIRST (checks; ★ = also a capture):** "
         + ", ".join((f"★{c}" if c in cap_checks else c) for c in ordered)
@@ -1564,7 +1587,7 @@ def _forcing_moves_line(board: chess.Board) -> str:
         "each promising one out with `imagine_line` (check → forced reply → your "
         "follow-up) BEFORE settling on a quiet move. Many wins are 'check first, "
         "then win material'. (Listing the checks is mechanics; whether one wins is "
-        "for you to calculate.)"
+        "for you to calculate.)" + mate_hint
     )
 
 

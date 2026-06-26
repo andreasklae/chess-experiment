@@ -648,3 +648,27 @@ def test_center_control_opening_suggests_central_pawn():
     # Start position: a central pawn push is offered as a way to claim the centre.
     fs = detect_center_control(chess.Board())
     assert any("centre square" in f.text and ("e4" in str(f.moves) or "d4" in str(f.moves)) for f in fs)
+
+
+def test_forced_mate_hint_when_enemy_king_boxed_and_check_available():
+    # 37qrJ (mateIn2): enemy king has <=2 escapes and White has a check (Qxg7+)
+    # -> the forcing-moves line must add the 'FORCED MATE may be available;
+    # calculate your checks to the end' nudge. Pure mechanics, no move picked.
+    from _features import _forcing_moves_line
+    import chess as _c, json, pathlib
+    pj = pathlib.Path(__file__).resolve().parents[2] / "experiments/puzzle-benchmark/puzzles.json"
+    if pj.exists():
+        p = {x["id"]: x for x in json.loads(pj.read_text())}.get("37qrJ")
+        if p:
+            b = _c.Board(p["fen"]); b.push(_c.Move.from_uci(p["moves"][0]))
+            line = _forcing_moves_line(b)
+            assert "FORCED MATE may be available" in line
+            assert "imagine_line" in line
+
+
+def test_no_mate_hint_in_quiet_position_with_safe_king():
+    from _features import _forcing_moves_line
+    import chess as _c
+    # castled, king has luft, no mating net -> no mate hint even if a check exists
+    b = _c.Board("r1bqk2r/pppp1ppp/2n2n2/1Bb1p3/4P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 5")
+    assert "FORCED MATE" not in _forcing_moves_line(b)
