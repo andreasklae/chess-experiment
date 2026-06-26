@@ -432,6 +432,47 @@ def _moved_piece_hanging_warning(
     )
 
 
+def _uncalculated_mating_checks(board: chess.Board) -> tuple[list[str], int] | None:
+    """If the side to move has legal CHECK(s) that leave the enemy king with <=1
+    escape square (nearly-mate candidates), return (check_sans, min_escapes) for
+    ALL such checks (most-boxing first). Pure mechanics — enumerates the side's own
+    legal checks and counts the enemy king's resulting escapes via a null move.
+    Used to remind the agent, when it is about to play a QUIET move, that
+    un-calculated mating check(s) exist (its commonest miss: judging only at one ply
+    and never extending a forcing check). CRITICAL: returns EVERY boxing check, not
+    just one — several checks may box the king equally yet only one mates (idFVb:
+    Qg8+/Qe8+/Qc8+ all box to 0, only Qe8+ mates), so naming a single check sends
+    the agent to calculate the wrong one and wrongly conclude 'no mate'. It does NOT
+    assert any check wins — the agent must calculate each with imagine_line."""
+    found: list[tuple[str, int]] = []
+    for mv in board.legal_moves:
+        b = board.copy(stack=False)
+        try:
+            san = board.san(mv)
+        except Exception:
+            san = board.uci(mv)
+        b.push(mv)
+        if b.is_checkmate():
+            return ([san], 0)
+        if not b.is_check():
+            continue
+        enemy_king = b.king(b.turn)
+        if enemy_king is None:
+            continue
+        probe = b.copy(stack=False)
+        try:
+            probe.push(chess.Move.null())
+        except Exception:
+            continue
+        esc = sum(1 for m in probe.legal_moves if m.from_square == enemy_king)
+        if esc <= 1:
+            found.append((san, esc))
+    if not found:
+        return None
+    found.sort(key=lambda t: t[1])
+    return ([s for s, _ in found], found[0][1])
+
+
 def _material_loss(board_before: chess.Board, board_after: chess.Board,
                    move: chess.Move) -> tuple[int, str | None]:
     """Largest single-square material loss this move causes (centipawns) and
@@ -603,6 +644,34 @@ def render_imagine(
             f"opposite of when imagining your own move."
         )
         out.append("")
+    # QUIET-MOVE-WHILE-MATE-AVAILABLE nudge. The agent's single biggest holdout is
+    # playing a calm/defensive move while a forcing mate sits un-calculated on the
+    # board — it judges candidates at ONE ply (imagine_move) and never extends a
+    # check with imagine_line. When THIS imagined move is the agent's own, is quiet
+    # (no check, no capture) and the position offers a check that boxes the enemy
+    # king to <=1 escape, say so here, before the move's calm details lull it. We
+    # name the boxing check the board already offers and send it to imagine_line —
+    # mechanics only; whether the check actually mates is for the agent to verify.
+    if not opp_move and not board_after.is_check() and not board_before.is_capture(move):
+        mc = _uncalculated_mating_checks(board_before)
+        if mc is not None:
+            chk_sans, esc = mc
+            shown = chk_sans[:4]
+            first = shown[0]
+            many = len(shown) > 1
+            out.append(
+                f"> ♛ **Wait — before playing this quiet move, you have "
+                f"{'checks' if many else 'a check'} ({', '.join(shown)}) that box the enemy king to "
+                f"{esc} escape square(s).** {'These are' if many else 'That is a'} forced-mate "
+                f"candidate{'s' if many else ''} you have NOT calculated. A quiet/defensive move throws "
+                f"away a mating attack. **Calculate {'EACH of them' if many else 'it'} to the end: "
+                f"`chess__imagine_line(moves=\"{first},...\")`"
+                + (f" — and DON'T stop if the first one fails; try the others ({', '.join(shown[1:])}). "
+                   f"Several checks can box the king equally yet only ONE mates." if many else " ")
+                + f"** Read the leaf for 'CHECKMATE'. Only play the quiet move if NONE of these checks, "
+                f"calculated out, wins — don't decline a check just because it loses material at one ply."
+            )
+            out.append("")
     out.append(f"## Move: {_move_summary(board_before, move)}")
     out.append("")
     # If this is a capture into a square the opponent can recapture on, point the

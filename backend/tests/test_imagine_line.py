@@ -1,3 +1,4 @@
+import pathlib
 """Tests for chess__imagine_line — the incremental, branchable, 5-ply
 look-ahead — and for render_imagine's opponent-move perspective framing.
 
@@ -243,3 +244,24 @@ def test_leaf_verdict_no_mating_attack_when_king_has_room():
     b = chess.Board("4k3/8/8/8/8/8/r7/4K3 w - - 0 1")  # white down a rook, black king free
     v = il._leaf_verdict(b, b, chess.WHITE)
     assert "MATING ATTACK" not in v
+
+
+def test_quiet_move_nudge_lists_all_boxing_checks():
+    """idFVb: three checks (Qg8+/Qe8+/Qc8+) all box the king to 0 escapes but only
+    Qe8+ mates. When the agent imagines a QUIET move, imagine_move must list ALL
+    boxing checks (not just one), or it sends the agent to calculate the wrong one
+    and wrongly conclude 'no mate'."""
+    import importlib.util, sys as _sys
+    here = pathlib.Path(__file__).resolve()
+    mvp = here.parents[1] / "skills/chess/scripts/imagine_move.py"
+    spec = importlib.util.spec_from_file_location("imagine_move", mvp)
+    im = importlib.util.module_from_spec(spec); _sys.modules["imagine_move"] = im
+    spec.loader.exec_module(im)
+    b = chess.Board("1k5r/ppp5/4Qpn1/3p1n2/PP1P2q1/2P2N2/6BP/4R1K1 w - - 12 29")
+    res = im._uncalculated_mating_checks(b)
+    assert res is not None
+    sans, esc = res
+    assert esc == 0
+    assert {"Qg8+", "Qe8+", "Qc8+"}.issubset(set(sans))
+    # quiet position with no boxing check returns None
+    assert im._uncalculated_mating_checks(chess.Board()) is None
