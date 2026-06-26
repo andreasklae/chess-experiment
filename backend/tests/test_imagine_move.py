@@ -375,3 +375,22 @@ def test_non_check_material_loss_still_hard_blunder(im):
     b = chess.Board("4k3/1q6/8/8/8/8/8/Q3K3 w - - 0 1")
     out = im.render_imagine(b, chess.Move.from_uci("a1a7"))  # Qa7?? hangs queen, no check
     assert "BLUNDER" in out and "LOSES your queen" in out
+
+
+def test_nearly_mate_nudge_on_forcing_check_sacrifice(im):
+    # 8QAW1: Qd8+ is a queen sac leaving Black exactly ONE reply (Rxd8), then
+    # Rxd8#. imagine_move must flag NEARLY MATE and hand the agent the imagine_line
+    # call to find the mate — the lever for forced-mate sacs the agent declines.
+    b = chess.Board("k5r1/ppp3r1/6q1/3Q4/4p3/6p1/PP5P/2RR2K1 w - - 0 33")
+    out = im.render_imagine(b, chess.Move.from_uci("d5d8"))
+    assert "NEARLY MATE" in out
+    assert "only 1 legal reply" in out and "Rxd8" in out
+    assert 'imagine_line(moves="Qd8+,Rxd8")' in out
+
+
+def test_nearly_mate_silent_when_many_replies(im):
+    # A check the king easily escapes (many replies) must NOT trigger the nudge.
+    b = chess.Board("4k3/8/8/8/8/8/4R3/4K3 w - - 0 1")  # Re2-e7+? king has d/f files
+    # Rook check on the e-file: king on e8 can go to d7/d8/f7/f8 -> several replies
+    out = im.render_imagine(b, chess.Move.from_uci("e2e7"))
+    assert "NEARLY MATE" not in out

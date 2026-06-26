@@ -616,6 +616,34 @@ def render_imagine(
                        f"exchange and whether you end up + or − material._")
             out.append("")
     out.append(f"**Check:** {check_text}")
+    # NEARLY-MATE nudge: a check that leaves the opponent very few legal replies
+    # is almost mate — and the agent's commonest miss is rejecting such a check
+    # (often a sacrifice) because at ONE ply it loses material, never extending to
+    # the mate one move later (e.g. Qd8+ Rxd8 Rxd8#). When the move checks and the
+    # opponent has <=2 replies, name them and push the agent to extend by exactly
+    # one move with imagine_line to test for mate. Pure mechanics (reply count);
+    # the agent still calculates. Only for the agent's own move.
+    if board_after.is_check() and not opp_move and not board_after.is_checkmate():
+        replies = list(board_after.legal_moves)
+        if 1 <= len(replies) <= 2:
+            reply_sans = []
+            for r in replies:
+                try:
+                    reply_sans.append(board_after.san(r))
+                except Exception:
+                    pass
+            mv_san = board_before.san(move)
+            nxt = reply_sans[0] if reply_sans else "their reply"
+            out.append("")
+            out.append(
+                f"**⚠ NEARLY MATE — this check leaves the opponent only {len(replies)} legal "
+                f"repl{'y' if len(replies)==1 else 'ies'} ({', '.join(reply_sans)}).** A check that "
+                f"forces the king into a box is how mating combinations work — **extend ONE move with "
+                f"`chess__imagine_line(moves=\"{mv_san},{nxt}\")`** and read the leaf for 'CHECKMATE'. "
+                f"Do NOT reject this check because it loses material at one ply — if it MATES, material "
+                f"is irrelevant."
+            )
+            out.append("")
     # Why this move may be STRONG: an unanswerable threat — e.g. it attacks a
     # valuable piece WHILE giving check, so the side to reply can't both answer
     # the check and save the piece. Advisory; tells the agent to verify the line.
