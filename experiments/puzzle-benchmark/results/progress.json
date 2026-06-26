@@ -2196,9 +2196,9 @@
     "rating": 984,
     "solved_plies": 0,
     "total_plies": 2,
-    "aborted_reason": "agent played e4d4, expected d1d8",
-    "run_id": "run_1782484294",
-    "ts": "2026-06-26T16:31:55",
+    "aborted_reason": "agent played e4e5, expected d1d8",
+    "run_id": "run_1782484607",
+    "ts": "2026-06-26T16:37:07",
     "category": {
       "legal_moves_count": 47,
       "in_check": false,
@@ -2232,11 +2232,11 @@
         "fen_before": "r2q1rk1/1p2nppp/p4n2/5P2/4R3/8/PPP2PPP/R2Q1BK1 w - - 1 16",
         "expected_uci": "d1d8",
         "expected_san": "Qxd8",
-        "played_uci": "e4d4",
-        "played_san": "Rd4",
+        "played_uci": "e4e5",
+        "played_san": "Re5",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "My rook on e4 was hanging to the knight on f6. Moving it to d4 saves the piece and establishes a strong presence on the open d-file, screening my queen from the enemy queen. While the pawn on f5 is still attacked by the knight on e7, saving the rook is the priority as it is a major piece. Rejected Re6 as it loses the rook to fxe6. \u00b7 goal: Stabilize the position and develop pieces while maintaining control of open files. \u00b7 plan: Save the hanging rook on e4 and contest the d-file. Address the back-rank weakness (luft) and coordinate the pieces to pressure black's knight on e7."
+        "reasoning": "My rook on e4 was undefended and attacked by the knight on f6. Moving it to e5 saves the rook and additionally defends the pawn on f5, which was also attacked. I rejected Re6 as it is a blunder (fxe6 wins the rook). Re5 is a safe, solid move that maintains my piece activity on the e-file. \u00b7 goal: Secure the rook on e5 and defend the f5 pawn. \u00b7 plan: Address immediate material threats (save Re4) and then look for tactical opportunities (pins/skewers) to regain the material lead, while keeping an eye on the back-rank vulnerability (both sides)."
       }
     ]
   },
@@ -2276,15 +2276,15 @@
     ]
   },
   "lyq3F": {
-    "status": "solved",
+    "status": "failed",
     "topic": "capturing-defender",
     "difficulty": "easy",
     "rating": 967,
-    "solved_plies": 3,
+    "solved_plies": 0,
     "total_plies": 3,
-    "aborted_reason": null,
-    "run_id": "run_1782478190",
-    "ts": "2026-06-26T14:50:58",
+    "aborted_reason": "agent played g6g4, expected d2d8",
+    "run_id": "run_1782484607",
+    "ts": "2026-06-26T16:37:38",
     "category": {
       "legal_moves_count": 42,
       "in_check": false,
@@ -2309,42 +2309,20 @@
       "ends_in_mate": false,
       "signature": "rook double-attack \u2192 bishop,rook"
     },
-    "tool_calls_total": 18,
-    "imagine_line_calls": 5,
-    "imagine_move_calls": 4,
+    "tool_calls_total": 10,
+    "imagine_line_calls": 2,
+    "imagine_move_calls": 3,
     "attempts": [
       {
         "ply": 0,
         "fen_before": "1r1rb2k/1q2b1p1/5pQp/pp2pP2/8/1PP1N2P/P2R1BP1/3R2K1 w - - 6 35",
         "expected_uci": "d2d8",
         "expected_san": "Rxd8",
-        "played_uci": "d2d8",
-        "played_san": "Rxd8",
-        "correct": true,
-        "accepted_as": "exact",
-        "reasoning": "I am initiating a trade of rooks on d8. After Rxd8, Black must recapture (either with the other rook or the bishop), and then I can recapture again with my second rook (Rxd8). This simplifies the position and maintains control of the open d-file without losing material. I rejected the immediate queen captures (Qxe8+, etc.) as the radar flagged them as traps that lose the queen for a minor piece. \u00b7 goal: Trade rooks on d8 to maintain control of the d-file and potentially simplify the position. \u00b7 plan: Simplify the position by trading material on the d-file while maintaining a strong presence with the queen and knight. Once simplified, aim to capitalize on Black's king safety issues."
-      },
-      {
-        "ply": 1,
-        "fen_before": "3rb2k/1q2b1p1/5pQp/pp2pP2/8/1PP1N2P/P4BP1/3R2K1 w - - 0 36",
-        "expected_uci": "d1d8",
-        "expected_san": "Rxd8",
-        "played_uci": "d1d8",
-        "played_san": "Rxd8",
-        "correct": true,
-        "accepted_as": "exact",
-        "reasoning": "The safety check was triggered because Rxd8 hangs a rook on d8. However, I have calculated the forced sequence: 1. Rxd8 (my move), 2. ... Rxd8 (or Bxd8), 3. Rxd8. This is a series of exchanges that results in a neutral material trade of two rooks, not a blunder. Since I have verified the forced line with imagine_line and confirmed it is a safe trade, I am overriding the safety check with confirm=true. \u00b7 goal: Trade rooks on d8 to maintain control of the d-file and potentially simplify the position. \u00b7 plan: Simplify the position by trading material on the d-file while maintaining a strong presence with the queen and knight. Once simplified, aim to capitalize on Black's king safety issues."
-      },
-      {
-        "ply": 2,
-        "fen_before": "3bb2k/1q4p1/5pQp/pp2pP2/8/1PP1N2P/P4BP1/6K1 w - - 0 37",
-        "expected_uci": "g6e8",
-        "expected_san": "Qxe8+",
-        "played_uci": "g6e8",
-        "played_san": "Qxe8+",
-        "correct": true,
-        "accepted_as": "exact",
-        "reasoning": "Per my plan to trade on the d-file and simplify, Rxd8 is the best way to proceed. While it looks like a simple trade (Rxd8 Bxd8), it sets up a winning sequence: after Bxd8, the bishop on e8 is left undefended, allowing Qxe8+ which wins a full piece. This tactic transforms a balanced simplification into a decisive material advantage. \u00b7 goal: Execute the tactical sequence Rxd8, Bxd8, Qxe8+ to win a piece."
+        "played_uci": "g6g4",
+        "played_san": "Qg4",
+        "correct": false,
+        "accepted_as": null,
+        "reasoning": "I calculated the exchange on d8 using `imagine_line`. After 1. Rxd8 Rxd8 2. Rxd8, I win a full rook (+5). While the initial move Rxd8 is a trade, the follow-up capture of the d8-rook with my second rook ensures a material gain. I rejected the 'free' captures like Qxe8+ or Qxg7+ as the radar correctly identified them as traps that would lose the queen. \u00b7 goal: Trade rooks on d8 and then capture the undefended bishop on e8. \u00b7 plan: Simplify the position by trading pieces on the d-file and capturing the hanging bishop on e8 to gain a decisive material advantage."
       }
     ]
   },
@@ -2390,20 +2368,46 @@
     "rating": 1342,
     "solved_plies": 0,
     "total_plies": 2,
-    "aborted_reason": "agent played g7g2, expected c6d6",
-    "run_id": "run_1782434869",
-    "ts": "2026-06-26T02:59:41",
+    "aborted_reason": "agent played g7g5, expected c6d6",
+    "run_id": "run_1782484607",
+    "ts": "2026-06-26T16:38:00",
+    "category": {
+      "legal_moves_count": 23,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 3,
+      "solver_moves": 2,
+      "material_before": -1,
+      "mover_piece": "rook",
+      "first_move_is_capture": true,
+      "first_move_is_check": false,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Rxd6",
+      "targets": [
+        "rook"
+      ],
+      "n_targets": 1,
+      "targets_king": false,
+      "captured_value": 3,
+      "material_after_line": 2,
+      "ends_in_mate": false,
+      "signature": "rook captures"
+    },
+    "tool_calls_total": 7,
+    "imagine_line_calls": 1,
+    "imagine_move_calls": 2,
     "attempts": [
       {
         "ply": 0,
         "fen_before": "k2r4/4r1Rp/P1Rb4/3p4/P1p5/2P2P1P/5K2/8 w - - 3 33",
         "expected_uci": "c6d6",
         "expected_san": "Rxd6",
-        "played_uci": "g7g2",
-        "played_san": "Rg2",
+        "played_uci": "g7g5",
+        "played_san": "Rg5",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "The rook on g7 is under immediate attack by the rook on e7. I checked a7 and Rg8, but both lose material immediately. I also checked Rc8+ followed by Rxe7, but it leads to a losing trade after Bxe7. Rg2 moves the rook to safety and maintains control of the g-file. \u00b7 plan: Safety first: save the undefended rook on g7. Then look for opportunities to push passed pawns or coordinate rooks to restrict the black king."
+        "reasoning": "My rook on g7 was attacked and undefended by the rook on e7. I considered Rc8+ but calculated it as a losing sacrifice (down a rook without a forced mate). Moving the rook to g5 saves the piece and maintains presence on the g-file while avoiding immediate tactical blunders. \u00b7 plan: Consolidate and push passed pawns. Save the g7 rook, then leverage the passed pawns on a6 and f3 to create winning chances or force material regain."
       }
     ]
   },
