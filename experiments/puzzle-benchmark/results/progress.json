@@ -15869,15 +15869,15 @@
     ]
   },
   "jJAE7": {
-    "status": "failed",
+    "status": "solved",
     "topic": "sacrifice",
     "difficulty": "easy",
     "rating": 877,
-    "solved_plies": 1,
+    "solved_plies": 3,
     "total_plies": 3,
-    "aborted_reason": "agent played f7g8, expected f7f8",
-    "run_id": "run_1782498212",
-    "ts": "2026-06-26T20:24:26",
+    "aborted_reason": null,
+    "run_id": "run_1782498588",
+    "ts": "2026-06-26T20:30:27",
     "category": {
       "legal_moves_count": 35,
       "in_check": false,
@@ -15901,7 +15901,7 @@
       "ends_in_mate": true,
       "signature": "queen captures"
     },
-    "tool_calls_total": 14,
+    "tool_calls_total": 16,
     "imagine_line_calls": 7,
     "imagine_move_calls": 1,
     "attempts": [
@@ -15914,18 +15914,29 @@
         "played_san": "Qxf7+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "I have calculated a forced checkmate sequence. 1. Qxf7+ Kh8 (forced) 2. Qf8+ Rxf8 (forced) 3. Rxf8#. Even though the queen is sacrificed, the sequence leads to a mate in 3. \u00b7 goal: Deliver checkmate in 3 moves. \u00b7 plan: Execute forced mate: Qxf7+, then Qf8+, then Rxf8#."
+        "reasoning": "I have found a forced mate in 3 moves. After 1. Qxf7+ Kh8 2. Qf8+ Rxf8 3. Rxf8#, the black king is mated on the back rank. I have verified the line with imagine_line, and all opponent responses are forced. \u00b7 plan: Forced mate sequence: Qxf7+ Kh8, then Qf8+ Rxf8, then Rxf8# checkmate."
       },
       {
         "ply": 1,
         "fen_before": "2r4k/5Qpp/8/4q3/6b1/2P5/P6P/5RK1 w - - 1 26",
         "expected_uci": "f7f8",
         "expected_san": "Qf8+",
-        "played_uci": "f7g8",
-        "played_san": "Qg8+",
-        "correct": false,
-        "accepted_as": null,
-        "reasoning": "Per my plan: deliver checkmate in 3 moves. Qg8+ forces the rook to capture (Rxg8), which then allows the rook on f1 to deliver mate on f8. The king is trapped on the back rank and has no escape."
+        "played_uci": "f7f8",
+        "played_san": "Qf8+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Following the forced mate sequence calculated in my standing plan. Qf8+ forces Black to capture with the rook (Rxf8), which then allows Rxf8# checkmate on the back rank."
+      },
+      {
+        "ply": 2,
+        "fen_before": "5r1k/6pp/8/4q3/6b1/2P5/P6P/5RK1 w - - 0 27",
+        "expected_uci": "f1f8",
+        "expected_san": "Rxf8#",
+        "played_uci": "f1f8",
+        "played_san": "Rxf8#",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "This is a forced checkmate sequence. 1. Qf8+ Rxf8 2. Rxf8#. The sacrifice of the queen on f8 is mandatory to deflect the rook from the back rank and deliver mate with the rook on f1."
       }
     ]
   },
@@ -15934,11 +15945,11 @@
     "topic": "sacrifice",
     "difficulty": "easy",
     "rating": 755,
-    "solved_plies": 1,
+    "solved_plies": 0,
     "total_plies": 3,
-    "aborted_reason": "agent played f7g8, expected f7f8",
-    "run_id": "run_1782498212",
-    "ts": "2026-06-26T20:25:09",
+    "aborted_reason": "agent played f4g5, expected f4f7",
+    "run_id": "run_1782498588",
+    "ts": "2026-06-26T20:31:01",
     "category": {
       "legal_moves_count": 33,
       "in_check": false,
@@ -15962,44 +15973,33 @@
       "ends_in_mate": true,
       "signature": "queen captures"
     },
-    "tool_calls_total": 18,
-    "imagine_line_calls": 9,
-    "imagine_move_calls": 1,
+    "tool_calls_total": 13,
+    "imagine_line_calls": 4,
+    "imagine_move_calls": 5,
     "attempts": [
       {
         "ply": 0,
         "fen_before": "2r3k1/5ppp/1q2p3/3p4/3P1Q2/2r5/P5PP/5RK1 w - - 0 27",
         "expected_uci": "f4f7",
         "expected_san": "Qxf7+",
-        "played_uci": "f4f7",
-        "played_san": "Qxf7+",
-        "correct": true,
-        "accepted_as": "exact",
-        "reasoning": "I am down significant material, so I must create immediate complications. Qxf7+ is a forcing move that captures a pawn, gives check, and restricts the black king to only one legal square (Kh8), creating immediate attacking pressure and potential for a back-rank combination. While I calculated a queen sacrifice on g8, it didn't lead to immediate mate, but the current check is the most active way to challenge black's position. \u00b7 plan: Hunt for back-rank mating patterns or strong attacking sequences to compensate for material deficit. Focus on forcing checks and restricting the enemy king's mobility."
-      },
-      {
-        "ply": 1,
-        "fen_before": "2r4k/5Qpp/1q2p3/3p4/3P4/2r5/P5PP/5RK1 w - - 1 28",
-        "expected_uci": "f7f8",
-        "expected_san": "Qf8+",
-        "played_uci": "f7g8",
-        "played_san": "Qg8+",
+        "played_uci": "f4g5",
+        "played_san": "Qg5",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "Per my plan to hunt for back-rank mating patterns, I am initiating a forcing sequence. Qg8+ forces the rook on c8 to capture (Rxg8), which deflects the only defender of the f8 square. Following this, Rf8 will be checkmate as the enemy king is trapped behind its own pawns."
+        "reasoning": "I am down significant material (-6), so I must seek complications. I examined Qxf7+ but it did not lead to a forced mate. Qb8 and Rc1 were blunders. Qg5 is a safe move that puts pressure on g7 and maintains my queen's activity without hanging it. It also prepares to pin g7 if the king moves. I'll watch for ...Qxd4+ checks. \u00b7 goal: Prevent immediate material loss and maintain central control. \u00b7 plan: Counterplay: Look for tactics against the back rank or pinned pawns. Avoid trading pieces unless it wins material or mates."
       }
     ]
   },
   "NhNp6": {
-    "status": "failed",
+    "status": "solved",
     "topic": "sacrifice",
     "difficulty": "easy",
     "rating": 856,
-    "solved_plies": 0,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "agent played a6a7, expected e6h6",
-    "run_id": "run_1782498212",
-    "ts": "2026-06-26T20:25:30",
+    "aborted_reason": null,
+    "run_id": "run_1782498588",
+    "ts": "2026-06-26T20:31:30",
     "category": {
       "legal_moves_count": 31,
       "in_check": false,
@@ -16023,20 +16023,31 @@
       "ends_in_mate": true,
       "signature": "rook captures"
     },
-    "tool_calls_total": 7,
-    "imagine_line_calls": 0,
-    "imagine_move_calls": 3,
+    "tool_calls_total": 10,
+    "imagine_line_calls": 1,
+    "imagine_move_calls": 2,
     "attempts": [
       {
         "ply": 0,
         "fen_before": "6rk/p5p1/Q3R2p/2p5/Pq1p4/3P1P1P/6P1/6K1 w - - 6 30",
         "expected_uci": "e6h6",
         "expected_san": "Rxh6+",
-        "played_uci": "a6a7",
-        "played_san": "Qxa7",
-        "correct": false,
-        "accepted_as": null,
-        "reasoning": "Calculated several options. Qc8 and Re8 both hang pieces for nothing (blunders). Rxa7 wins a pawn, increases white's material lead, and creates a skewer threat on the c5/d4 pawns. The opponent's checks (Qe1+, Qb1+) are manageable and don't lead to immediate material loss. \u00b7 goal: Capture the a7 pawn and pressure the c5/d4 pawns. \u00b7 plan: Simplify the position by winning material (a7 pawn) and using the queen to create threats against the backward c5 pawn and isolated d4 pawn, while maintaining rook control of the e-file."
+        "played_uci": "e6h6",
+        "played_san": "Rxh6+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Found a forced mating sequence: Rxh6+ forces gxh6, and then Qxh6# is mate. Verified with imagine_line. This is a classic rook sacrifice to open the h-file for the queen. \u00b7 goal: Deliver checkmate in 2 moves. \u00b7 plan: Execute forced mate: 1. Rxh6+ (force gxh6), 2. Qxh6# mate."
+      },
+      {
+        "ply": 1,
+        "fen_before": "6rk/p7/Q6p/2p5/Pq1p4/3P1P1P/6P1/6K1 w - - 0 31",
+        "expected_uci": "a6h6",
+        "expected_san": "Qxh6#",
+        "played_uci": "a6h6",
+        "played_san": "Qxh6#",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Overriding safety check because this is a forced checkmate. The line is: 1. Rxh6+ (forced reply 1... gxh6) 2. Qxh6#. This was verified with imagine_line. \u00b7 goal: Deliver checkmate in 2 moves. \u00b7 plan: Execute forced mate: 1. Rxh6+ (force gxh6), 2. Qxh6# mate."
       }
     ]
   },
