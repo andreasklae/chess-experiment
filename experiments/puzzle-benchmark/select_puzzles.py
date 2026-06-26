@@ -1,11 +1,22 @@
 """Select a fixed, reproducible puzzle set for the agent benchmark.
 
-Pulls puzzles from the local Lichess puzzle DB slice, binned per TOPIC by rating
-band so we test each tactical/positional/endgame theme across the full difficulty
-range. Mates are excluded — already covered by the prior mate-conversion sweep.
+Two modes:
+  (default)     OFFENSIVE — the agent PLAYS the motif (fork/pin/skewer/…).
+  --defensive   DEFENSIVE — the agent must PREVENT/ESCAPE the opponent's motif.
+                Each defensive topic = Lichess `defensiveMove` AND the motif
+                theme, so a "defend-fork" puzzle is one the community tagged both
+                "defensiveMove" (a precise move needed to avoid losing) and
+                "fork" (the threat being defended against).
 
-Output: puzzles.json  — a fixed list of puzzles (id, fen, moves, rating, themes,
-topic, band). The agent run reads this so the test is reproducible.
+Pulls puzzles from the local Lichess puzzle DB slice, binned per TOPIC by rating
+band so each theme is tested across the full difficulty range. The agent ALWAYS
+plays White, so only puzzles whose solver side (the side to move AFTER the
+opponent's setup move = moves[0]) is White are kept — black-to-move puzzles are
+dropped.
+
+Output: puzzles.json (offensive) or puzzles-defensive.json (--defensive) — a
+fixed list (id, fen, moves, rating, themes, topic, band). The agent run reads
+this so the test is reproducible.
 
 Lichess puzzle CSV columns: PuzzleId, FEN, Moves, Rating, RatingDeviation,
 Popularity, NbPlays, Themes, GameUrl, OpeningTags.
@@ -14,6 +25,7 @@ setup; then solver/opponent alternate.
 """
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 import random
@@ -32,13 +44,10 @@ def _difficulty(rating: int) -> str:
         return "hard"
     return "expert"
 
-CSV = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("/tmp/puz_xl.csv")
-OUT = Path(__file__).resolve().parent / "puzzles.json"
 
-# Topic -> the Lichess theme that defines it (the puzzle must carry this theme).
-# Grouped so the report rolls up to a wiki page.
-TOPICS = {
-    # --- tactics ---
+# --- OFFENSIVE topics: the puzzle must carry this single theme. -------------
+OFFENSIVE_TOPICS = {
+    # tactics
     "fork": "fork",
     "pin": "pin",
     "skewer": "skewer",
@@ -53,16 +62,31 @@ TOPICS = {
     "hanging-piece": "hangingPiece",
     "sacrifice": "sacrifice",
     "quiet-move": "quietMove",
-    # --- endgames / pawns ---
+    # endgames / pawns
     "pawn-endgame": "pawnEndgame",
     "advanced-pawn": "advancedPawn",
     "promotion": "promotion",
-    # --- king safety / defense ---
+    # king safety / defense
     "exposed-king": "exposedKing",
     "defensive-move": "defensiveMove",
 }
 
-# Rating bands: easy → very hard. ~4 per band per topic ≈ 16-20 per topic.
+# --- DEFENSIVE topics: the puzzle must carry `defensiveMove` AND the motif, so
+# the solver's task is to PREVENT/ESCAPE the opponent's tactic. Limited to the
+# high-value defenses (most material + most instructive); the rare ones
+# (interference/capturingDefender, etc.) are intentionally skipped. ----------
+DEFENSIVE_REQUIRED = "defensiveMove"
+DEFENSIVE_TOPICS = {
+    "defend-hanging": "hangingPiece",        # save your attacked/undefended piece
+    "defend-fork": "fork",                   # avoid or escape a fork
+    "defend-pin": "pin",                     # neutralise / break a pin
+    "defend-promotion": "promotion",         # stop a pawn from promoting
+    "defend-advanced-pawn": "advancedPawn",  # blockade / catch a runner
+    "defend-exposed-king": "exposedKing",    # defend your exposed king
+}
+
+
+# Rating bands: easy → very hard. 4 per band per topic.
 BANDS = [(0, 1000), (1000, 1400), (1400, 1800), (1800, 4000)]
 PER_BAND = 4
 # Keep puzzles short-to-medium so a failure is interpretable (not a 12-move slog),
@@ -71,19 +95,43 @@ MAX_PLIES = 12
 MIN_POPULARITY = 80   # well-vetted puzzles only (popularity is the upvote score)
 
 
-def main():
-    random.seed(42)  # reproducible selection
-    # bucket rows per (topic, band); reservoir-ish: collect candidates then sample
-    buckets: dict[tuple[str, int], list[dict]] = {}
-    wanted_themes = set(TOPICS.values())
+def _matches(topic_theme: str, themes: set[str], defensive: bool) -> bool:
+    """Does this puzzle belong to a topic defined by `topic_theme`?
+    Offensive: carries the motif. Defensive: carries defensiveMove AND the motif."""
+    if defensive:
+        return DEFENSIVE_REQUIRED in themes and topic_theme in themes
+    return topic_theme in themes
 
-    with CSV.open() as f:
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("csv", nargs="?", default="/tmp/puz_xl.csv",
+                    help="Lichess puzzle DB CSV (decompressed slice).")
+    ap.add_argument("--defensive", action="store_true",
+                    help="Select DEFENSIVE puzzles (defensiveMove + motif) into "
+                         "puzzles-defensive.json instead of the offensive set.")
+    args = ap.parse_args()
+
+    csv_path = Path(args.csv)
+    topics = DEFENSIVE_TOPICS if args.defensive else OFFENSIVE_TOPICS
+    out = Path(__file__).resolve().parent / (
+        "puzzles-defensive.json" if args.defensive else "puzzles.json")
+    title_suffix = "(defend)" if args.defensive else ""
+
+    random.seed(42)  # reproducible selection
+    buckets: dict[tuple[str, int], list[dict]] = {}
+    wanted_themes = set(topics.values())
+
+    with csv_path.open() as f:
         r = csv.DictReader(f)
         for row in r:
             if not row.get("Themes") or not row.get("Moves") or not row.get("FEN"):
                 continue  # truncated/malformed row (partial decompress tail)
-            themes = row["Themes"].split()
-            if not (wanted_themes & set(themes)):
+            themes = set(row["Themes"].split())
+            # In defensive mode every candidate must carry defensiveMove.
+            if args.defensive and DEFENSIVE_REQUIRED not in themes:
+                continue
+            if not (wanted_themes & themes):
                 continue
             try:
                 rating = int(row["Rating"])
@@ -93,9 +141,8 @@ def main():
                 continue
             if pop < MIN_POPULARITY or plies > MAX_PLIES or plies < 2:
                 continue
-            # The agent ALWAYS plays White, so the puzzle's solver side (the side
-            # to move AFTER the opponent's setup move = moves[0]) must be White.
-            # Drop black-to-move puzzles — the agent can't solve them.
+            # The agent ALWAYS plays White: the solver side (to move AFTER the
+            # opponent's setup move = moves[0]) must be White. Drop the rest.
             try:
                 b = chess.Board(row["FEN"])
                 b.push(chess.Move.from_uci(row["Moves"].split()[0]))
@@ -106,14 +153,14 @@ def main():
             band = next((i for i, (lo, hi) in enumerate(BANDS) if lo <= rating < hi), None)
             if band is None:
                 continue
-            for topic, theme in TOPICS.items():
-                if theme in themes:
+            for topic, theme in topics.items():
+                if _matches(theme, themes, args.defensive):
                     buckets.setdefault((topic, band), []).append(row)
 
     selected = []
     seen_ids = set()
     summary: dict[str, list[int]] = {}
-    for topic in TOPICS:
+    for topic in topics:
         per_band_counts = []
         for band in range(len(BANDS)):
             cands = buckets.get((topic, band), [])
@@ -124,19 +171,19 @@ def main():
                     continue
                 seen_ids.add(row["PuzzleId"])
                 rating = int(row["Rating"])
+                label = topic.replace("-", " ").title()
                 selected.append({
                     "id": row["PuzzleId"],
                     "fen": row["FEN"],
                     "moves": row["Moves"].split(),
                     "rating": rating,
                     "difficulty": _difficulty(rating),
-                    # Human-readable label (Lichess puzzles have no titles): the
-                    # motif + difficulty, e.g. "Fork · easy (620)".
-                    "title": f"{topic.replace('-', ' ').title()} · {_difficulty(rating)} ({rating})",
+                    "title": f"{label} · {_difficulty(rating)} ({rating}) {title_suffix}".strip(),
                     "popularity": int(row["Popularity"]),
                     "themes": row["Themes"].split(),
                     "topic": topic,
                     "band": f"{BANDS[band][0]}-{BANDS[band][1]}",
+                    "kind": "defensive" if args.defensive else "offensive",
                     "lichess_url": f"https://lichess.org/training/{row['PuzzleId']}",
                 })
                 picked += 1
@@ -145,11 +192,15 @@ def main():
             per_band_counts.append(picked)
         summary[topic] = per_band_counts
 
-    OUT.write_text(json.dumps(selected, indent=2))
-    print(f"Selected {len(selected)} puzzles across {len(TOPICS)} topics -> {OUT}\n")
+    out.write_text(json.dumps(selected, indent=2))
+    mode = "DEFENSIVE" if args.defensive else "OFFENSIVE"
+    print(f"[{mode}] Selected {len(selected)} puzzles across {len(topics)} topics -> {out}\n")
     print(f"{'topic':22} " + " ".join(f"{lo}-{hi}".rjust(9) for lo, hi in BANDS) + "   total")
     for topic, counts in summary.items():
         print(f"{topic:22} " + " ".join(str(c).rjust(9) for c in counts) + f"   {sum(counts)}")
+    short = [t for t, c in summary.items() if any(x < PER_BAND for x in c)]
+    if short:
+        print(f"\nNote: under-filled (< {PER_BAND}/band): {short}")
 
 
 if __name__ == "__main__":

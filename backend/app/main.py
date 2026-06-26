@@ -59,10 +59,22 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
     fastapi_app.state.batch_runner = BatchRunner(batch_service, fastapi_app.state.game_service)
     fastapi_app.state.puzzle_run = None  # the current/last PuzzleRun, if any
     fastapi_app.state.puzzle_task = None
+    # Two puzzle SETS, each with its own puzzle JSON + its own progress file so
+    # offensive and defensive progress never collide. 'offensive' is the default.
     from app.puzzle_progress import PuzzleProgress
-    _progress_path = (Path(__file__).resolve().parents[2]
-                      / "experiments" / "puzzle-benchmark" / "results" / "progress.json")
-    fastapi_app.state.puzzle_progress = PuzzleProgress(_progress_path)
+    _pb = Path(__file__).resolve().parents[2] / "experiments" / "puzzle-benchmark"
+    fastapi_app.state.puzzle_sets = {
+        "offensive": {
+            "puzzles": _pb / "puzzles.json",
+            "progress": PuzzleProgress(_pb / "results" / "progress.json"),
+        },
+        "defensive": {
+            "puzzles": _pb / "puzzles-defensive.json",
+            "progress": PuzzleProgress(_pb / "results" / "progress-defensive.json"),
+        },
+    }
+    # Back-compat alias used by older call sites (the offensive progress store).
+    fastapi_app.state.puzzle_progress = fastapi_app.state.puzzle_sets["offensive"]["progress"]
     logger.info("startup · ready")
     try:
         yield
@@ -391,6 +403,7 @@ _PUZZLE_SET_PATH = (
 
 class PuzzleRunRequest(_BaseModel):
     mode: str = "all"                 # all | unsolved | untested | failed
+    set: str = "offensive"            # which puzzle set: offensive | defensive
     topics: list[str] | None = None   # filter to these topics (None = all)
     difficulties: list[str] | None = None  # filter by difficulty (easy/medium/hard/expert)
     per_topic: int | None = None      # cap N puzzles PER TOPIC (None = no cap)
@@ -398,21 +411,31 @@ class PuzzleRunRequest(_BaseModel):
     ids: list[str] | None = None      # run only these puzzle ids (overrides filters)
 
 
-def _load_specs():
+def _resolve_set(name: str):
+    """Return (puzzles_path, progress_store) for a named puzzle set, or 400."""
+    sets = app.state.puzzle_sets
+    if name not in sets:
+        raise HTTPException(status_code=400,
+                            detail=f"Unknown puzzle set '{name}'. Known: {sorted(sets)}.")
+    return sets[name]["puzzles"], sets[name]["progress"]
+
+
+def _load_specs(puzzles_path=None):
     from app.puzzle_service import load_puzzle_set
-    return load_puzzle_set(_PUZZLE_SET_PATH)
+    return load_puzzle_set(puzzles_path or _PUZZLE_SET_PATH)
 
 
 @app.get("/api/puzzles")
-def list_puzzles() -> dict:
+def list_puzzles(set: str = "offensive") -> dict:
     """The fixed puzzle set: counts per topic/band so the UI can show the menu."""
-    specs = _load_specs()
+    puzzles_path, _ = _resolve_set(set)
+    specs = _load_specs(puzzles_path)
     topics: dict[str, int] = {}
     for s in specs:
         topics[s.topic] = topics.get(s.topic, 0) + 1
     import json as _json
-    raw = {p["id"]: p for p in _json.loads(_PUZZLE_SET_PATH.read_text())}
-    return {"total": len(specs), "topics": topics,
+    raw = {p["id"]: p for p in _json.loads(puzzles_path.read_text())}
+    return {"total": len(specs), "set": set, "topics": topics,
             "puzzles": [{"id": s.id, "topic": s.topic, "rating": s.rating,
                          "band": s.band, "themes": s.themes,
                          "title": raw.get(s.id, {}).get("title", s.topic),
@@ -430,8 +453,8 @@ async def start_puzzle_run(request: PuzzleRunRequest) -> dict:
     if existing is not None and not existing.done():
         raise HTTPException(status_code=409, detail="A puzzle run is already in progress.")
 
-    specs = _load_specs()
-    progress = app.state.puzzle_progress
+    puzzles_path, progress = _resolve_set(request.set)
+    specs = _load_specs(puzzles_path)
     if request.ids:
         idset = set(request.ids)
         specs = [s for s in specs if s.id in idset]
@@ -464,10 +487,12 @@ async def start_puzzle_run(request: PuzzleRunRequest) -> dict:
 
     out_path = _PUZZLE_SET_PATH.parent / "results" / f"run_{int(time.time())}.jsonl"
     run = PuzzleRun(specs, out_path, progress=progress, mode=request.mode)
+    run.set_name = request.set  # which set this run belongs to (for the status view)
     app.state.puzzle_run = run
     service = app.state.game_service
     app.state.puzzle_task = _asyncio.create_task(run_puzzles(service, run))
-    return {"started": True, "n": len(specs), "mode": request.mode, "out_path": str(out_path)}
+    return {"started": True, "n": len(specs), "set": request.set,
+            "mode": request.mode, "out_path": str(out_path)}
 
 
 @app.post("/api/puzzles/run/abort")
@@ -488,15 +513,16 @@ async def abort_puzzle_run() -> dict:
 
 
 @app.get("/api/puzzles/progress")
-def puzzle_progress() -> dict:
+def puzzle_progress(set: str = "offensive") -> dict:
     """Persistent per-topic / per-difficulty solved-failed-untested overview."""
-    specs = _load_specs()
-    return app.state.puzzle_progress.overview(specs)
+    puzzles_path, progress = _resolve_set(set)
+    return progress.overview(_load_specs(puzzles_path))
 
 
 @app.get("/api/puzzles/progress/{puzzle_id}")
-def puzzle_progress_detail(puzzle_id: str) -> dict:
-    rec = app.state.puzzle_progress.get(puzzle_id)
+def puzzle_progress_detail(puzzle_id: str, set: str = "offensive") -> dict:
+    _, progress = _resolve_set(set)
+    rec = progress.get(puzzle_id)
     if rec is None:
         return {"status": "untested"}
     return rec
@@ -509,6 +535,7 @@ def puzzle_run_status() -> dict:
         return {"running": False, "results": []}
     solved = sum(1 for r in run.results if r.get("solved"))
     return {"running": run.running, "idx": run.idx, "n": len(run.specs),
+            "set": getattr(run, "set_name", "offensive"),
             "completed": len(run.results), "solved": solved,
             "results": run.results}
 

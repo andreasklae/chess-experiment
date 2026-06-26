@@ -233,11 +233,13 @@ export interface PuzzleResult {
   aborted_reason: string | null; attempts: PuzzleAttempt[];
 }
 
-export function listPuzzles(): Promise<{ total: number; topics: Record<string, number>; puzzles: PuzzleInfo[] }> {
-  return fetch(`${API_BASE}/api/puzzles`).then((r) => r.json());
+export type PuzzleSet = 'offensive' | 'defensive';
+
+export function listPuzzles(set: PuzzleSet = 'offensive'): Promise<{ total: number; set: string; topics: Record<string, number>; puzzles: PuzzleInfo[] }> {
+  return fetch(`${API_BASE}/api/puzzles?set=${set}`).then((r) => r.json());
 }
 
-export function startPuzzleRun(body: { mode?: PuzzleRunMode; topics?: string[]; difficulties?: string[]; per_topic?: number; limit?: number; ids?: string[] }): Promise<{ started: boolean; n: number; out_path: string }> {
+export function startPuzzleRun(body: { mode?: PuzzleRunMode; set?: PuzzleSet; topics?: string[]; difficulties?: string[]; per_topic?: number; limit?: number; ids?: string[] }): Promise<{ started: boolean; n: number; set: string; out_path: string }> {
   return fetch(`${API_BASE}/api/puzzles/run`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   }).then(async (r) => { if (!r.ok) throw new Error((await r.json()).detail || 'failed'); return r.json(); });
@@ -262,8 +264,8 @@ export interface PuzzleProgressOverview {
              total_plies: number; ts: string | null }[];
 }
 
-export function puzzleProgress(): Promise<PuzzleProgressOverview> {
-  return fetch(`${API_BASE}/api/puzzles/progress`).then((r) => r.json());
+export function puzzleProgress(set: PuzzleSet = 'offensive'): Promise<PuzzleProgressOverview> {
+  return fetch(`${API_BASE}/api/puzzles/progress?set=${set}`).then((r) => r.json());
 }
 
 export function abortPuzzleRun(): Promise<{ aborting: boolean; completed: number }> {

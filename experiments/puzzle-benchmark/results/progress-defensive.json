@@ -1,0 +1,48 @@
+{
+  "nBRqI": {
+    "status": "solved",
+    "topic": "defend-fork",
+    "difficulty": "easy",
+    "rating": 916,
+    "solved_plies": 3,
+    "total_plies": 3,
+    "aborted_reason": null,
+    "run_id": "run_1782466475",
+    "ts": "2026-06-26T11:35:13",
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "8/R1R2pkp/4p1p1/3p4/P7/1P2Pq2/8/4K3 w - - 2 34",
+        "expected_uci": "c7f7",
+        "expected_san": "Rxf7+",
+        "played_uci": "c7f7",
+        "played_san": "Rxf7+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Calculated a forcing sequence: Rxf7+ forces the black king or queen to respond. If Qxf7, then Rxf7+ wins the queen for a rook. If Kxf7, then the queen on f3 is left undefended and can be captured next turn (though that's a two-step process, the intermediate check on f7 is the key). The net result of the forcing line Rxf7+ followed by the recapture of the queen is a decisive material advantage for white, turning a losing position into a winning one. I rejected quiet moves like a5 or b4 because the tactical opportunity to win the queen is immediate and overwhelming. \u00b7 goal: Execute the queen-win sequence starting with Rxf7+. \u00b7 plan: Win the enemy queen via the Rxf7+ forcing sequence, then use the material advantage to simplify and push passed pawns a4/b3 to promotion."
+      },
+      {
+        "ply": 1,
+        "fen_before": "8/R4qkp/4p1p1/3p4/P7/1P2P3/8/4K3 w - - 0 35",
+        "expected_uci": "a7f7",
+        "expected_san": "Rxf7+",
+        "played_uci": "a7f7",
+        "played_san": "Rxf7+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan: execute the queen-win sequence. By playing Rxf7+, I force the trade of my rook for the opponent's queen. Although the rook is recaptured immediately (Kxf7), I eliminate the most powerful piece on the board, transitioning from a decisive material disadvantage (-5.70) to a position where I have a fighting chance with passed pawns on a4 and b3, effectively simplifying the endgame."
+      },
+      {
+        "ply": 2,
+        "fen_before": "8/5k1p/4p1p1/3p4/P7/1P2P3/8/4K3 w - - 0 36",
+        "expected_uci": "a4a5",
+        "expected_san": "a5",
+        "played_uci": "a4a5",
+        "played_san": "a5",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan: execute the queen-win sequence. I am intentionally trading my rook (5 points) for the opponent's queen (9 points). The forced sequence is 35. Rxf7+ Kxf7. This is a favorable material exchange (+4 points net for white), removing the opponent's strongest piece and shifting the material balance in my favor. This is not a blunder, but a calculated simplification to win the endgame with my passed pawns."
+      }
+    ]
+  }
+}

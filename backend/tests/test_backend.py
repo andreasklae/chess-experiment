@@ -289,3 +289,20 @@ def test_create_game_rejects_finished_fen(tmp_path) -> None:
             "initial_fen": mated,
         })
         assert resp.status_code == 422
+
+
+def test_puzzle_sets_offensive_and_defensive(tmp_path) -> None:
+    # Both named puzzle sets list independently with their own counts; an unknown
+    # set is rejected. (Runs the lifespan so app.state.puzzle_sets is populated.)
+    with client(tmp_path) as test_client:
+        off = test_client.get("/api/puzzles?set=offensive")
+        assert off.status_code == 200 and off.json()["set"] == "offensive"
+        deff = test_client.get("/api/puzzles?set=defensive")
+        assert deff.status_code == 200 and deff.json()["set"] == "defensive"
+        # defensive topics are the defend-* family
+        assert all(t.startswith("defend-") for t in deff.json()["topics"])
+        # progress for each set is independent and totals match the set size
+        dp = test_client.get("/api/puzzles/progress?set=defensive").json()
+        assert dp["totals"]["total"] == deff.json()["total"]
+        # unknown set → 400
+        assert test_client.get("/api/puzzles?set=bogus").status_code == 400

@@ -1353,6 +1353,15 @@ dd {
 .puzzle-attempt-meta { color: #8a978c; }
 .puzzle-attempt-fail { color: #b1493f; margin-left: auto; }
 
+/* ── Puzzle benchmark: attack/defend set toggle ── */
+.puzzle-set-toggle { display: inline-flex; gap: 0; margin: 0 0 12px; border-radius: 999px; overflow: hidden; border: 1px solid var(--border, #3a3a3a); }
+.puzzle-set-chip {
+  padding: 7px 18px; background: transparent; color: inherit; cursor: pointer;
+  border: none; font-size: 0.9rem; font-weight: 600;
+}
+.puzzle-set-chip.is-active { background: #2b6cb0; color: #fff; }
+.puzzle-set-chip:disabled { opacity: 0.5; cursor: default; }
+
 /* ── Puzzle benchmark: run modes + persistent progress overview ── */
 .puzzle-modes { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
 .puzzle-mode-chip {

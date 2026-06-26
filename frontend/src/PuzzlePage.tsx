@@ -5,7 +5,7 @@ import { AgentPanel } from './AgentPanel';
 import {
   listPuzzles, startPuzzleRun, abortPuzzleRun, puzzleRunStatus, puzzleRunEventsUrl,
   puzzleProgress, currentGame, gameEventsUrl,
-  type PuzzleResult, type PuzzleRunMode, type PuzzleProgressOverview,
+  type PuzzleResult, type PuzzleRunMode, type PuzzleProgressOverview, type PuzzleSet,
 } from './api';
 import type { GameState } from './types';
 
@@ -30,14 +30,20 @@ export function PuzzlePage() {
   const [game, setGame] = useState<GameState | null>(null);
   const [message, setMessage] = useState('');
   const [mode, setMode] = useState<PuzzleRunMode>('unsolved');
+  const [puzzleSet, setPuzzleSet] = useState<PuzzleSet>('offensive');
   const [prog, setProg] = useState<PuzzleProgressOverview | null>(null);
 
   const refreshProgress = () =>
-    puzzleProgress().then(setProg).catch(() => {});
+    puzzleProgress(puzzleSet).then(setProg).catch(() => {});
+
+  // Reload the topic menu + progress whenever the selected set changes.
+  useEffect(() => {
+    setSelected(new Set()); setResults([]);
+    listPuzzles(puzzleSet).then((d) => { setTopics(d.topics); setTotal(d.total); }).catch((e) => setMessage(String(e)));
+    puzzleProgress(puzzleSet).then(setProg).catch(() => {});
+  }, [puzzleSet]);
 
   useEffect(() => {
-    listPuzzles().then((d) => { setTopics(d.topics); setTotal(d.total); }).catch((e) => setMessage(String(e)));
-    refreshProgress();
     puzzleRunStatus().then((s) => {
       setRunning(s.running); setResults(s.results);
       if (s.n) setProgress({ i: s.idx, n: s.n });
@@ -133,13 +139,13 @@ export function PuzzlePage() {
 
   const start = async () => {
     try {
-      const body: { mode: PuzzleRunMode; topics?: string[]; difficulties?: string[]; per_topic?: number } = { mode };
+      const body: { mode: PuzzleRunMode; set: PuzzleSet; topics?: string[]; difficulties?: string[]; per_topic?: number } = { mode, set: puzzleSet };
       if (selected.size) body.topics = [...selected];
       if (difficulties.size && difficulties.size < ALL_DIFFS.length) body.difficulties = [...difficulties];
       if (perTopic) body.per_topic = perTopic;
       const r = await startPuzzleRun(body);
       setResults([]); setRunning(true); setProgress({ i: 0, n: r.n });
-      setMessage(`Started ${r.n} puzzles (${mode})`);
+      setMessage(`Started ${r.n} ${puzzleSet} puzzles (${mode})`);
     } catch (e) { setMessage(String(e)); }
   };
 
@@ -172,6 +178,18 @@ export function PuzzlePage() {
 
       {/* ── launcher ── */}
       <section className="puzzle-launcher">
+        <div className="puzzle-set-toggle" role="group" aria-label="Puzzle set">
+          {(['offensive', 'defensive'] as PuzzleSet[]).map((s) => (
+            <button key={s} type="button"
+              className={`puzzle-set-chip${puzzleSet === s ? ' is-active' : ''}`}
+              onClick={() => setPuzzleSet(s)} disabled={running}
+              title={s === 'offensive'
+                ? 'Play the tactic (fork, pin, mate…)'
+                : 'Prevent the opponent’s tactic (defend a fork, stop promotion…)'}>
+              {s === 'offensive' ? 'Attack' : 'Defend'}
+            </button>
+          ))}
+        </div>
         <div className="puzzle-topics">
           {Object.entries(topics).sort().map(([t, n]) => (
             <button key={t} type="button"
