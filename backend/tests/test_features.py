@@ -616,3 +616,15 @@ def test_piece_fork_no_false_positive_in_quiet_positions():
     assert detect_piece_forks(chess.Board()) == []
     assert detect_piece_forks(
         chess.Board("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4")) == []
+
+
+def test_royal_fork_counts_defended_piece(im=None):
+    # EGtLS: Qe8+ forks the king on g8 AND the bishop on e5 — but the bishop is
+    # DEFENDED. A royal fork (a check) wins the other piece anyway (the king must
+    # move), so it must be flagged. Regression for the 'winning target' filter
+    # wrongly excluding defended pieces when the move is a check.
+    from _features import detect_piece_forks
+    b = chess.Board("6k1/2p2p2/2Q3p1/p1N1b1q1/7p/1P5P/3r2P1/5R1K w - - 1 29")
+    forks = [f for f in detect_piece_forks(b) if f.side and "Qe8" in (f.text + str(f.moves))]
+    assert forks, "royal queen-fork Qe8+ (king + defended bishop) must be flagged"
+    assert "king on g8" in forks[0].text and "bishop on e5" in forks[0].text

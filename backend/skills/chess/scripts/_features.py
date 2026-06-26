@@ -583,17 +583,27 @@ def detect_piece_forks(board: chess.Board, perspective: bool | None = None) -> l
                 if static_exchange_eval(after, land, enemy) >= 150:
                     continue
                 # what valuable enemy pieces does it now attack?
-                hit = []
                 mover_val = PIECE_VALUE[pt]
+                attacked = []  # (sq, piece_type) of all attacked non-pawn enemy pieces
                 for tsq in after.attacks(land):
                     ep = after.piece_at(tsq)
                     if not ep or ep.color != enemy or ep.piece_type == chess.PAWN:
                         continue
-                    winning = (ep.piece_type == chess.KING
-                               or PIECE_VALUE[ep.piece_type] > mover_val
-                               or not after.attackers(enemy, tsq))
-                    if winning:
-                        hit.append((tsq, ep.piece_type))
+                    attacked.append((tsq, ep.piece_type))
+                # ROYAL fork: if the KING is one of the targets, the move is a
+                # CHECK — the opponent must answer it, so any OTHER attacked piece
+                # falls even if defended (they can't both move the king and save
+                # it). Otherwise a target only counts when it is genuinely
+                # winnable (worth more than the mover, or undefended).
+                king_hit = any(pt2 == chess.KING for _, pt2 in attacked)
+                hit = []
+                for tsq, pt2 in attacked:
+                    if pt2 == chess.KING:
+                        hit.append((tsq, pt2))
+                    elif king_hit:
+                        hit.append((tsq, pt2))   # royal fork — defended or not
+                    elif PIECE_VALUE[pt2] > mover_val or not after.attackers(enemy, tsq):
+                        hit.append((tsq, pt2))
                 if len(hit) < 2:
                     continue
                 seen.add((from_sq, land))
