@@ -82,6 +82,19 @@ def _color_word(c: bool) -> str:
 
 # ---- shared geometry helpers (pure mechanics) ----
 
+def _move_san(board: chess.Board, from_sq: int, to_sq: int) -> list[str]:
+    """[SAN] of the from→to move if it is legal for the side to move, else [].
+    Used to attach the concrete move to a 'could move to X' finding so the agent
+    gets the move, not just the square."""
+    mv = chess.Move(from_sq, to_sq)
+    if mv in board.legal_moves:
+        try:
+            return [board.san(mv)]
+        except Exception:
+            return []
+    return []
+
+
 def _legal_sans_for_piece(board: chess.Board, from_sq: int) -> list[str]:
     """SAN of every legal move by the piece on `from_sq` (for the side to move)."""
     out = []
@@ -1076,7 +1089,8 @@ def detect_skewers(board: chess.Board, perspective: bool | None = None) -> list[
                                 f"your {PIECE_NAME[pt]} could move to {_sq(land)} to SKEWER enemy "
                                 f"{PIECE_NAME[fp.piece_type]} on {_sq(front)} → {PIECE_NAME[rp.piece_type]} "
                                 f"on {_sq(rear)} behind it (front piece forced to move, you win the one "
-                                f"behind) — calculate it", wiki="pins"))
+                                f"behind) — calculate it",
+                                moves=_move_san(board, from_sq, land), wiki="pins"))
                         else:
                             findings.append(Finding(False, "potential",
                                 f"opponent could move their {PIECE_NAME[pt]} to {_sq(land)} to SKEWER your "

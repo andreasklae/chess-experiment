@@ -96,9 +96,11 @@ DEFENSIVE_TOPICS = {
 }
 
 
-# Rating bands: easy → very hard. 4 per band per topic.
+# Rating bands: easy → very hard. 8 per band per topic (608 total over 19 topics).
+# Raised from 4 → 8 on 2026-06-27 for more per-band depth and motif-variant
+# diversity (with the same seed the original first-4 stay, so progress survives).
 BANDS = [(0, 1000), (1000, 1400), (1400, 1800), (1800, 4000)]
-PER_BAND = 4
+PER_BAND = 8
 # Keep puzzles short-to-medium so a failure is interpretable (not a 12-move slog),
 # but include some longer ones. Solution length = number of plies in Moves.
 MAX_PLIES = 12
@@ -120,7 +122,13 @@ def main():
     ap.add_argument("--defensive", action="store_true",
                     help="Select DEFENSIVE puzzles (defensiveMove + motif) into "
                          "puzzles-defensive.json instead of the offensive set.")
+    ap.add_argument("--per-band", type=int, default=PER_BAND,
+                    help=f"Puzzles per (topic, rating band). Default {PER_BAND}. "
+                         "Raising it APPENDS to the existing set (same random seed "
+                         "keeps the first N per bucket stable, so progress on the "
+                         "existing puzzles is preserved).")
     args = ap.parse_args()
+    per_band = args.per_band
 
     csv_path = Path(args.csv)
     topics = DEFENSIVE_TOPICS if args.defensive else OFFENSIVE_TOPICS
@@ -202,7 +210,7 @@ def main():
                     "lichess_url": f"https://lichess.org/training/{row['PuzzleId']}",
                 })
                 picked += 1
-                if picked >= PER_BAND:
+                if picked >= per_band:
                     break
             per_band_counts.append(picked)
         summary[topic] = per_band_counts
@@ -213,9 +221,9 @@ def main():
     print(f"{'topic':22} " + " ".join(f"{lo}-{hi}".rjust(9) for lo, hi in BANDS) + "   total")
     for topic, counts in summary.items():
         print(f"{topic:22} " + " ".join(str(c).rjust(9) for c in counts) + f"   {sum(counts)}")
-    short = [t for t, c in summary.items() if any(x < PER_BAND for x in c)]
+    short = [t for t, c in summary.items() if any(x < per_band for x in c)]
     if short:
-        print(f"\nNote: under-filled (< {PER_BAND}/band): {short}")
+        print(f"\nNote: under-filled (< {per_band}/band): {short}")
 
 
 if __name__ == "__main__":
