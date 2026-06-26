@@ -7,8 +7,35 @@
     "solved_plies": 2,
     "total_plies": 2,
     "aborted_reason": null,
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:06:48",
+    "run_id": "run_1782476203",
+    "ts": "2026-06-26T14:17:05",
+    "category": {
+      "legal_moves_count": 13,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 3,
+      "solver_moves": 2,
+      "material_before": -3,
+      "mover_piece": "knight",
+      "first_move_is_capture": false,
+      "first_move_is_check": true,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Nd7+",
+      "targets": [
+        "bishop",
+        "king"
+      ],
+      "n_targets": 2,
+      "targets_king": true,
+      "captured_value": 0,
+      "material_after_line": 0,
+      "ends_in_mate": false,
+      "signature": "knight double-attack \u2192 bishop,king"
+    },
+    "tool_calls_total": 8,
+    "imagine_line_calls": 1,
+    "imagine_move_calls": 2,
     "attempts": [
       {
         "ply": 0,
@@ -19,7 +46,7 @@
         "played_san": "Nd7+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "The knight on f6 was under attack by the bishop on e5. Nd7+ is a forcing move that gives check and simultaneously forks the king and the undefended bishop. Calculation (Nd7+, Kg8, Nxe5) confirms that the bishop is lost for Black, bringing the material balance from a decisive deficit to roughly equal. This is the most active and winning tactical sequence available. \u00b7 goal: Capture the bishop on e5 to restore material balance. \u00b7 plan: Winning material: Use the fork Nd7+ to capture the undefended bishop on e5, simplifying the position and eliminating Black's main active piece. Once material is balanced, I will focus on blockading the passed pawns on a6 and e6 with the knight and king."
+        "reasoning": "My knight on f6 was under attack by the bishop on e5. By playing Nd7+, I move the knight to safety, give check, and simultaneously fork the king and the undefended bishop. Since the king must move, I will be able to capture the bishop on the next turn, bringing the material balance back to roughly equal. \u00b7 goal: capture the undefended bishop on e5 \u00b7 plan: Eliminate the opponent's most active piece (the bishop) via the Nd7+ fork to equalize material, then neutralize the passed pawns on a6 and e6 using the knight and king."
       },
       {
         "ply": 1,
@@ -30,7 +57,7 @@
         "played_san": "Nxe5",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "Per my plan and goal, I am capturing the undefended bishop on e5. This restores material balance and removes Black's most active piece. The knight is now safe from the king's attack and centralized. \u00b7 goal: Blockade the passed pawns on a6 and e6."
+        "reasoning": "Per my plan and current goal, I am capturing the undefended bishop on e5. This eliminates the opponent's most active piece, removes the threat to my h2 pawn, and brings the material balance back to roughly equal. The knight on e5 is safe and well-centralized."
       }
     ]
   },

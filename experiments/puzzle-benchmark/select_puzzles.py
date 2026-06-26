@@ -37,6 +37,11 @@ import random
 import sys
 from pathlib import Path
 
+# Reuse the structural categorizer from the backend so the puzzle set carries the
+# same per-puzzle features the run results echo.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "backend"))
+from app.puzzle_categorize import categorize as _categorize  # noqa: E402
+
 import chess
 
 
@@ -177,10 +182,11 @@ def main():
                 seen_ids.add(row["PuzzleId"])
                 rating = int(row["Rating"])
                 label = topic.replace("-", " ").title()
+                _moves = row["Moves"].split()
                 selected.append({
                     "id": row["PuzzleId"],
                     "fen": row["FEN"],
-                    "moves": row["Moves"].split(),
+                    "moves": _moves,
                     "rating": rating,
                     "difficulty": _difficulty(rating),
                     "title": f"{label} · {_difficulty(rating)} ({rating}) {title_suffix}".strip(),
@@ -189,6 +195,10 @@ def main():
                     "topic": topic,
                     "band": f"{BANDS[band][0]}-{BANDS[band][1]}",
                     "kind": "defensive" if args.defensive else "offensive",
+                    # structural categorization (mover piece, targets, branching,
+                    # check/quiet, mate, material) so a run can be sliced by motif
+                    # variant to spot weaknesses. See app/puzzle_categorize.py.
+                    "category": _categorize(row["FEN"], _moves),
                     "lichess_url": f"https://lichess.org/training/{row['PuzzleId']}",
                 })
                 picked += 1

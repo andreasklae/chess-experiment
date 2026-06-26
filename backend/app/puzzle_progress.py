@@ -52,6 +52,11 @@ class PuzzleProgress:
                 "aborted_reason": result.get("aborted_reason"),
                 "run_id": run_id,
                 "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                # structural category + tool-use, for sliced weakness analysis.
+                "category": result.get("category", {}),
+                "tool_calls_total": result.get("tool_calls_total", 0),
+                "imagine_line_calls": result.get("imagine_line_calls", 0),
+                "imagine_move_calls": result.get("imagine_move_calls", 0),
                 "attempts": result.get("attempts", []),
             }
             self._save()
@@ -84,26 +89,65 @@ class PuzzleProgress:
         return out
 
     def overview(self, specs) -> dict:
-        """Per-topic + per-difficulty solved/failed/untested counts over the set.
-        `specs` is the list of PuzzleSpec (the source of truth for membership)."""
+        """Per-topic + per-difficulty + per-category solved/failed/untested counts
+        over the set. `specs` is the list of PuzzleSpec (the source of truth for
+        membership). The by_category breakdowns (mover piece, first-move kind,
+        branching bucket) make it easy to spot WHICH variant the agent is weak on
+        — e.g. solves knight forks but not bishop forks."""
+        try:
+            from app.puzzle_categorize import categorize
+        except Exception:
+            categorize = None
+
+        def _blank():
+            return {"solved": 0, "failed": 0, "untested": 0, "total": 0}
+
         topics: dict[str, dict] = {}
         difficulty: dict[str, dict] = {}
-        totals = {"solved": 0, "failed": 0, "untested": 0, "total": 0}
+        by_mover: dict[str, dict] = {}        # mover piece (knight/bishop/…)
+        by_move_kind: dict[str, dict] = {}    # check / capture / quiet / promotion
+        by_branching: dict[str, dict] = {}    # legal-move-count bucket
+        totals = _blank()
         per_puzzle = []
         for s in specs:
             st = self.status_of(s.id)
             rec = self.get(s.id)
-            t = topics.setdefault(s.topic, {"solved": 0, "failed": 0, "untested": 0, "total": 0})
-            d = difficulty.setdefault(s.difficulty or "?", {"solved": 0, "failed": 0, "untested": 0, "total": 0})
+            t = topics.setdefault(s.topic, _blank())
+            d = difficulty.setdefault(s.difficulty or "?", _blank())
             t[st] += 1; t["total"] += 1
             d[st] += 1; d["total"] += 1
             totals[st] += 1; totals["total"] += 1
+            # category: prefer the recorded one, else compute from the spec.
+            cat = (rec or {}).get("category") or {}
+            if not cat and categorize is not None:
+                try:
+                    cat = categorize(s.fen, s.moves)
+                except Exception:
+                    cat = {}
+            mover = cat.get("mover_piece")
+            if mover:
+                m = by_mover.setdefault(mover, _blank()); m[st] += 1; m["total"] += 1
+            if cat:
+                kind = ("promotion" if cat.get("first_move_is_promotion")
+                        else "check" if cat.get("first_move_is_check")
+                        else "capture" if cat.get("first_move_is_capture")
+                        else "quiet")
+                k = by_move_kind.setdefault(kind, _blank()); k[st] += 1; k["total"] += 1
+                lm = cat.get("legal_moves_count")
+                if isinstance(lm, int):
+                    bucket = "low(≤10)" if lm <= 10 else "mid(11-25)" if lm <= 25 else "high(>25)"
+                    bb = by_branching.setdefault(bucket, _blank()); bb[st] += 1; bb["total"] += 1
             per_puzzle.append({
                 "id": s.id, "topic": s.topic, "difficulty": s.difficulty,
                 "rating": s.rating, "title": s.title, "status": st,
+                "mover_piece": cat.get("mover_piece"),
+                "signature": cat.get("signature"),
+                "legal_moves_count": cat.get("legal_moves_count"),
                 "solved_plies": (rec or {}).get("solved_plies"),
                 "total_plies": (rec or {}).get("total_plies", s.total_solver_plies),
+                "imagine_line_calls": (rec or {}).get("imagine_line_calls"),
                 "ts": (rec or {}).get("ts"),
             })
         return {"totals": totals, "by_topic": topics, "by_difficulty": difficulty,
-                "puzzles": per_puzzle}
+                "by_mover_piece": by_mover, "by_move_kind": by_move_kind,
+                "by_branching": by_branching, "puzzles": per_puzzle}

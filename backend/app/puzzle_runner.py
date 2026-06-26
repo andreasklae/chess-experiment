@@ -65,11 +65,17 @@ async def run_puzzles(service: GameService, run: PuzzleRun) -> None:
                 run._broadcast({"type": "run_aborted", "completed": len(run.results)})
                 break
             run.idx = i
+            try:
+                from app.puzzle_categorize import categorize
+                _cat = categorize(spec.fen, spec.moves)
+            except Exception:
+                _cat = {}
             run._broadcast({"type": "puzzle_begin", "i": i, "n": len(run.specs),
                             "id": spec.id, "topic": spec.topic, "rating": spec.rating,
                             "band": spec.band, "fen": spec.start_fen,
                             "title": spec.title, "difficulty": spec.difficulty,
                             "lichess_url": spec.lichess_url,
+                            "category": _cat, "signature": _cat.get("signature"),
                             "agent_color": "white" if spec.agent_color == chess.WHITE else "black"})
             try:
                 result = await _run_one(service, spec, run)
@@ -109,6 +115,9 @@ async def _run_one(service: GameService, spec: PuzzleSpec, run: PuzzleRun) -> di
     stop = asyncio.Event()
 
     ordered_notes: list[str] = []   # committed reasoning, in move order
+    tool_calls: dict[str, int] = {} # tool name -> call count (analysis: did the
+                                    # agent calculate? imagine_line/imagine_move/
+                                    # show_position/search_wiki/read_reference)
 
     async def pump_agent_events():
         q = await service.subscribe_agent_events(game.game_id)
@@ -134,14 +143,16 @@ async def _run_one(service: GameService, spec: PuzzleSpec, run: PuzzleRun) -> di
                         evt = json.loads(payload)
                     except Exception:
                         continue
-                # The reasoning is in the make_move TOOL_CALL args (the model
-                # passes move/goal/reasoning/plan IN); the tool_result only
-                # confirms the commit. Capture from the call.
-                if isinstance(evt, dict) and evt.get("type") == "tool_call" \
-                        and evt.get("tool") == "chess__make_move":
-                    note = _extract_reasoning(evt.get("args"))
-                    if note:
-                        ordered_notes.append(note)
+                if isinstance(evt, dict) and evt.get("type") == "tool_call":
+                    tool = evt.get("tool") or "?"
+                    tool_calls[tool] = tool_calls.get(tool, 0) + 1
+                    # The reasoning is in the make_move TOOL_CALL args (the model
+                    # passes move/goal/reasoning/plan IN); the tool_result only
+                    # confirms the commit. Capture from the call.
+                    if tool == "chess__make_move":
+                        note = _extract_reasoning(evt.get("args"))
+                        if note:
+                            ordered_notes.append(note)
         finally:
             service.unsubscribe_agent_events(game.game_id, q)
 
@@ -168,7 +179,8 @@ async def _run_one(service: GameService, spec: PuzzleSpec, run: PuzzleRun) -> di
 
     solved = bool(getattr(game, "puzzle_solved", False))
     _ = reasonings  # (live-stream buffer; authoritative notes come from the log)
-    return _result_dict(spec, game, attempts, solved, puzzle_player.solved_plies)
+    return _result_dict(spec, game, attempts, solved, puzzle_player.solved_plies,
+                        tool_calls=tool_calls)
 
 
 def _extract_reasoning(args) -> str | None:
@@ -222,7 +234,20 @@ def _reasonings_from_log(service: GameService, game_id: str) -> list[str]:
 
 
 def _result_dict(spec: PuzzleSpec, game, attempts: list[dict], solved: bool,
-                 solved_plies: int) -> dict:
+                 solved_plies: int, tool_calls: dict[str, int] | None = None) -> dict:
+    tool_calls = tool_calls or {}
+    # Structural category of the puzzle (mover piece, targets, branching, etc.)
+    # so a run can be sliced by motif variant to find where the agent is weak.
+    try:
+        from app.puzzle_categorize import categorize
+        category = categorize(spec.fen, spec.moves)
+    except Exception:
+        category = {}
+    # Derived tool-use analysis: total calls and the calculation-depth signal
+    # (how often the agent reached for imagine_line / imagine_move). A solved-vs-
+    # failed split on these tells us whether failures are "didn't calculate" vs
+    # "calculated but mis-judged".
+    total_calls = sum(tool_calls.values())
     return {
         "puzzle_id": spec.id, "topic": spec.topic, "band": spec.band,
         "rating": spec.rating, "themes": spec.themes,
@@ -233,5 +258,10 @@ def _result_dict(spec: PuzzleSpec, game, attempts: list[dict], solved: bool,
         "solved_plies": solved_plies,
         "total_plies": spec.total_solver_plies,
         "aborted_reason": None if solved else getattr(game, "puzzle_detail", "") or "failed",
+        "category": category,
+        "tool_calls": tool_calls,
+        "tool_calls_total": total_calls,
+        "imagine_line_calls": tool_calls.get("chess__imagine_line", 0),
+        "imagine_move_calls": tool_calls.get("chess__imagine_move", 0),
         "attempts": attempts,
     }
