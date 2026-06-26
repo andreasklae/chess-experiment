@@ -351,3 +351,27 @@ def test_attacks_and_defenses_splits_correctly(im):
     # No enemy on attacked squares, so atk is empty.
     # Defends includes any own piece on f3/h3/e2; only e2 has one.
     assert defs == {chess.E2}
+
+
+def test_blunder_banner_redirects_a_checking_sacrifice_to_calculate(im):
+    # A material-losing CHECK must NOT be flatly condemned as a blunder; it must
+    # tell the agent to calculate the whole line (a sac/mate is judged at the end,
+    # not at one ply). 3MIRf: Qxh7+ loses the queen at one ply but forces mate.
+    b = chess.Board("5r1k/pp3p1p/2pb1np1/q7/3PnB1P/2N2Q2/PP3PP1/3RR1K1 w - - 0 1")
+    # use the real puzzle position after its setup move for fidelity:
+    import json, pathlib
+    pj = pathlib.Path(__file__).resolve().parents[2] / "experiments/puzzle-benchmark/puzzles.json"
+    if pj.exists():
+        puz = {p["id"]: p for p in json.loads(pj.read_text())}.get("3MIRf")
+        if puz:
+            b = chess.Board(puz["fen"]); b.push(chess.Move.from_uci(puz["moves"][0]))
+            out = im.render_imagine(b, chess.Move.from_uci("h4h7"))
+            assert "gives CHECK but loses" in out
+            assert "calculate the WHOLE line" in out
+            assert "BLUNDER" not in out.split("\n")[0]  # not the hard-condemn banner
+
+
+def test_non_check_material_loss_still_hard_blunder(im):
+    b = chess.Board("4k3/1q6/8/8/8/8/8/Q3K3 w - - 0 1")
+    out = im.render_imagine(b, chess.Move.from_uci("a1a7"))  # Qa7?? hangs queen, no check
+    assert "BLUNDER" in out and "LOSES your queen" in out

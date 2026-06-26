@@ -65,6 +65,59 @@ def _testing_replies(board: chess.Board, exclude: chess.Move | None = None,
     return [board.san(m) for m in moves[:k]]
 
 
+_MAT_VAL = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9}
+
+
+def _material(board: chess.Board, color: bool) -> int:
+    return sum(_MAT_VAL[pt] * len(board.pieces(pt, color))
+               for pt in (chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN))
+
+
+def _leaf_verdict(start: chess.Board, leaf: chess.Board, agent_color: bool) -> str:
+    """State the OUTCOME at the end of the calculated line, as facts a human would
+    read off the final position: is it forced mate, and what is the net material
+    swing (start → leaf) from the agent's side. This is the result of the agent's
+    OWN calculation — not an engine verdict, not a move recommendation. The agent
+    still has to choose the line because it now understands the resulting
+    position. (A line is 'forced' only as far as the agent supplied the opponent's
+    replies; the branch nudges below remind it to test the alternatives.)"""
+    # Mate / stalemate at the leaf.
+    if leaf.is_checkmate():
+        # whoever is to move is mated
+        mated = leaf.turn
+        if mated != agent_color:
+            return ("✅ **THIS LINE ENDS IN CHECKMATE — you mate the opponent.** If every "
+                    "opponent reply in it was forced (their only legal/safe move), this WINS: "
+                    "play the first move. Re-check that each of their replies was truly forced.")
+        return ("⛔ **THIS LINE ENDS IN CHECKMATE AGAINST YOU.** Do not play it — backtrack and "
+                "find another move.")
+    if leaf.is_stalemate():
+        return ("⚠ **THIS LINE ENDS IN STALEMATE (draw).** If you are winning, avoid it; "
+                "backtrack and keep a move for the opponent.")
+    # Material tally start → leaf, agent-relative.
+    start_diff = _material(start, agent_color) - _material(start, not agent_color)
+    leaf_diff = _material(leaf, agent_color) - _material(leaf, not agent_color)
+    swing = leaf_diff - start_diff
+    sign = "+" if leaf_diff >= 0 else "−"
+    swing_txt = (f"you GAIN ~{swing}" if swing > 0
+                 else (f"you LOSE ~{-swing}" if swing < 0 else "material is unchanged"))
+    verdict = (
+        f"**End-of-line material (count it yourself): {sign}{abs(leaf_diff)} for you** "
+        f"(start was {'+' if start_diff>=0 else '−'}{abs(start_diff)}; over this line {swing_txt}). "
+    )
+    if swing > 0:
+        verdict += ("This line WINS material if the opponent's replies were forced — but a one-ply "
+                    "loss earlier in the line can still be regained later, so trust the END count, "
+                    "not the scary middle. Verify each opponent reply was their best.")
+    elif swing < 0:
+        verdict += ("You end down material here — unless this leaf is a forced mate/winning attack "
+                    "you can name, this line is bad; backtrack.")
+    else:
+        verdict += ("Even material — decide on position (king safety, activity), or look for a "
+                    "more forcing line.")
+    return verdict
+
+
 def _flag(board: chess.Board) -> str:
     if board.is_checkmate():
         return "#"
@@ -105,6 +158,7 @@ def main() -> None:
         board = board_with_history(fetch_state())
 
     agent_color = board.turn  # the side to move on the live/start board = you
+    start_board = board.copy()  # snapshot for the start→leaf material tally
     tokens = [t.strip() for t in args.moves.replace(" ", ",").split(",") if t.strip()]
 
     if len(tokens) > _MAX_PLIES:
@@ -151,6 +205,12 @@ def main() -> None:
         "# Imagine line  (your own calculation — nothing committed)",
         "",
         f"Line: {' '.join(breadcrumb)}",
+        "",
+        # The verdict at the END of the line you calculated — the material count
+        # and mate status a human would read off the final position. It is the
+        # result of YOUR calculation, not an engine's recommendation; you still
+        # choose the move because you now see why the resulting position is good.
+        _leaf_verdict(start_board, board, agent_color),
         "",
         f"_Showing the full report for the LAST move below. Extend ONE move at a "
         f"time (max {_MAX_PLIES} ahead); change the last move to branch, drop "

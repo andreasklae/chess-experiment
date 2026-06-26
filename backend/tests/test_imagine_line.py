@@ -157,3 +157,22 @@ class TestBranchingFooter:
         r = _run(["--fen", "4k3/8/4K3/8/8/8/8/7R w - - 0 1", "Rh8"])  # Rh8#
         assert r.returncode == 0, r.stderr
         assert "Branch over" not in r.stdout and "You assumed" not in r.stdout
+
+
+class TestLeafVerdict:
+    """The end-of-line verdict: material count + mate status the agent reads off
+    the final position it calculated (human-fair: count pieces, see the mate)."""
+
+    def test_forced_mate_line_announces_checkmate(self):
+        # A clean back-rank mate line (Ra8#): the leaf verdict must announce
+        # checkmate-for-you so the agent commits the first move of the line.
+        r = _run(["--fen", "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1", "Ra8"])
+        assert r.returncode == 0
+        assert "CHECKMATE" in r.stdout and "mate the opponent" in r.stdout
+
+    def test_material_count_reported_at_leaf(self):
+        # A simple winning capture line: White wins a free rook. The verdict must
+        # state the end-of-line material for the agent.
+        r = _run(["--fen", "6k1/8/8/8/8/8/r7/R3K3 w - - 0 1", "Rxa2"])
+        assert r.returncode == 0
+        assert "End-of-line material" in r.stdout

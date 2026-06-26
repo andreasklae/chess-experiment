@@ -558,15 +558,33 @@ def render_imagine(
 
     out: list[str] = []
     if blunder:
-        out.append(
-            f"> ⛔ **BLUNDER — this move LOSES your {loss_piece} (~{loss_cp // 100} "
-            f"pawns).** After the opponent's best recapture you are DOWN about "
-            f"{loss_cp} centipawns of material. This is almost certainly a losing "
-            f"move; the 'check', 'king mobility', and capture details below do NOT "
-            f"make up for losing a {loss_piece}. Play it ONLY if it is forced "
-            f"checkmate, or you have calculated the exact line that wins the "
-            f"material back (use chess__imagine_line). Otherwise pick a safe move."
-        )
+        gives_check = board_after.is_check() and not opp_move
+        if gives_check:
+            # A material-losing move that GIVES CHECK is forcing: the opponent's
+            # reply is constrained, which is exactly how sacrifices and mating
+            # attacks work. A one-ply material count CANNOT judge it — the point
+            # of the sac is what happens AFTER the forced reply. So do not condemn
+            # it; send the agent to calculate the line to its end (where the
+            # leaf verdict will say 'checkmate' or count the regained material).
+            out.append(
+                f"> ⚠️ **This move gives CHECK but loses ~{loss_cp // 100} pawns at ONE ply "
+                f"(your {loss_piece}).** Do NOT judge a check on the one-ply count — a check "
+                f"forces the reply, so a sacrifice like this often **mates or wins the material "
+                f"back** a move or two later. **Before rejecting it, calculate the WHOLE line with "
+                f"`chess__imagine_line`** (this check → their forced reply → your follow-up → …) and "
+                f"read the verdict at the end of the line. Only reject it if, after calculating to "
+                f"the end, you are still down with no mate."
+            )
+        else:
+            out.append(
+                f"> ⛔ **BLUNDER — this move LOSES your {loss_piece} (~{loss_cp // 100} "
+                f"pawns).** After the opponent's best recapture you are DOWN about "
+                f"{loss_cp} centipawns of material. This is almost certainly a losing "
+                f"move; the 'king mobility' and capture details below do NOT "
+                f"make up for losing a {loss_piece}. Play it ONLY if it is forced "
+                f"checkmate, or you have calculated the exact line that wins the "
+                f"material back (use chess__imagine_line). Otherwise pick a safe move."
+            )
         out.append("")
     if opp_move:
         you = color_name(agent_color)

@@ -1671,20 +1671,20 @@
     "rating": 1225,
     "solved_plies": 0,
     "total_plies": 3,
-    "aborted_reason": "agent played d1e2, expected h4h7",
-    "run_id": "run_1782431374",
-    "ts": "2026-06-26T01:56:01",
+    "aborted_reason": "agent played e1e2, expected h4h7",
+    "run_id": "run_1782434733",
+    "ts": "2026-06-26T02:46:02",
     "attempts": [
       {
         "ply": 0,
         "fen_before": "6rk/4nbpp/p2b1p2/1p2pP2/3pP1RQ/q6P/5P2/3BK1R1 w - - 0 33",
         "expected_uci": "h4h7",
         "expected_san": "Qxh7+",
-        "played_uci": "d1e2",
-        "played_san": "Be2",
+        "played_uci": "e1e2",
+        "played_san": "Ke2",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "Evaluated several aggressive moves (Qxh7+, Qh6, Rg6, Qh5) and found them to be blunders that lose significant material. Be2 is a safe developing move that puts pressure on the b5 pawn, prepares potential skewering of the a6 pawn, and improves the bishop's position from d1. It also guards g4. \u00b7 goal: Stabilize king safety and probe queenside weaknesses. \u00b7 plan: Defensive consolidation: move the king to safety (Kd2/Ke2) and use the bishop on e2 to pressure the b5/a6 pawn chain, seeking counterplay while down material."
+        "reasoning": "I analyzed several forcing moves: Qxh7+, Qxf6, and Rxg7, but all were found to be traps that lose significant material after recaptures. Similarly, Qh6 and Qh5 hang the queen immediately. Moving the king to e2 is a safe, improving move that removes the king from the back rank, defends the bishop on d1, and prepares to consolidate the position while I search for a sound way to break through on the kingside. \u00b7 goal: Improve king safety and maintain pressure on the g-file while avoiding traps. \u00b7 plan: Consolidate the position: move the king to a safer square (e2), avoid tempting captures on h7 or f6 that lead to material loss, and look for ways to leverage the pin on g7."
       }
     ]
   },
@@ -4549,20 +4549,20 @@
     "rating": 1331,
     "solved_plies": 0,
     "total_plies": 3,
-    "aborted_reason": "agent played e5e6, expected f1f8",
-    "run_id": "run_1782431374",
-    "ts": "2026-06-26T01:56:23",
+    "aborted_reason": "agent played d4e6, expected f1f8",
+    "run_id": "run_1782434733",
+    "ts": "2026-06-26T02:46:21",
     "attempts": [
       {
         "ply": 0,
         "fen_before": "5rk1/p1r3pp/2p5/2PpP3/1P1Np3/P3P3/6K1/5R2 w - - 3 38",
         "expected_uci": "f1f8",
         "expected_san": "Rxf8+",
-        "played_uci": "e5e6",
-        "played_san": "e6",
+        "played_uci": "d4e6",
+        "played_san": "Ne6",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "I considered Ne6 for the fork, but imagine_line showed it's a blunder because black has Rf2+ followed by Rxf1, losing my rook. Pushing e6 is a safe and strong move that advances my most dangerous asset\u2014the passed pawn\u2014and puts pressure on black's position. It follows the radar's advice to push the passer immediately. \u00b7 goal: Push the e-pawn to e7 and create mating threats on the back rank. \u00b7 plan: Endgame conversion: Advance the passed e-pawn as a primary threat to force black's pieces into passive defense. While keeping an eye on hook-mate geometry, the immediate priority is to use the pawn to create counterplay and regain material or secure a win."
+        "reasoning": "The position is materially disadvantaged (-2.75), so I need active counterplay. Ne6 creates a fork attacking both rooks (c7 and f8). I have calculated the most forcing replies: Rf2+ is simply captured (Kxf2), and Rxf1 is recaptured (Kxf1), leaving me with a knight vs a rook, but since I can then capture the other rook (Nxc7), I gain a significant material advantage. This is the most direct way to climb back into the game. \u00b7 goal: win a rook via the fork on e6 \u00b7 plan: Tactical counterplay: Use the knight fork on e6 to win a rook and equalize material. Following that, leverage the passed e-pawn to create winning chances."
       }
     ]
   },
@@ -4574,8 +4574,8 @@
     "solved_plies": 0,
     "total_plies": 3,
     "aborted_reason": "agent played e8e6, expected g5h4",
-    "run_id": "run_1782431374",
-    "ts": "2026-06-26T01:56:42",
+    "run_id": "run_1782434733",
+    "ts": "2026-06-26T02:46:39",
     "attempts": [
       {
         "ply": 0,
@@ -4586,31 +4586,42 @@
         "played_san": "Re6",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "I've analyzed the position and rejected Rh8+ as it loses a rook for nothing. I've also rejected taking on g6 or f5 immediately as they are traps that lose the queen. Re6 is a strong positional and tactical move; it places the rook on an active square where it attacks the g6 pawn, which is relatively pinned to the queen on g7. This increases pressure on black's kingside and prepares for a potential breakthrough. \u00b7 goal: Win the g6 pawn by exploiting the pin to the queen on g7 \u00b7 plan: Pressure the pinned pawn on g6 and the weak g-file. If the g6 pawn falls, the enemy king becomes critically exposed, allowing for a mating attack using the queen and rook coordination."
+        "reasoning": "I investigated Rh8+ but found it leads to a blunder after Kxh8 and the subsequent attempt at Qxg6 (which is not mate). Instead, I am playing Re6 to add an attacker to the g6-pawn, which is relatively pinned to the queen on g7. This improves the rook's position and prepares to win material or create a mating net around the exposed black king. \u00b7 plan: Create pressure on g6 by utilizing the relative pin of the g6-pawn against the queen on g7. Use the rook and queen to coordinate an attack on the exposed king and doubled g-pawns."
       }
     ]
   },
   "5Jduq": {
-    "status": "failed",
+    "status": "solved",
     "topic": "attraction",
     "difficulty": "medium",
     "rating": 1291,
-    "solved_plies": 0,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "agent played e4d3, expected e4h7",
-    "run_id": "run_1782431374",
-    "ts": "2026-06-26T01:57:18",
+    "aborted_reason": null,
+    "run_id": "run_1782434733",
+    "ts": "2026-06-26T02:47:09",
     "attempts": [
       {
         "ply": 0,
         "fen_before": "5brk/pp3ppp/3p4/4P1R1/4QP2/8/q1rBK2P/6R1 w - - 2 26",
         "expected_uci": "e4h7",
         "expected_san": "Qxh7+",
-        "played_uci": "e4d3",
-        "played_san": "Qd3",
-        "correct": false,
-        "accepted_as": null,
-        "reasoning": "I examined several candidate moves. Ra1, Qxh7+, and Qxc2 were all flagged as blunders (losing material). Rh5 and f5 were too passive and allow Rxd2+. Qxb7 captures a pawn, creates a target on a7, and maintains pressure, while only allowing Rxd2+ (a trade of the bishop for a pawn gain and improved queen position). It is the most active and sound option among the candidates. \u00b7 plan: Seek counterplay and complications to offset the material deficit. Target weaknesses like the isolated d6 and a7 pawns, and maintain pressure on the g-file."
+        "played_uci": "e4h7",
+        "played_san": "Qxh7+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Calculated a forced mate in two: 1. Qxh7+ Kxh7 2. Rh5#. The first move is a queen sacrifice that forces the king to h7, where Rh5 delivers checkmate as the king is trapped by its own pawns and the white rook on g1 controls the g-file. \u00b7 goal: Mate the opponent in two moves. \u00b7 plan: Execute a forced mate in two: sacrifice the queen on h7 to draw the king out, then deliver checkmate with Rh5."
+      },
+      {
+        "ply": 1,
+        "fen_before": "5br1/pp3ppk/3p4/4P1R1/5P2/8/q1rBK2P/6R1 w - - 0 27",
+        "expected_uci": "g5h5",
+        "expected_san": "Rh5#",
+        "played_uci": "g5h5",
+        "played_san": "Rh5#",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "I have calculated a forced mate in two: 1. Qxh7+ (forced) Kxh7 2. Rh5#. The safety check is triggered by the queen sacrifice, but the line is winning. \u00b7 goal: Mate the opponent in two moves. \u00b7 plan: Execute a forced mate in two: sacrifice the queen on h7 to draw the king out, then deliver checkmate with Rh5."
       }
     ]
   },
