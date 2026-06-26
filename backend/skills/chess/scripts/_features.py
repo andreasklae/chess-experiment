@@ -541,6 +541,82 @@ def detect_knight_forks(board: chess.Board, perspective: bool | None = None) -> 
     return findings
 
 
+def detect_piece_forks(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
+    """Forks/double-attacks by a QUEEN, ROOK, BISHOP or PAWN (knight forks are
+    handled by detect_knight_forks). A piece that can move to a square from which
+    it attacks TWO valuable enemy pieces, at least one a winning target (worth
+    more than the mover, or undefended, or the king). Both sides — your own as an
+    opportunity, the opponent's as a WARNING (the symmetric defensive signal).
+    Only flagged when the landing square is safe (the forker isn't simply lost).
+    Pure geometry + SEE; the agent still calculates and decides."""
+    from _eval import static_exchange_eval
+    findings: list[Finding] = []
+    stm = board.turn if perspective is None else perspective
+    for color in (chess.WHITE, chess.BLACK):
+        mine = (color == stm)
+        enemy = not color
+        forkers = [(s, board.piece_at(s).piece_type) for s in chess.SQUARES
+                   if board.piece_at(s) and board.piece_at(s).color == color
+                   and board.piece_at(s).piece_type in
+                   (chess.QUEEN, chess.ROOK, chess.BISHOP, chess.PAWN)]
+        seen = set()  # (from, to) we've already reported
+        for from_sq, pt in forkers:
+            # candidate destination squares: where this piece could move. We test
+            # on a board with `color` to move so move generation is correct; if it
+            # is not color's turn, give it the move via a null (the threat applies
+            # next move).
+            b = board
+            if board.turn != color:
+                b = board.copy()
+                try:
+                    b.push(chess.Move.null())
+                except Exception:
+                    continue
+            for mv in b.legal_moves:
+                if mv.from_square != from_sq:
+                    continue
+                land = mv.to_square
+                if (from_sq, land) in seen:
+                    continue
+                after = b.copy(); after.push(mv)
+                # the moved piece must be safe on its new square (not just lost)
+                if static_exchange_eval(after, land, enemy) >= 150:
+                    continue
+                # what valuable enemy pieces does it now attack?
+                hit = []
+                mover_val = PIECE_VALUE[pt]
+                for tsq in after.attacks(land):
+                    ep = after.piece_at(tsq)
+                    if not ep or ep.color != enemy or ep.piece_type == chess.PAWN:
+                        continue
+                    winning = (ep.piece_type == chess.KING
+                               or PIECE_VALUE[ep.piece_type] > mover_val
+                               or not after.attackers(enemy, tsq))
+                    if winning:
+                        hit.append((tsq, ep.piece_type))
+                if len(hit) < 2:
+                    continue
+                seen.add((from_sq, land))
+                desc = ", ".join(f"{PIECE_NAME[t]} on {_sq(s)}" for s, t in hit)
+                if mine:
+                    try:
+                        san = board.san(mv) if board.turn == color else b.san(mv)
+                    except Exception:
+                        san = None
+                    findings.append(Finding(True, "potential",
+                        f"your {PIECE_NAME[pt]} could move to {_sq(land)} to FORK {desc} — a double "
+                        f"attack; they can only save one. Calculate it (and check the forking piece "
+                        f"is safe there).",
+                        moves=[san] if san else [], wiki="forks"))
+                else:
+                    findings.append(Finding(False, "threat",
+                        f"opponent's {PIECE_NAME[pt]} could move to {_sq(land)} and FORK your {desc} — "
+                        f"a double attack you would not meet in one move; prevent it (guard {_sq(land)}, "
+                        f"move a target, or defend both).",
+                        wiki="forks"))
+    return findings
+
+
 def detect_loose_pieces(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
     """Undefended pieces ('loose pieces drop off') — both sides. Own loose pieces
     are a weakness; enemy loose pieces are targets."""
@@ -557,9 +633,13 @@ def detect_loose_pieces(board: chess.Board, perspective: bool | None = None) -> 
             if not defenders and attackers:
                 # actively attacked + undefended = hanging (a threat now)
                 if mine:
-                    findings.append(Finding(True, "threat",
-                        f"your {PIECE_NAME[p.piece_type]} on {_sq(sq)} is attacked and UNDEFENDED — "
-                        f"defend it, move it to safety, or counter with a bigger threat",
+                    # Symmetric mirror of the enemy "★ WIN MATERIAL": YOUR piece is
+                    # the free one. Top-priority "⛔ LOSING MATERIAL" so a hanging
+                    # piece is as loud as a free enemy piece — the #1 defensive fact.
+                    findings.append(Finding(True, "lose",
+                        f"your {PIECE_NAME[p.piece_type]} on {_sq(sq)} is attacked and UNDEFENDED — the "
+                        f"opponent can take it for free. SAVE IT: move it to safety, defend it, or answer "
+                        f"with a bigger threat (a check or a capture of equal/greater value).",
                         moves=_handle_attacked_piece_moves(board, sq, color),
                         wiki="handle_threat"))
                 else:
@@ -1287,7 +1367,7 @@ def detect_all(board: chess.Board, perspective: bool | None = None) -> list[Find
     findings: list[Finding] = []
     for fn in (detect_phase_fundamentals, detect_pawn_structure, detect_files,
                detect_development, detect_bishop_pair, detect_outposts,
-               detect_knight_forks, detect_loose_pieces, detect_pins_skewers,
+               detect_knight_forks, detect_piece_forks, detect_loose_pieces, detect_pins_skewers,
                detect_creatable_pins,
                detect_skewers, detect_discovered_attacks, detect_traps,
                detect_material, detect_king_safety, detect_overloaded_defenders,
@@ -1390,25 +1470,56 @@ def _forcing_moves_line(board: chess.Board) -> str:
     )
 
 
+def _in_check_line(board: chess.Board) -> str:
+    """When the side to move is IN CHECK, list ALL its legal replies (escapes,
+    blocks, captures of the checker) and tell it to calculate each. Legal moves
+    are few in check, so calculating all is cheap — and the right one often is a
+    BLOCK that wins material (interpose, get captured, recapture a bigger piece)
+    or a specific escape square, both of which the agent routinely misses on
+    defence. Pure mechanics (board.legal_moves while in check)."""
+    if not board.is_check():
+        return ""
+    replies = []
+    for mv in board.legal_moves:
+        try:
+            replies.append(board.san(mv))
+        except Exception:
+            pass
+    if not replies:
+        return ""
+    # mark a block/capture (anything that isn't a king move) — those are the ones
+    # the agent under-considers (it tends to just step the king aside).
+    nonking = [r for r in replies if not r.startswith("K")]
+    extra = (f" Of these, {', '.join(nonking)} are blocks/captures (NOT just running the king) — "
+             f"a block that gets captured can WIN material on the recapture, so calculate them with "
+             f"imagine_line, do not reflexively move the king." if nonking else "")
+    return (
+        f"**⚠ YOU ARE IN CHECK — you must answer it this move.** Your only legal replies are: "
+        f"{', '.join(replies)}. They are few — calculate EACH (escape / block / capture the checker) "
+        f"with imagine_line and pick the one that is best, not just the first safe-looking king move."
+        + extra
+    )
+
+
 def render_features(board: chess.Board, *, heading: str = "Position assessment — strengths, weaknesses & ideas") -> str:
     """Full feature section for `board`, from the side-to-move's perspective."""
     findings = detect_all(board)
     body = render_findings(findings, agent_color=board.turn, heading=heading)
-    forcing = _forcing_moves_line(board)
-    if not forcing:
+    # When in check, that line leads; otherwise the forcing-moves (CCT) line does.
+    lead = _in_check_line(board) or _forcing_moves_line(board)
+    if not lead:
         return body
     if not body:
-        return f"## {heading}\n\n{forcing}"
-    # Insert the forcing-moves line right after the heading + method note so it is
-    # the first concrete thing the agent reads.
+        return f"## {heading}\n\n{lead}"
+    # Insert the lead line right after the heading + method note so it is the
+    # first concrete thing the agent reads.
     lines = body.split("\n")
-    # find the method-note paragraph (starts with "_Full method"); insert after it
     insert_at = 1
     for i, ln in enumerate(lines):
         if ln.startswith("_Full method"):
             insert_at = i + 1
             break
-    lines.insert(insert_at, f"\n{forcing}")
+    lines.insert(insert_at, f"\n{lead}")
     return "\n".join(lines)
 
 
@@ -1459,12 +1570,16 @@ def render_findings(findings: list[Finding], *, agent_color: bool, heading: str)
         if not items:
             return
         out.append(f"\n**{title}**")
-        # order: free material first (win it now), then threats, weaknesses,
-        # strengths, potentials, fundamentals.
-        order = {"win": 0, "threat": 1, "weakness": 2, "strength": 3, "potential": 4, "fundamental": 5}
+        # order: free material first (win it now) / losing material first (save
+        # it now), then threats, weaknesses, strengths, potentials, fundamentals.
+        # `win` (your opportunity) and `lose` (the mirror warning) are the two
+        # highest-priority kinds — symmetric: the same logic that finds a free
+        # enemy piece for you also warns when YOUR piece is the free one.
+        order = {"win": 0, "lose": 0, "threat": 1, "weakness": 2, "strength": 3,
+                 "potential": 4, "fundamental": 5}
         for f in sorted(items, key=lambda x: order.get(x.kind, 9)):
-            tag = {"win": "★ WIN MATERIAL", "threat": "⚠ THREAT", "weakness": "weakness",
-                   "strength": "strength", "potential": "potential",
+            tag = {"win": "★ WIN MATERIAL", "lose": "⛔ LOSING MATERIAL", "threat": "⚠ THREAT",
+                   "weakness": "weakness", "strength": "strength", "potential": "potential",
                    "fundamental": "fundamental"}.get(f.kind, f.kind)
             line = f"- [{tag}] {f.text}"
             if f.moves:

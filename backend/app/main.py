@@ -59,8 +59,13 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
     fastapi_app.state.batch_runner = BatchRunner(batch_service, fastapi_app.state.game_service)
     fastapi_app.state.puzzle_run = None  # the current/last PuzzleRun, if any
     fastapi_app.state.puzzle_task = None
-    # Two puzzle SETS, each with its own puzzle JSON + its own progress file so
-    # offensive and defensive progress never collide. 'offensive' is the default.
+    # Named puzzle SETS registry (each: puzzle JSON + its own progress file). The
+    # agent-SOLVING benchmark is the offensive set. (A defensiveMove-tagged
+    # 'solving' set was tried and removed: verified against the Lichess tagger
+    # source, motif themes describe the SOLVER's own move, so they don't yield
+    # genuine 'defend against the opponent's tactic' puzzles. The defensive work
+    # instead lives as a DETECTOR-verification harness over flipped positions —
+    # see experiments/puzzle-benchmark/flip_puzzles.py + verify_threat_warnings.py.)
     from app.puzzle_progress import PuzzleProgress
     _pb = Path(__file__).resolve().parents[2] / "experiments" / "puzzle-benchmark"
     fastapi_app.state.puzzle_sets = {
@@ -68,12 +73,7 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
             "puzzles": _pb / "puzzles.json",
             "progress": PuzzleProgress(_pb / "results" / "progress.json"),
         },
-        "defensive": {
-            "puzzles": _pb / "puzzles-defensive.json",
-            "progress": PuzzleProgress(_pb / "results" / "progress-defensive.json"),
-        },
     }
-    # Back-compat alias used by older call sites (the offensive progress store).
     fastapi_app.state.puzzle_progress = fastapi_app.state.puzzle_sets["offensive"]["progress"]
     logger.info("startup · ready")
     try:

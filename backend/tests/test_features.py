@@ -105,9 +105,10 @@ def test_loose_enemy_piece():
 
 
 def test_hanging_piece_threat_with_moves():
-    # Black Bc5 attacked by d4, undefended -> THREAT with handling moves
+    # Black Bc5 attacked by d4, undefended -> a high-salience LOSE warning (the
+    # symmetric mirror of ★ WIN MATERIAL) with handling moves.
     b = chess.Board("rnbqk1nr/pppp1ppp/8/2b1p3/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 3")
-    f = _has(detect_loose_pieces(b), "c5 is attacked and UNDEFENDED", side=True, kind="threat")
+    f = _has(detect_loose_pieces(b), "c5 is attacked and UNDEFENDED", side=True, kind="lose")
     assert f
     joined = " ".join(f.moves)
     assert "captures attacker" in joined and "moves to safety" in joined
@@ -162,8 +163,9 @@ def test_imagine_line_keeps_agent_seat_on_opponent_move():
     # Agent is WHITE imagining the opponent's (Black's) move.
     out_white = render_imagine(b, mv, agent_color=chess.WHITE)
     assert "YOURS (you are White)" in out_white
-    # White's queen is the one in danger — it must surface as a threat to White.
-    assert "queen on d2" in out_white and "THREAT" in out_white
+    # White's queen is the one in danger — it must surface as danger to White
+    # (a THREAT, or the higher-salience LOSING-MATERIAL warning).
+    assert "queen on d2" in out_white and ("THREAT" in out_white or "LOSING MATERIAL" in out_white)
     # It must NOT tell White "your knight ... forks" (that's Black's knight).
     assert "your knight on f3 already forks" not in out_white
 
@@ -566,3 +568,51 @@ def test_no_forcing_line_without_checks():
     from _features import _forcing_moves_line
     import chess as _c
     assert _forcing_moves_line(_c.Board()) == ""  # start position: no checks
+
+
+def test_in_check_line_lists_all_escapes_and_flags_blocks():
+    # VsxCo (defend-pin): White is in check (Qg5+); the right reply is the BLOCK
+    # Rg3 (Qxg3+ Kxg3 wins the queen). The assessment must lead with an IN CHECK
+    # line listing every legal reply and flagging the block as not-just-king-move.
+    from _features import render_features, _in_check_line
+    import chess as _c
+    b = _c.Board("8/8/5pk1/p5q1/1p6/1P1R4/P2R2K1/8 w - - 3 59")
+    line = _in_check_line(b)
+    assert "IN CHECK" in line
+    assert "Rg3" in line and "blocks/captures" in line
+    out = render_features(b)
+    assert "IN CHECK" in out
+    # when in check, the in-check line leads instead of the forcing-moves line
+    assert "Forcing moves" not in out.split("IN CHECK")[0]
+
+
+def test_in_check_line_silent_when_not_in_check():
+    from _features import _in_check_line
+    import chess as _c
+    assert _in_check_line(_c.Board()) == ""
+
+
+def test_piece_fork_warning_for_queen_and_bishop():
+    # Symmetric warning: a QUEEN or BISHOP fork the opponent can play next must be
+    # flagged (knight forks are covered separately). Flipped puzzle positions:
+    # Qu8ZH-flip (Black Qa5+ forks Ke1+Nc5), ZQoBU-flip (Black Bf3 forks two rooks).
+    from _features import detect_all
+    b1 = chess.Board("3qk3/8/8/2N5/8/8/8/4K3 w - - 0 1")  # crafted: black Qd8, white Ke1+Nc5
+    # ensure a real queen-fork-threat position by construction:
+    b1 = chess.Board("3q4/8/8/2n5/8/8/8/3RK3 w - - 0 1")  # black Qd8 can fork? use the real flip below
+    import json, pathlib
+    fj = pathlib.Path(__file__).resolve().parents[2] / "experiments/puzzle-benchmark/puzzles-flipped.json"
+    if fj.exists():
+        flips = {p["id"]: p for p in json.loads(fj.read_text())}
+        for fid in ("Qu8ZH-flip", "ZQoBU-flip"):
+            if fid in flips:
+                b = chess.Board(flips[fid]["fen"])
+                warns = [f.text for f in detect_all(b) if not f.side and "FORK" in f.text]
+                assert warns, f"{fid}: expected a fork warning"
+
+
+def test_piece_fork_no_false_positive_in_quiet_positions():
+    from _features import detect_piece_forks
+    assert detect_piece_forks(chess.Board()) == []
+    assert detect_piece_forks(
+        chess.Board("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4")) == []

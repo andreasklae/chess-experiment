@@ -30,7 +30,7 @@ export function PuzzlePage() {
   const [game, setGame] = useState<GameState | null>(null);
   const [message, setMessage] = useState('');
   const [mode, setMode] = useState<PuzzleRunMode>('unsolved');
-  const [puzzleSet, setPuzzleSet] = useState<PuzzleSet>('offensive');
+  const puzzleSet: PuzzleSet = 'offensive';  // solving benchmark is offensive-only
   const [prog, setProg] = useState<PuzzleProgressOverview | null>(null);
 
   const refreshProgress = () =>
@@ -178,18 +178,6 @@ export function PuzzlePage() {
 
       {/* ── launcher ── */}
       <section className="puzzle-launcher">
-        <div className="puzzle-set-toggle" role="group" aria-label="Puzzle set">
-          {(['offensive', 'defensive'] as PuzzleSet[]).map((s) => (
-            <button key={s} type="button"
-              className={`puzzle-set-chip${puzzleSet === s ? ' is-active' : ''}`}
-              onClick={() => setPuzzleSet(s)} disabled={running}
-              title={s === 'offensive'
-                ? 'Play the tactic (fork, pin, mate…)'
-                : 'Prevent the opponent’s tactic (defend a fork, stop promotion…)'}>
-              {s === 'offensive' ? 'Attack' : 'Defend'}
-            </button>
-          ))}
-        </div>
         <div className="puzzle-topics">
           {Object.entries(topics).sort().map(([t, n]) => (
             <button key={t} type="button"
