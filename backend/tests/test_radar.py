@@ -122,6 +122,21 @@ class TestPassedPawns:
         out = radar("8/p1p4p/1p2P3/3P1k2/P3p3/2B1P1K1/4r3/8 w - - 0 45")
         assert "Push it now: e7" in out
 
+    def test_passer_push_suppressed_when_king_under_fire(self):
+        # eTe2h (defend-fork medium): a passer push (b6) was wrongly recommended
+        # while White's king is exposed and Black has Qxg3+ winning material after
+        # the push. The push prompt must be suppressed when the advance lets the
+        # opponent win material (king-safety guard) — but the passer is still noted.
+        out = radar("8/5pkp/6p1/1P6/2Q2K2/4P1P1/3rBP1q/8 w - - 0 40") or ""
+        assert "Push it now" not in out
+        assert "passed pawn" in out.lower()
+
+    def test_passer_push_kept_through_harmless_spite_checks(self):
+        # pWCJd: after e7 Black has only harmless spite checks (Rxe3+, Rg2+) that
+        # win nothing; the push is still correct and must still be prompted.
+        out = radar("8/p1p4p/1p2P3/3P1k2/P3p3/2B1P1K1/4r3/8 w - - 0 45") or ""
+        assert "Push it now: e7" in out
+
     def test_unsafe_passer_push_not_surfaced(self):
         # A passer whose advance square is guarded by the enemy → no push prompt.
         out = radar("6k1/8/8/8/8/8/r3P3/4K3 w - - 0 1") or ""

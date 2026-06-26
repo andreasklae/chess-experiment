@@ -1219,9 +1219,17 @@ def _passed_pawn_lines(board: chess.Board, own: bool) -> list[str]:
         """SAN of a passed pawn's single-step advance when the pawn is close
         (≤3 from promotion) and the advance square is safe (empty and not lost to
         SEE) — the concrete 'push the passer' move so the agent acts, not just
-        notes the pawn. Only when it's `color`'s turn."""
+        notes the pawn. Only when it's `color`'s turn.
+
+        King-safety guard: do NOT recommend pushing while your OWN king is in
+        danger — if you are in check, or if after the push the opponent has a
+        CHECK or a material-winning reply, the push ignores a threat and the
+        advice is bad (pushing a pawn while getting mated). A human pushes a
+        passer when it's quiet, not under fire."""
         if board.turn != color:
             return []
+        if board.is_check():
+            return []  # deal with the check first; never advise a pawn push in check
         out = []
         for sq in board.pieces(chess.PAWN, color):
             if not passed(sq, color):
@@ -1239,13 +1247,29 @@ def _passed_pawn_lines(board: chess.Board, own: bool) -> list[str]:
                 mv = chess.Move(sq, fwd, promotion=chess.QUEEN)
             if mv not in board.legal_moves:
                 continue
-            after = board.copy(stack=False); after.push(mv)
-            # advance is safe if the pawn/queen isn't simply lost on the new sq
-            if _eval.static_exchange_eval(after, fwd, not color) < 150:
-                try:
-                    out.append(board.san(mv))
-                except Exception:
-                    pass
+            after = board.copy(stack=False)
+            after.push(mv)
+            # advance is unsafe if the pawn/queen is simply lost on the new sq …
+            if _eval.static_exchange_eval(after, fwd, not color) >= 150:
+                continue
+            # … OR if it ignores a real threat: after the push the opponent has a
+            # reply that WINS MATERIAL (≥ a minor) by SEE — including a
+            # capture-with-check. (A bare check that wins nothing is a harmless
+            # spite check and must NOT suppress the push — pWCJd promotes through
+            # Rxe3+/Rg2+.) A material-winning reply means pushing was reckless;
+            # the agent should deal with the threat, so don't prompt the push.
+            danger = False
+            for opp_mv in after.legal_moves:
+                if after.is_capture(opp_mv):
+                    a2 = after.copy(stack=False); a2.push(opp_mv)
+                    if _eval.static_exchange_eval(a2, opp_mv.to_square, color) >= 300:
+                        danger = True; break
+            if danger:
+                continue
+            try:
+                out.append(board.san(mv))
+            except Exception:
+                pass
         return sorted(set(out))
 
     mine, theirs = describe(own), describe(not own)
