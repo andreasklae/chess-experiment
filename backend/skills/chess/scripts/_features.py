@@ -1537,26 +1537,41 @@ def why_stronger(board_before: chess.Board, move: chess.Move) -> list[str]:
 
 
 def _forcing_moves_line(board: chess.Board) -> str:
-    """List the side-to-move's CHECKS (and which are also captures) as the
-    forcing moves to calculate FIRST. Pure enumeration of legal checks — no
-    evaluation, no best-move pick (usually several; the agent still calculates
-    which works). Delivered in the tool output, at the decision point, because
-    SKILL.md prose alone does not move the model toward forcing moves; a list in
-    front of it does. Tool-fair mechanics (board.gives_check)."""
-    checks = []
+    """List the side-to-move's forcing moves — CHECKS and meaningful CAPTURES
+    (the C-C of Checks/Captures/Threats) — to calculate FIRST. Pure enumeration
+    (board.gives_check / board.is_capture + piece values); no evaluation, no
+    best-move pick — the agent still calculates which works. Delivered in the
+    tool output at the decision point because SKILL.md prose alone does not move
+    the model toward forcing moves; a list in front of it does.
+
+    Captures matter as much as checks: a deflection/removing-the-defender
+    combination often STARTS with a capture (e.g. Qxd8 to deflect the defender,
+    then win a piece) that is NOT a check — listing only checks misses it."""
+    checks, captures = [], []
     for mv in board.legal_moves:
-        if board.gives_check(mv):
-            try:
-                san = board.san(mv)
-            except Exception:
-                continue
+        gives_check = board.gives_check(mv)
+        is_cap = board.is_capture(mv)
+        if not (gives_check or is_cap):
+            continue
+        try:
+            san = board.san(mv)
+        except Exception:
+            continue
+        if gives_check:
             checks.append(san)
-    if not checks:
+        elif is_cap:
+            # only surface captures of a real piece (>= minor) or any capture
+            # that is SEE-sound-ish; a quiet pawn-grab is not a "forcing move".
+            victim = board.piece_at(mv.to_square)
+            vt = victim.piece_type if victim else chess.PAWN  # en-passant = pawn
+            if vt != chess.PAWN:
+                captures.append(san)
+    if not checks and not captures:
         return ""
-    # Captures-that-check are the sharpest — surface them, then the rest.
+    # Order: capturing-checks (sharpest), other checks, then piece-captures.
     cap_checks = [c for c in checks if "x" in c]
     quiet_checks = [c for c in checks if "x" not in c]
-    ordered = cap_checks + quiet_checks
+    ordered = cap_checks + quiet_checks + captures
     # MATE-likely signal: if the enemy king has very few squares (it is in a
     # mating net) AND you have a check, a FORCED MATE is often available — the
     # commonest thing the agent misses (it won't enter a checking sac that mates).
@@ -1564,7 +1579,7 @@ def _forcing_moves_line(board: chess.Board) -> str:
     # on its back rank. This says "calculate for mate", never which move mates.
     ek = board.king(not board.turn)
     mate_hint = ""
-    if ek is not None:
+    if ek is not None and checks:   # the mate hint is about checks; only with a check
         # count the enemy king's escape squares mechanically (give it the move)
         b2 = board.copy(stack=False)
         try:
@@ -1580,14 +1595,20 @@ def _forcing_moves_line(board: chess.Board) -> str:
                          + " — a FORCED MATE may be available. Calculate your checks to the END with "
                          "`chess__imagine_line` (a checking SACRIFICE that mates is worth any material — "
                          "read the leaf verdict for 'CHECKMATE'); don't stop because a check 'loses' material.")
+    def _mark(c):
+        if c in cap_checks:
+            return f"★{c}"          # check that is also a capture (sharpest)
+        if c in captures:
+            return f"✛{c}"          # a capture (not a check)
+        return c                     # a quiet check
     return (
-        "**Forcing moves — calculate these FIRST (checks; ★ = also a capture):** "
-        + ", ".join((f"★{c}" if c in cap_checks else c) for c in ordered)
-        + ". A check forces the reply, so it is how most combinations work — play "
-        "each promising one out with `imagine_line` (check → forced reply → your "
-        "follow-up) BEFORE settling on a quiet move. Many wins are 'check first, "
-        "then win material'. (Listing the checks is mechanics; whether one wins is "
-        "for you to calculate.)" + mate_hint
+        "**Forcing moves — calculate these FIRST (★ = capturing check, ✛ = capture, rest = check):** "
+        + ", ".join(_mark(c) for c in ordered)
+        + ". Checks AND captures force the play — they are how most combinations work (a deflection or "
+        "removing-the-defender often STARTS with a capture, not a check). Play each promising one out "
+        "with `imagine_line`/`imagine_trade` BEFORE settling on a quiet or defensive move — a forcing "
+        "move that wins beats saving a piece. (Listing them is mechanics; whether one wins is for you "
+        "to calculate.)" + mate_hint
     )
 
 

@@ -672,3 +672,25 @@ def test_no_mate_hint_in_quiet_position_with_safe_king():
     # castled, king has luft, no mating net -> no mate hint even if a check exists
     b = _c.Board("r1bqk2r/pppp1ppp/2n2n2/1Bb1p3/4P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 5")
     assert "FORCED MATE" not in _forcing_moves_line(b)
+
+
+def test_forcing_moves_line_includes_piece_captures_not_just_checks():
+    # 7e5N5 (capturing-defender): the win STARTS with Qxd8 — a capture, not a
+    # check (deflect the defender, then win the knight). The forcing-moves line
+    # must list piece-captures too (full CCT), or the agent never calculates it.
+    from _features import _forcing_moves_line
+    import chess as _c
+    b = _c.Board("r2q1rk1/1p2nppp/p4n2/5P2/4R3/8/PPP2PPP/R2Q1BK1 w - - 1 16")
+    line = _forcing_moves_line(b)
+    assert "Qxd8" in line          # the deflecting capture is surfaced
+    assert "✛" in line             # marked as a capture
+    assert "capture" in line.lower()
+
+
+def test_forcing_moves_line_ignores_pawn_only_captures():
+    # A position whose only capture is a pawn-grab (no checks) should NOT produce
+    # a forcing-moves line (a pawn capture is not a 'forcing move' worth flagging).
+    from _features import _forcing_moves_line
+    import chess as _c
+    b = _c.Board("4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1")  # exd5 = pawn x pawn
+    assert _forcing_moves_line(b) == ""
