@@ -208,8 +208,30 @@ def test_leaf_verdict_mating_attack_overrides_material_when_king_boxed():
     leaf = b.copy(); leaf.push_san("Qd8+"); leaf.push_san("Rxd8")
     v = il._leaf_verdict(start, leaf, chess.WHITE)
     assert "MATING ATTACK" in v and "KEEP EXTENDING" in v
-    # it tells the agent NOT to backtrack (the ordinary down-material advice)
-    assert "do NOT backtrack" in v
+    # it tells the agent material is not the yardstick while the king is boxed
+    assert "material is NOT the yardstick" in v
+
+
+def test_leaf_verdict_mating_attack_fires_even_when_up_material():
+    # jJAE7: Qxf7+ Kh8 -> king fully boxed (0 escapes) and White is UP material.
+    # The mating-attack signal must STILL fire (a forced mate beats settling for
+    # the material lead) -- the agent was stopping at 'WINS material' and missing
+    # Qf8+ Rxf8 Rxf8#.
+    import importlib.util, sys as _sys
+    spec = importlib.util.spec_from_file_location("imagine_line", LINE)
+    il = importlib.util.module_from_spec(spec); _sys.modules["imagine_line"] = il
+    spec.loader.exec_module(il)
+    b = chess.Board("5rk1/pp3Qpp/8/8/8/8/PP4PP/4R1K1 w - - 0 1")  # constructed: Qxg7? use real
+    import json, pathlib
+    pj = pathlib.Path(__file__).resolve().parents[2] / "experiments/puzzle-benchmark/puzzles.json"
+    if pj.exists():
+        p = {x["id"]: x for x in json.loads(pj.read_text())}.get("jJAE7")
+        if p:
+            b = chess.Board(p["fen"]); b.push(chess.Move.from_uci(p["moves"][0]))
+            start = b.copy()
+            leaf = b.copy(); leaf.push(chess.Move.from_uci(p["moves"][1])); leaf.push(chess.Move.from_uci(p["moves"][2]))
+            v = il._leaf_verdict(start, leaf, chess.WHITE)
+            assert "MATING ATTACK" in v
 
 
 def test_leaf_verdict_no_mating_attack_when_king_has_room():

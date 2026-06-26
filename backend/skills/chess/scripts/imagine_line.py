@@ -133,18 +133,20 @@ def _leaf_verdict(start: chess.Board, leaf: chess.Board, agent_color: bool) -> s
         if probe is not None:
             king_escapes = sum(1 for m in probe.legal_moves if m.from_square == enemy_king)
 
-    # A king with ≤1 escape square is in a mating net — whether the leaf is a
-    # check now or it's the agent's move about to deliver one. In that case a
-    # "down material, backtrack" verdict would wrongly bail out of a forced mate
-    # that is one or two moves further. Fire whenever the king is that boxed.
+    # A king with ≤1 escape square is in a mating net. A forced mate DOMINATES any
+    # material assessment — whether the agent is up, even, or down material at the
+    # leaf — so when the king is that boxed, lead with "keep hunting the mate"
+    # regardless of the material swing. (Down-material bailout AND up-material
+    # complacency both make the agent stop short of a mate one move further:
+    # jJAE7 Qxf7+ Kh8 [0 escapes, +1 material] Qf8+ Rxf8 Rxf8#.)
     mating_attack = king_escapes is not None and king_escapes <= 1
 
-    if mating_attack and swing <= 0:
+    if mating_attack:
         verdict += (
-            f"**BUT the enemy king is nearly mated here — only {king_escapes} escape square(s).** "
-            f"This is a MATING ATTACK, not a material question: do NOT backtrack because you are down "
-            f"material — KEEP EXTENDING the line (add your next forcing check/threat) and look for "
-            f"checkmate a move or two further. A mate is worth any amount of material."
+            f"**⚠ The enemy king is nearly mated here — only {king_escapes} escape square(s).** This is "
+            f"a MATING ATTACK: material is NOT the yardstick — KEEP EXTENDING the line (add your next "
+            f"forcing check) and hunt for CHECKMATE a move or two further. Do not settle for the "
+            f"material count (up OR down) while the king is boxed; a mate is worth any material."
         )
     elif swing > 0:
         verdict += ("This line WINS material if the opponent's replies were forced — but a one-ply "
