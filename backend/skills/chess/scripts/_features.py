@@ -41,6 +41,7 @@ WIKI = {
     "traps": "tactics/traps.md",
     "handle_threat": "strategy/handle-a-threat.md",
     "material": "principles/material-and-trading.md",
+    "center": "principles/center-control.md",
     "opening_principles": "principles/opening-principles.md",
     "fund_opening": "fundamentals/opening.md",
     "fund_middlegame": "fundamentals/middlegame.md",
@@ -1196,34 +1197,106 @@ def detect_discovered_attacks(board: chess.Board, perspective: bool | None = Non
 # FUNDAMENTALS  (phase pointer — radar names the page; agent reads it)
 # ============================================================================
 
-def detect_phase_fundamentals(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
-    """Name the phase and point to its fundamentals page. Auto-load by phase is
-    the agent reading the page the radar names.
-
-    Phase is decided by MATERIAL first (few pieces => endgame regardless of move
-    number, since puzzle/constructed positions start at move 1), then by
-    development/move-number for opening vs middlegame."""
+def _phase(board: chess.Board) -> str:
+    """'opening' | 'middlegame' | 'endgame'. Material decides endgame first (few
+    pieces => endgame regardless of move number, since puzzle/constructed
+    positions start at move 1); then development/move-number for opening vs
+    middlegame. Shared by phase fundamentals and the (phase-gated) center-control
+    and trade-advice detectors."""
     n_pieces = chess.popcount(board.occupied)
-    queens = len(board.pieces(chess.QUEEN, chess.WHITE)) + len(board.pieces(chess.QUEEN, chess.BLACK))
     minors_majors = sum(len(board.pieces(pt, c))
                         for pt in (chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN)
                         for c in (chess.WHITE, chess.BLACK))
-    # Endgame: few pieces, or queens off with little else.
     if n_pieces <= 12 or minors_majors <= 6:
-        return [Finding(True, "fundamental",
-            "ENDGAME phase — activate your king, push passed pawns (rook behind them), keep your mating piece",
-            wiki="fund_endgame")]
-    # Opening: still early AND back rank not yet cleared (pieces undeveloped).
+        return "endgame"
     home_minors = sum(1 for c in (chess.WHITE, chess.BLACK)
                       for sq in _HOME[c]
                       if board.piece_at(sq) and board.piece_at(sq).color == c and
                       board.piece_at(sq).piece_type in (chess.KNIGHT, chess.BISHOP))
     if board.fullmove_number <= 10 and home_minors >= 3:
+        return "opening"
+    return "middlegame"
+
+
+_CENTER = [chess.D4, chess.E4, chess.D5, chess.E5]            # the 4 central squares
+_BIG_CENTER = [chess.square(f, r) for f in range(2, 6) for r in range(2, 6)]  # c3–f6
+
+
+def detect_center_control(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
+    """Center control — OPENING / early-MIDDLEGAME only (it governs piece mobility
+    and space then; in the endgame king activity and passed pawns matter instead,
+    so this stays silent there). For the four central squares (d4/e4/d5/e5) it
+    scores, per side, occupation (a pawn on the square = strong, +2; a piece, +1)
+    plus the number of times the side attacks the square (+1 each). Pure
+    rules/geometry — a positional fact like material, not a move recommendation.
+
+    Flags a clear central deficit for the agent (the opponent controls the centre)
+    and, in the opening, a central square the agent could fight for."""
+    findings: list[Finding] = []
+    if _phase(board) == "endgame":
+        return findings
+    stm = board.turn if perspective is None else perspective
+
+    def control(color: bool) -> int:
+        score = 0
+        for sq in _CENTER:
+            p = board.piece_at(sq)
+            if p and p.color == color:
+                score += 2 if p.piece_type == chess.PAWN else 1
+            score += len(board.attackers(color, sq))
+        return score
+
+    mine, theirs = control(stm), control(not stm)
+    # central pawns are the backbone of center control — count them too
+    my_center_pawns = sum(1 for sq in _CENTER if (p := board.piece_at(sq)) and p.color == stm and p.piece_type == chess.PAWN)
+    opp_center_pawns = sum(1 for sq in _CENTER if (p := board.piece_at(sq)) and p.color != stm and p.piece_type == chess.PAWN)
+
+    if theirs - mine >= 3:
+        findings.append(Finding(True, "weakness",
+            f"the OPPONENT controls the centre (their central influence {theirs} vs your {mine}) — "
+            f"you are cramped. Fight back: put a pawn on d4/e4/d5/e5, aim a knight at the centre "
+            f"(Nf3/Nc3/Nf6/Nc6), or strike with c/f pawns; don't let them keep a free centre",
+            wiki="center"))
+    elif mine - theirs >= 3:
+        findings.append(Finding(True, "strength",
+            f"you control the centre (your central influence {mine} vs their {theirs}) — you have more "
+            f"space and faster piece access; use it to switch play between wings, but support the centre "
+            f"so it isn't undermined by a c/f-pawn break", wiki="center"))
+
+    # In the opening, point at an empty central square the agent can fight for.
+    if _phase(board) == "opening" and my_center_pawns <= opp_center_pawns:
+        for sq in (chess.E4, chess.D4):
+            if board.piece_at(sq) is None:
+                # a pawn push or a piece move that would claim/attack it
+                pushers = [board.san(m) for m in board.legal_moves
+                           if m.to_square == sq and board.piece_at(m.from_square)
+                           and board.piece_at(m.from_square).piece_type == chess.PAWN]
+                if pushers:
+                    findings.append(Finding(True, "potential",
+                        f"the centre square {_sq(sq)} is yours to take — a classical central pawn "
+                        f"({', '.join(pushers)}) grabs space and opens lines for your pieces",
+                        moves=pushers, wiki="center"))
+                    break
+    return findings
+
+
+def detect_phase_fundamentals(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
+    """Name the phase and point to its fundamentals page. Auto-load by phase is
+    the agent reading the page the radar names."""
+    phase = _phase(board)
+    if phase == "endgame":
         return [Finding(True, "fundamental",
-            "OPENING phase — develop every piece toward the centre, control the centre, castle",
+            "ENDGAME phase — activate your king (it is a fighting piece now), push passed pawns "
+            "(rook behind them), use opposition; FORCING moves (checks) and king activity decide here",
+            wiki="fund_endgame")]
+    if phase == "opening":
+        return [Finding(True, "fundamental",
+            "OPENING phase — control the CENTRE (d4/e4/d5/e5), develop every piece toward it, castle; "
+            "don't move the same piece twice or grab pawns while undeveloped",
             wiki="fund_opening")]
     return [Finding(True, "fundamental",
-        "MIDDLEGAME phase — assess both sides, attack the king or a weakness, keep pieces active and safe",
+        "MIDDLEGAME phase — assess both sides, attack the king or a weakness, keep pieces active and "
+        "safe; this is where most COMBINATIONS occur — calculate trades and tactics fully",
         wiki="fund_middlegame")]
 
 
@@ -1389,7 +1462,8 @@ def detect_own_back_rank(board: chess.Board, perspective: bool | None = None) ->
 def detect_all(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
     """Run every detector. Returns all findings (side=True == side to move)."""
     findings: list[Finding] = []
-    for fn in (detect_phase_fundamentals, detect_pawn_structure, detect_files,
+    for fn in (detect_phase_fundamentals, detect_center_control,
+               detect_pawn_structure, detect_files,
                detect_development, detect_bishop_pair, detect_outposts,
                detect_knight_forks, detect_piece_forks, detect_loose_pieces, detect_pins_skewers,
                detect_creatable_pins,

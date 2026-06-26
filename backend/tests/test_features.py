@@ -628,3 +628,23 @@ def test_royal_fork_counts_defended_piece(im=None):
     forks = [f for f in detect_piece_forks(b) if f.side and "Qe8" in (f.text + str(f.moves))]
     assert forks, "royal queen-fork Qe8+ (king + defended bishop) must be flagged"
     assert "king on g8" in forks[0].text and "bishop on e5" in forks[0].text
+
+
+def test_center_control_fires_in_opening_silent_in_endgame():
+    from _features import detect_center_control
+    # Black neglects the centre (1.e4 a6 2.d4): White dominates → warning for Black.
+    b = chess.Board("rnbqkbnr/1ppppppp/p7/8/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 2")
+    fs = detect_center_control(b)
+    assert any("OPPONENT controls the centre" in f.text and f.kind == "weakness" for f in fs)
+    # Endgame: must be silent (centre control is gated off there).
+    assert detect_center_control(chess.Board("8/5k2/8/4P3/8/8/5K2/8 w - - 0 1")) == []
+    # Balanced opening (1.e4 e5 2.Nf3): no large deficit either way → no warning.
+    bal = detect_center_control(chess.Board("rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"))
+    assert not any(f.kind in ("weakness", "strength") for f in bal)
+
+
+def test_center_control_opening_suggests_central_pawn():
+    from _features import detect_center_control
+    # Start position: a central pawn push is offered as a way to claim the centre.
+    fs = detect_center_control(chess.Board())
+    assert any("centre square" in f.text and ("e4" in str(f.moves) or "d4" in str(f.moves)) for f in fs)
