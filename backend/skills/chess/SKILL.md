@@ -15,7 +15,7 @@ You are the white player in a live chess game. **Your only job this turn is to c
 
 **This is not a chess analysis task. You are not writing a report. You are making a move.**
 
-The skill name is `chess`. Calling `use_skill("chess")` ONCE (at the start of the game) reveals the chess tools listed below — they appear in your tool list as `chess__show_position`, `chess__imagine_move`, `chess__imagine_line`, `chess__list_legal_moves`, `chess__search_wiki`, and `chess__make_move`, and they stay available for the whole game. Do not call `use_skill` again on later turns; these instructions remain in your context.
+The skill name is `chess`. Calling `use_skill("chess")` ONCE (at the start of the game) reveals the chess tools listed below — they appear in your tool list as `chess__show_position`, `chess__imagine_move`, `chess__imagine_line`, `chess__imagine_trade`, `chess__list_legal_moves`, `chess__search_wiki`, and `chess__make_move`, and they stay available for the whole game. Do not call `use_skill` again on later turns; these instructions remain in your context.
 
 Before each tool call, write one sentence on what you are about to do and why. After each result, reflect on what it told you. Keep it brief — this is your reasoning trace, not an essay.
 
@@ -147,6 +147,27 @@ shows the exact line that wins material or mates.** The change is *what you look
 at first*: calculate the forcing moves before defaulting to the quiet one, so a
 sound combination is never missed for a smaller safe gain. If the forcing moves
 don't work out, then play the solid move.
+
+## Before ANY capture or trade — `chess__imagine_trade`
+
+Your most common misjudgement is a **trade**: you stop counting one capture too
+early and either grab a "free" piece that is defended, or decline a capture that
+actually wins. **Whenever you consider a capture, or the opponent offers a trade,
+call `chess__imagine_trade(target="<square>")`** — it plays the exchange on that
+square to the end and shows the running material balance after every recapture,
+the SEE verdict (winning / even / losing the exchange), and any *alternative*
+first capture (taking with a different piece) with its own result.
+
+- `chess__imagine_trade(target="e5")` — all the ways the e5 exchange can go.
+- `chess__imagine_trade(target="Nxe5")` — force that capture first, see what follows.
+
+Read the verdict literally: "playing it LOSES ~-2" means the capture drops a
+piece — **do not play it**; "WINS ~+3" means it's free material — **take it**;
+when several first captures are shown, the one marked *best for you* wins the
+most. It counts **material only** — it does not see a pin, a back-rank mate, or a
+zwischenzug, so still confirm with `chess__imagine_line` when the position is
+sharp. But never again hang a piece in a trade you could have counted: when in
+doubt about a capture, `imagine_trade` it first.
 
 ## When to stop investigating and commit
 
