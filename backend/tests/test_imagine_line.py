@@ -191,3 +191,33 @@ def test_agent_side_cct_nudge_when_agent_to_move_at_leaf():
     assert "It is YOUR move here" in r.stdout
     assert "forcing continuations" in r.stdout
     assert "Rh4+" in r.stdout   # the mating continuation must be among them
+
+
+def test_leaf_verdict_mating_attack_overrides_material_when_king_boxed():
+    """Down material at the leaf, but the enemy king has <=1 escape square -> the
+    verdict must say 'MATING ATTACK, keep extending' instead of 'backtrack'. This
+    is the fix for the agent bailing out of a forced-mate sacrifice mid-line
+    (8QAW1: Qd8+ Rxd8 [boxed] Rxd8#)."""
+    import importlib.util, sys as _sys
+    from pathlib import Path as _P
+    spec = importlib.util.spec_from_file_location("imagine_line", LINE)
+    il = importlib.util.module_from_spec(spec); _sys.modules["imagine_line"] = il
+    spec.loader.exec_module(il)
+    b = chess.Board("k5r1/ppp3r1/6q1/3Q4/4p3/6p1/PP5P/2RR2K1 w - - 0 33")
+    start = b.copy()
+    leaf = b.copy(); leaf.push_san("Qd8+"); leaf.push_san("Rxd8")
+    v = il._leaf_verdict(start, leaf, chess.WHITE)
+    assert "MATING ATTACK" in v and "KEEP EXTENDING" in v
+    # it tells the agent NOT to backtrack (the ordinary down-material advice)
+    assert "do NOT backtrack" in v
+
+
+def test_leaf_verdict_no_mating_attack_when_king_has_room():
+    import importlib.util, sys as _sys
+    spec = importlib.util.spec_from_file_location("imagine_line", LINE)
+    il = importlib.util.module_from_spec(spec); _sys.modules["imagine_line"] = il
+    spec.loader.exec_module(il)
+    # down material, enemy king has many squares -> ordinary 'backtrack' verdict
+    b = chess.Board("4k3/8/8/8/8/8/r7/4K3 w - - 0 1")  # white down a rook, black king free
+    v = il._leaf_verdict(b, b, chess.WHITE)
+    assert "MATING ATTACK" not in v

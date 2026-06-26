@@ -110,7 +110,43 @@ def _leaf_verdict(start: chess.Board, leaf: chess.Board, agent_color: bool) -> s
         f"**End-of-line material (count it yourself): {sign}{abs(leaf_diff)} for you** "
         f"(start was {'+' if start_diff>=0 else '−'}{abs(start_diff)}; over this line {swing_txt}). "
     )
-    if swing > 0:
+    # Is the ENEMY king nearly mated at this leaf? Count its escape squares (give
+    # it the move). A boxed king (≤1 square) means this is a MATING ATTACK in
+    # progress — material is the wrong yardstick here, and a "you're down
+    # material, backtrack" verdict would wrongly abandon a forced mate that is
+    # just 1–2 moves further (mate-in-3+). This is the key fix for the agent
+    # bailing out of a winning sacrifice mid-line.
+    enemy_king = leaf.king(not agent_color)
+    king_escapes = None
+    if enemy_king is not None:
+        # count the enemy king's own legal moves; give it the move if it's not
+        # already its turn (so we measure how boxed the king is regardless of
+        # whose move the leaf is).
+        if leaf.turn == (not agent_color):
+            probe = leaf
+        else:
+            probe = leaf.copy(stack=False)
+            try:
+                probe.push(chess.Move.null())
+            except Exception:
+                probe = None
+        if probe is not None:
+            king_escapes = sum(1 for m in probe.legal_moves if m.from_square == enemy_king)
+
+    # A king with ≤1 escape square is in a mating net — whether the leaf is a
+    # check now or it's the agent's move about to deliver one. In that case a
+    # "down material, backtrack" verdict would wrongly bail out of a forced mate
+    # that is one or two moves further. Fire whenever the king is that boxed.
+    mating_attack = king_escapes is not None and king_escapes <= 1
+
+    if mating_attack and swing <= 0:
+        verdict += (
+            f"**BUT the enemy king is nearly mated here — only {king_escapes} escape square(s).** "
+            f"This is a MATING ATTACK, not a material question: do NOT backtrack because you are down "
+            f"material — KEEP EXTENDING the line (add your next forcing check/threat) and look for "
+            f"checkmate a move or two further. A mate is worth any amount of material."
+        )
+    elif swing > 0:
         verdict += ("This line WINS material if the opponent's replies were forced — but a one-ply "
                     "loss earlier in the line can still be regained later, so trust the END count, "
                     "not the scary middle. Verify each opponent reply was their best.")
