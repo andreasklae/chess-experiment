@@ -1,12 +1,17 @@
 """Select a fixed, reproducible puzzle set for the agent benchmark.
 
-Two modes:
-  (default)     OFFENSIVE — the agent PLAYS the motif (fork/pin/skewer/…).
-  --defensive   DEFENSIVE — the agent must PREVENT/ESCAPE the opponent's motif.
-                Each defensive topic = Lichess `defensiveMove` AND the motif
-                theme, so a "defend-fork" puzzle is one the community tagged both
-                "defensiveMove" (a precise move needed to avoid losing) and
-                "fork" (the threat being defended against).
+Modes:
+  (default)     OFFENSIVE — the agent PLAYS the motif (fork/pin/skewer/…). This
+                is the agent-SOLVING benchmark (puzzles.json).
+  --defensive   DEPRECATED, do not use. It selects `defensiveMove` + motif, which
+                was *assumed* to mean "defend against the opponent's fork" but
+                does NOT: verified against the Lichess tagger source
+                (ornicar/lichess-puzzler), every motif theme describes the
+                SOLVER's own move, so `fork` always means "the solver forks". The
+                resulting set is mostly counter-attacks, not defence. The genuine
+                defensive work is a DETECTOR-verification harness over flipped
+                positions instead — see `flip_puzzles.py` + `verify_threat_warnings.py`.
+                This mode is kept only so the deprecation is self-documenting.
 
 Pulls puzzles from the local Lichess puzzle DB slice, binned per TOPIC by rating
 band so each theme is tested across the full difficulty range. The agent ALWAYS
