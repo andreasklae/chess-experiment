@@ -386,7 +386,9 @@ def _bad_trade_warning(
         f"the opponent captures here and you recapture, you come out about "
         f"{net_loss} centipawns DOWN (roughly {net_loss // 100} pawn(s) of "
         f"material). The square is defended by count, but you lose material "
-        f"in the trade — verify this is a sacrifice you intend."
+        f"in the trade — verify this is a sacrifice you intend. "
+        f"**Run `chess__imagine_trade(target=\"{chess.square_name(move.to_square)}\")` "
+        f"to see the whole exchange played out.**"
     )
 
 
@@ -603,6 +605,16 @@ def render_imagine(
         out.append("")
     out.append(f"## Move: {_move_summary(board_before, move)}")
     out.append("")
+    # If this is a capture into a square the opponent can recapture on, point the
+    # agent at imagine_trade to count the WHOLE exchange (its top weakness is
+    # stopping a trade one capture early). Only for the agent's own move.
+    if board_before.is_capture(move) and not opp_move:
+        tsq = chess.square_name(move.to_square)
+        if board_after.attackers(not board_before.turn, move.to_square):
+            out.append(f"_This is a capture — the opponent can recapture on {tsq}. "
+                       f"Run `chess__imagine_trade(target=\"{tsq}\")` to see the full "
+                       f"exchange and whether you end up + or − material._")
+            out.append("")
     out.append(f"**Check:** {check_text}")
     # Why this move may be STRONG: an unanswerable threat — e.g. it attacks a
     # valuable piece WHILE giving check, so the side to reply can't both answer
