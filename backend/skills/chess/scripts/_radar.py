@@ -1222,7 +1222,10 @@ def _nearest_passer_distance(board: chess.Board, color: bool) -> int | None:
         if passed_on(board, sq, color):
             d = dist(sq, color)
             best = d if best is None else min(best, d)
-    # passed after one of the agent's legal pawn moves (push or capture = breakthrough)
+    # passed after one of the agent's legal pawn moves (push or capture), AND the
+    # classic 2-ply BREAKTHROUGH: agent pushes a pawn that the opponent captures,
+    # and after that capture an agent pawn is passed (WRHef: c6 bxc6 leaves b6 a
+    # passer). We look one opponent pawn-capture deep for this.
     if board.turn == color:
         for mv in board.legal_moves:
             pc = board.piece_at(mv.from_square)
@@ -1232,9 +1235,21 @@ def _nearest_passer_distance(board: chess.Board, color: bool) -> int | None:
             b2.push(mv)
             for sq in b2.pieces(chess.PAWN, color):
                 if passed_on(b2, sq, color):
-                    # +1 because making the breakthrough costs this tempo
-                    d = dist(sq, color) + 1
+                    d = dist(sq, color) + 1  # +1 tempo to make the breakthrough
                     best = d if best is None else min(best, d)
+            # 2-ply breakthrough: opponent pawn-capture in reply, then agent passed
+            for rep in b2.legal_moves:
+                if not b2.is_capture(rep):
+                    continue
+                rpc = b2.piece_at(rep.from_square)
+                if rpc is None or rpc.piece_type != chess.PAWN:
+                    continue
+                b3 = b2.copy(stack=False)
+                b3.push(rep)
+                for sq in b3.pieces(chess.PAWN, color):
+                    if passed_on(b3, sq, color):
+                        d = dist(sq, color) + 2  # +2 tempi (push + their capture)
+                        best = d if best is None else min(best, d)
     return best
 
 
