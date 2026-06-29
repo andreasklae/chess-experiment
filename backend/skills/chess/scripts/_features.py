@@ -1688,14 +1688,42 @@ def _forcing_moves_line(board: chess.Board) -> str:
                          + " — a FORCED MATE may be available. Calculate your checks to the END with "
                          "`chess__imagine_line` (a checking SACRIFICE that mates is worth any material — "
                          "read the leaf verdict for 'CHECKMATE'); don't stop because a check 'loses' material.")
+    # Per-check BOXING marker: which individual checks trap the enemy king to <=1
+    # escape square? The mate_hint above measures the king's CURRENT mobility, but a
+    # king with escapes now can be boxed by a SPECIFIC check (1pYEx: the king on e8
+    # is free, but Bb5+/Bg4+ box it to <=1 while Bh5+ leaves 2 — the agent picks a
+    # non-boxing check and misses the mate). Mark the boxing ones with ↯ so the agent
+    # calculates THOSE for mate. Count the king's legal moves after the check
+    # directly (it is in check, its turn) — never a null move (illegal in check).
+    boxing_checks: set[str] = set()
+    for c in checks:
+        try:
+            mv = board.parse_san(c)
+        except Exception:
+            continue
+        bc = board.copy(stack=False); bc.push(mv)
+        ekc = bc.king(bc.turn)
+        if ekc is None:
+            continue
+        esc_c = sum(1 for m in bc.legal_moves if m.from_square == ekc)
+        if esc_c <= 1:
+            boxing_checks.add(c)
+    if boxing_checks and not mate_hint:
+        blist = ", ".join(sorted(boxing_checks))
+        mate_hint = (f" ↯ These check(s) BOX the enemy king to ≤1 escape square: {blist} — a FORCED "
+                     f"MATE may start with one of them. Calculate EACH to the end with "
+                     f"`chess__imagine_line` and read the leaf for 'CHECKMATE'; only one may mate, so "
+                     f"don't stop after the first. A checking sacrifice that mates is worth any material.")
     def _mark(c):
+        box = "↯" if c in boxing_checks else ""
         if c in cap_checks:
-            return f"★{c}"          # check that is also a capture (sharpest)
+            return f"★{box}{c}"      # check that is also a capture (sharpest)
         if c in captures:
             return f"✛{c}"          # a capture (not a check)
-        return c                     # a quiet check
+        return f"{box}{c}"           # a quiet check (↯ if it boxes the king)
     return (
-        "**Forcing moves — calculate these FIRST (★ = capturing check, ✛ = capture, rest = check):** "
+        "**Forcing moves — calculate these FIRST (★ = capturing check, ✛ = capture, ↯ = boxes the "
+        "enemy king, rest = check):** "
         + ", ".join(_mark(c) for c in ordered)
         + ". Checks AND captures force the play — they are how most combinations work (a deflection or "
         "removing-the-defender often STARTS with a capture, not a check). Play each promising one out "
