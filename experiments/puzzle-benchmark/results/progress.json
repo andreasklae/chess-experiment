@@ -6252,9 +6252,9 @@
     "rating": 1367,
     "solved_plies": 0,
     "total_plies": 3,
-    "aborted_reason": "agent played a1d1, expected g5f6",
-    "run_id": "run_1782769091",
-    "ts": "2026-06-29T23:47:23",
+    "aborted_reason": "agent played h2h3, expected g5f6",
+    "run_id": "run_1782770512",
+    "ts": "2026-06-30T00:02:18",
     "category": {
       "legal_moves_count": 46,
       "in_check": false,
@@ -6279,32 +6279,32 @@
       "signature": "bishop captures"
     },
     "tool_calls_total": 9,
-    "imagine_line_calls": 2,
-    "imagine_move_calls": 3,
+    "imagine_line_calls": 3,
+    "imagine_move_calls": 2,
     "attempts": [
       {
         "ply": 0,
         "fen_before": "r4rk1/4Rpbp/pp1p1np1/3b2B1/8/2N2N2/PPP2PPP/R5K1 w - - 0 15",
         "expected_uci": "g5f6",
         "expected_san": "Bxf6",
-        "played_uci": "a1d1",
-        "played_san": "Rd1",
+        "played_uci": "h2h3",
+        "played_san": "h3",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "I analyzed several tactical options. Bxf6 followed by Nxd5 fails because the opponent can play ...Bxe7, winning the exchange and leaving me down material. Re8 is a blunder as the rook is simply captured. Rd1 is a solid improving move that develops the last piece, controls the half-open d-file, and creates a potential skewer on the d5 bishop and d6 pawn. I also noted the lack of luft for my king and the potential for a back-rank mate, which I will address in the next few moves. \u00b7 plan: Improve piece coordination and target the isolated d6 pawn. Establish control of the d and e files, create luft for the king, and look for opportunities to win material via skewers or removing the defender on f6."
+        "reasoning": "The radar warned about a lack of luft for my king, and the back-rank mate wiki emphasizes its danger. While Bxf6 followed by Nxd5 looks appealing, the calculation showed that black can recapture the rook on e7 (Bxe7), complicating the win. By playing h3 first, I eliminate the immediate back-rank threat and create a safe flight square, allowing me to pursue the tactical opportunities on the e-file and d-file with more security. \u00b7 plan: Secure the king with luft to prevent back-rank tactics, then exploit the open e-file and the pressure on f7/d5 to win material or positional advantage."
       }
     ]
   },
   "46IHG": {
-    "status": "failed",
+    "status": "solved",
     "topic": "intermezzo",
     "difficulty": "medium",
     "rating": 1197,
-    "solved_plies": 0,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "agent played f1a1, expected d3d7",
-    "run_id": "run_1782769091",
-    "ts": "2026-06-29T23:47:44",
+    "aborted_reason": null,
+    "run_id": "run_1782770512",
+    "ts": "2026-06-30T00:02:53",
     "category": {
       "legal_moves_count": 25,
       "in_check": false,
@@ -6328,20 +6328,31 @@
       "ends_in_mate": false,
       "signature": "rook captures"
     },
-    "tool_calls_total": 6,
-    "imagine_line_calls": 1,
-    "imagine_move_calls": 1,
+    "tool_calls_total": 10,
+    "imagine_line_calls": 2,
+    "imagine_move_calls": 2,
     "attempts": [
       {
         "ply": 0,
         "fen_before": "8/p2r2kp/1p4p1/2n5/8/3R2P1/4PP1P/q4RK1 w - - 0 45",
         "expected_uci": "d3d7",
         "expected_san": "Rxd7+",
+        "played_uci": "d3d7",
+        "played_san": "Rxd7+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Calculated with imagine_line: playing Rxd7+ first forces black's hand. If black recaptures with Nxd7, I then play Rxa1, winning the queen for a rook and ending up with a clear material lead. If black moves the king instead of recapturing, I still play Rxa1 and have won a rook for nothing. Capturing the queen immediately (Rxa1) would allow black to simply play Rxd3 or Nxd3, leaving me with a less advantageous position than the forcing check-first sequence. \u00b7 goal: Gain decisive material advantage by eliminating the queen and simplifying the position. \u00b7 plan: Execute a forcing sequence: first, deliver the check with Rxd7+ to force a response (either moving the king or recapturing with the knight), and then capture the undefended queen on a1. This transforms a losing material deficit into a winning advantage."
+      },
+      {
+        "ply": 1,
+        "fen_before": "8/p2n2kp/1p4p1/8/8/6P1/4PP1P/q4RK1 w - - 0 46",
+        "expected_uci": "f1a1",
+        "expected_san": "Rxa1",
         "played_uci": "f1a1",
         "played_san": "Rxa1",
-        "correct": false,
-        "accepted_as": null,
-        "reasoning": "The black queen on a1 is completely undefended. Capturing it (Rxa1) swings the material balance from a decisive disadvantage to a slight lead for white (+1.55). While black can capture my rook on d3 (Rxd3 or Nxd3), I can recapture (exd3), leaving me with a rook and a better pawn structure against black's rook and knight. This is the most forcing and material-winning move available. \u00b7 plan: Eliminate the enemy queen to equalize material, then coordinate rooks to stop the passed pawns on a7/b6 and push the e-pawn."
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The SAFETY CHECK is triggered because I temporarily lose a rook on d7, but this is a calculated sequence. As verified by chess__imagine_line(moves='Rxd7+,Nxd7,Rxa1'), the forced line is: 1. Rxd7+ (check) -> Black must reply. If 1... Nxd7, then 2. Rxa1 captures the undefended queen. This results in a net gain of a queen for a rook (+9 - 5 = +4). If Black moves the king instead of recapturing (e.g., 1... Kh8), then 2. Rxa1 still captures the queen, and I have also won a rook. The sequence is forced and winning. \u00b7 goal: Gain decisive material advantage by eliminating the queen and simplifying the position. \u00b7 plan: Execute a forcing sequence: first, deliver the check with Rxd7+ to force a response (either moving the king or recapturing with the knight), and then capture the undefended queen on a1. This transforms a losing material deficit into a winning advantage."
       }
     ]
   },
@@ -6353,8 +6364,8 @@
     "solved_plies": 0,
     "total_plies": 2,
     "aborted_reason": "agent played h4h5, expected h3g3",
-    "run_id": "run_1782769091",
-    "ts": "2026-06-29T23:48:00",
+    "run_id": "run_1782770778",
+    "ts": "2026-06-30T00:06:35",
     "category": {
       "legal_moves_count": 14,
       "in_check": false,
@@ -6378,9 +6389,9 @@
       "ends_in_mate": true,
       "signature": "rook check"
     },
-    "tool_calls_total": 5,
+    "tool_calls_total": 6,
     "imagine_line_calls": 0,
-    "imagine_move_calls": 1,
+    "imagine_move_calls": 2,
     "attempts": [
       {
         "ply": 0,
@@ -6391,7 +6402,7 @@
         "played_san": "Rxh5",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "The pawn on h5 is undefended and captures it reduces Black's material advantage while improving the rook's position. I checked for immediate tactical refutations with imagine_move; none of the legal replies win material or mate. This is a safe, forcing gain that advances my goal of climbing back in material. \u00b7 goal: Secure a material gain (pawn h5) while preparing luft for the king to avoid back-rank mate. \u00b7 plan: Recover material by targeting isolated and weak pawns (starting with h5), then create luft (g3 or h3) to eliminate the back-rank mate threat. Use the two rooks to create counterplay against Black's passed pawns on a and e."
+        "reasoning": "Captured the undefended pawn on h5 to reduce Black's material advantage and create a passed pawn on h2. I rejected Rg4+ because it hangs the rook to the pawn on h5 for no immediate mate or gain. I have read about back-rank mate and recognize my king is currently trapped, so making luft (g3 or h3) will be a priority soon. \u00b7 plan: Recover material by attacking isolated pawns and utilizing the h-file. Simultaneously, prepare to create luft for the king on h1 to avoid back-rank mate threats."
       }
     ]
   },
@@ -15269,15 +15280,15 @@
     ]
   },
   "Ixyf9": {
-    "status": "failed",
+    "status": "solved",
     "topic": "intermezzo",
     "difficulty": "medium",
     "rating": 1308,
-    "solved_plies": 1,
+    "solved_plies": 3,
     "total_plies": 3,
-    "aborted_reason": "agent played f2e3, expected d8f8",
-    "run_id": "run_1782769091",
-    "ts": "2026-06-29T23:48:37",
+    "aborted_reason": null,
+    "run_id": "run_1782770512",
+    "ts": "2026-06-30T00:04:03",
     "category": {
       "legal_moves_count": 43,
       "in_check": false,
@@ -15301,8 +15312,8 @@
       "ends_in_mate": false,
       "signature": "rook captures"
     },
-    "tool_calls_total": 12,
-    "imagine_line_calls": 1,
+    "tool_calls_total": 16,
+    "imagine_line_calls": 2,
     "imagine_move_calls": 3,
     "attempts": [
       {
@@ -15314,18 +15325,29 @@
         "played_san": "Rxd8",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "Calculated the line Rxd8, Rxd8, Qxc5. By trading rooks on d8, I reveal a discovered attack from my queen on e3 to the undefended black queen on c5. After Black recaptures the rook (the most forcing reply), I capture their queen, gaining a decisive material lead. Verified that no other Black replies (like Qxc4) prevent the loss of the queen or offer a better counter-attack. \u00b7 plan: Exploit the loose black queen: trade rooks on d8 to discover an attack on the queen, then capture it. Simplify into a winning material advantage."
+        "reasoning": "I have discovered a powerful combination. By playing Rxd8, I force a trade of rooks (Rxd8), but this removes the defender of the black queen on c5 and discovers an attack from my queen on e3. After 1. Rxd8 Rxd8, I can play 2. Qxc5, winning the queen for a rook. This leaves me with a decisive material advantage (+9) and a winning position. I verified the line with imagine_line and confirmed that black has no immediate counter-threats that negate this gain. \u00b7 goal: Execute the combination Rxd8 followed by Qxc5 to win the black queen. \u00b7 plan: Win decisive material via a discovered attack on the queen, then simplify the position by trading remaining pieces to convert the material advantage into a win."
       },
       {
         "ply": 1,
         "fen_before": "3R1rk1/pp3ppp/4pn2/8/2P4P/4qN2/PP3PP1/5RK1 w - - 0 20",
         "expected_uci": "d8f8",
         "expected_san": "Rxf8+",
+        "played_uci": "d8f8",
+        "played_san": "Rxf8+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "I am overriding the safety check because this is a calculated combination. The forced line is: 1. Rxd8 Rxd8 2. Qxc5. Although I lose the rook on d8 in the first step, I win the black queen on c5 in the second step. This results in a net gain of approximately 4 points of material (Queen for Rook) and a decisive advantage. I have verified this sequence with `chess__imagine_line` and it is sound. \u00b7 goal: Execute the combination Rxd8 followed by Qxc5 to win the black queen. \u00b7 plan: Win decisive material via a discovered attack on the queen, then simplify the position by trading remaining pieces to convert the material advantage into a win."
+      },
+      {
+        "ply": 2,
+        "fen_before": "5k2/pp3ppp/4pn2/8/2P4P/4qN2/PP3PP1/5RK1 w - - 0 21",
+        "expected_uci": "f2e3",
+        "expected_san": "fxe3",
         "played_uci": "f2e3",
         "played_san": "fxe3",
-        "correct": false,
-        "accepted_as": null,
-        "reasoning": "I am overriding the safety check because this is a calculated combination. Forced line: 1. Rxd8 Rxd8 2. Qxc5. By trading rooks on d8, I reveal a discovered attack from my queen on e3 to the undefended black queen on c5. After Black's forced recapture 1... Rxd8, I play 2. Qxc5, winning the queen for a rook, which is a massive material gain. Verified with `imagine_line` that Black has no viable alternatives that avoid this loss. \u00b7 plan: Exploit the loose black queen: trade rooks on d8 to discover an attack on the queen, then capture it. Simplify into a winning material advantage."
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The opponent played Qxe3, leaving their queen undefended. However, my rook on d8 is under attack by the rook on f8. By playing Rxf8+ first, I force the king to recapture (or move), ensuring that I don't lose my rook for nothing before capturing the queen. This sequence (Rxf8+, Kxf8, fxe3) maximizes material gain and removes Black's most active piece. \u00b7 plan: Win decisive material by first removing the defender of the back rank (Rxf8+) and then capturing the undefended queen (fxe3), then simplify to convert the win."
       }
     ]
   },
@@ -15337,8 +15359,8 @@
     "solved_plies": 0,
     "total_plies": 2,
     "aborted_reason": "agent played f1b1, expected g5f6",
-    "run_id": "run_1782769091",
-    "ts": "2026-06-29T23:48:49",
+    "run_id": "run_1782770778",
+    "ts": "2026-06-30T00:06:53",
     "category": {
       "legal_moves_count": 22,
       "in_check": false,
@@ -15362,9 +15384,9 @@
       "ends_in_mate": false,
       "signature": "bishop captures"
     },
-    "tool_calls_total": 4,
-    "imagine_line_calls": 0,
-    "imagine_move_calls": 1,
+    "tool_calls_total": 8,
+    "imagine_line_calls": 3,
+    "imagine_move_calls": 2,
     "attempts": [
       {
         "ply": 0,
@@ -15375,7 +15397,7 @@
         "played_san": "Rxb1",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "The opponent's queen on b1 is completely undefended. Capturing it with Rxb1 immediately swings the material balance from a decisive disadvantage (-9.25) to a roughly equal position (+0.15). I checked for traps with imagine_move and found no immediate devastating replies; the best response is dxe5, which only wins a pawn. This is a massive material gain that must be taken immediately. \u00b7 plan: Eliminate the opponent's major material advantage by capturing the undefended queen, then coordinate pieces to stabilize and use the passed h-pawn."
+        "reasoning": "The black queen on b1 is completely undefended. Capturing it immediately restores material parity (from -9 to approximately +0) and removes black's most powerful piece and primary source of threats. I considered Bxf6+ first, but capturing the queen is the most direct and significant gain. \u00b7 goal: Capture the undefended black queen. \u00b7 plan: Win back decisive material by capturing the undefended queen on b1. After stabilizing the material balance, focus on leveraging the passed h-pawn and targeting black's isolated pawns."
       }
     ]
   },
@@ -15441,15 +15463,15 @@
     ]
   },
   "HIYQC": {
-    "status": "failed",
+    "status": "solved",
     "topic": "intermezzo",
     "difficulty": "medium",
     "rating": 1308,
-    "solved_plies": 0,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "agent played e3e4, expected b2f6",
-    "run_id": "run_1782769091",
-    "ts": "2026-06-29T23:49:03",
+    "aborted_reason": null,
+    "run_id": "run_1782770512",
+    "ts": "2026-06-30T00:04:45",
     "category": {
       "legal_moves_count": 14,
       "in_check": false,
@@ -15473,20 +15495,31 @@
       "ends_in_mate": false,
       "signature": "bishop captures"
     },
-    "tool_calls_total": 4,
-    "imagine_line_calls": 0,
-    "imagine_move_calls": 1,
+    "tool_calls_total": 10,
+    "imagine_line_calls": 2,
+    "imagine_move_calls": 3,
     "attempts": [
       {
         "ply": 0,
         "fen_before": "8/p1b4p/5p2/2p2P2/2P1b2k/1P2K3/PB6/8 w - - 0 35",
         "expected_uci": "b2f6",
         "expected_san": "Bxf6+",
+        "played_uci": "b2f6",
+        "played_san": "Bxf6+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "I have two forcing moves: Kxe4 (winning a bishop) and Bxf6+ (winning a pawn with check). Calculating with imagine_line showed that playing the check first (Bxf6+) does not prevent the subsequent capture of the bishop on e4, meaning I win both a pawn and a piece. This is a classic 'zwischenzug' (in-between move) that maximizes material gain. After Bxf6+, the king must move, and then I will play Kxe4. \u00b7 goal: Win the bishop on e4 and improve material standing. \u00b7 plan: Winning material: First execute the in-between check Bxf6+ to remove a pawn and force the king, then capture the undefended bishop on e4 to flip the material advantage."
+      },
+      {
+        "ply": 1,
+        "fen_before": "8/p1b4p/5B2/2p2P2/2P1b1k1/1P2K3/P7/8 w - - 1 36",
+        "expected_uci": "e3e4",
+        "expected_san": "Kxe4",
         "played_uci": "e3e4",
         "played_san": "Kxe4",
-        "correct": false,
-        "accepted_as": null,
-        "reasoning": "The bishop on e4 is completely undefended and represents a significant tactical opportunity. Capturing it with Kxe4 wins a piece for free, shifting the material balance in my favor (+0.85) and removing black's most active piece. I checked the opponent's replies in imagine_move, and none of them regain the material or create an immediate winning threat. \u00b7 goal: Convert material advantage and neutralize black's passed h-pawn. \u00b7 plan: Eliminate black's active bishop to gain a material lead, then look for a breakthrough (e.g., b4) or use the bishop to target black's isolated pawns and block the h-pawn."
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my standing plan and current goal, I am capturing the undefended bishop on e4. This flips the material advantage in my favor (+1.55) and simultaneously defends my pawn on f5, which was under attack. The imagine_move analysis confirms there are no immediate tactical traps or material losses following this capture."
       }
     ]
   },
