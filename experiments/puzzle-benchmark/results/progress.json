@@ -1143,15 +1143,15 @@
     ]
   },
   "VhRSK": {
-    "status": "failed",
+    "status": "solved",
     "topic": "discovered-attack",
     "difficulty": "easy",
     "rating": 935,
-    "solved_plies": 0,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "agent played d3c4, expected d3h7",
-    "run_id": "run_1782768036",
-    "ts": "2026-06-29T23:20:56",
+    "aborted_reason": null,
+    "run_id": "run_1782768472",
+    "ts": "2026-06-29T23:28:26",
     "category": {
       "legal_moves_count": 35,
       "in_check": false,
@@ -1175,20 +1175,31 @@
       "ends_in_mate": false,
       "signature": "bishop captures"
     },
-    "tool_calls_total": 7,
-    "imagine_line_calls": 2,
-    "imagine_move_calls": 1,
+    "tool_calls_total": 10,
+    "imagine_line_calls": 1,
+    "imagine_move_calls": 2,
     "attempts": [
       {
         "ply": 0,
         "fen_before": "r4rk1/pb3ppp/1p1q1n2/2p5/2p5/P2BPN1P/1P3PP1/R2Q1RK1 w - - 0 17",
         "expected_uci": "d3h7",
         "expected_san": "Bxh7+",
-        "played_uci": "d3c4",
-        "played_san": "Bxc4",
-        "correct": false,
-        "accepted_as": null,
-        "reasoning": "I play Bxc4 to remove the pawn and discover an attack on the black queen on d6. If Black responds with Qxd1, I will recapture with Raxd1, equalizing material (trading queens) and controlling the open d-file. This simplifies the position and removes Black's material advantage. \u00b7 goal: Recapture the queen on d1 and stabilize the material balance. \u00b7 plan: First, eliminate the c4 pawn while discovering an attack on the black queen. Then, regain the queen if black captures on d1, equalizing material and improving my piece coordination."
+        "played_uci": "d3h7",
+        "played_san": "Bxh7+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The position contains a powerful discovered attack. By playing Bxh7+, I deliver a check to the black king and simultaneously unveil an attack from my queen on d1 toward the undefended black queen on d6. Per the soundness test in `tactics/discovered-attacks.md`, black cannot answer the check and save the queen in a single move. After Kxh7 or Nxh7, I will play Qxd6, winning the queen for a bishop and gaining a decisive material advantage. \u00b7 goal: capture the undefended queen on d6 \u00b7 plan: Execute a discovered attack: play Bxh7+ to force the black king (or knight) to respond to the check, then capture the undefended queen on d6 with the white queen."
+      },
+      {
+        "ply": 1,
+        "fen_before": "r4rk1/pb3ppn/1p1q4/2p5/2p5/P3PN1P/1P3PP1/R2Q1RK1 w - - 0 18",
+        "expected_uci": "d1d6",
+        "expected_san": "Qxd6",
+        "played_uci": "d1d6",
+        "played_san": "Qxd6",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "I am overriding the safety check because this is a calculated tactical sacrifice. The sequence is: 1. Bxh7+ (discovered attack on the queen). Black must respond to the check with 1... Kxh7 or 1... Nxh7. Then I play 2. Qxd6, winning the black queen. The net result is winning a queen (9) for a bishop (3), a huge material gain. This was verified with `chess__imagine_line`. \u00b7 goal: capture the undefended queen on d6 \u00b7 plan: Execute a discovered attack: play Bxh7+ to force the black king (or knight) to respond to the check, then capture the undefended queen on d6 with the white queen."
       }
     ]
   },

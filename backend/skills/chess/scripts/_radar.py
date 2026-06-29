@@ -1192,6 +1192,52 @@ def _own_back_rank_lines(board: chess.Board, own: bool) -> list[str]:
     ]
 
 
+def _nearest_passer_distance(board: chess.Board, color: bool) -> int | None:
+    """Min promotion distance (in pawn pushes) over `color`'s pawns that are passed
+    NOW or become passed after ONE legal pawn move (a breakthrough — WRHef: c5 isn't
+    the runner, but after c6 bxc6 the b6-pawn is a passer 2 from queening). Returns
+    None if no such pawn. Used only to decide whether the agent is in a real pawn
+    RACE (so the opponent-promotion warning offers 'race, don't reflexively defend'
+    instead of prescribing defence). Heuristic distance, not a proof; the agent
+    still calculates the race with imagine_line."""
+    def passed_on(b: chess.Board, sq: int, c: bool) -> bool:
+        f, r = chess.square_file(sq), chess.square_rank(sq)
+        ahead = range(r + 1, 8) if c == chess.WHITE else range(0, r)
+        for x in (f - 1, f, f + 1):
+            if not 0 <= x <= 7:
+                continue
+            for rr in ahead:
+                p = b.piece_at(chess.square(x, rr))
+                if p is not None and p.piece_type == chess.PAWN and p.color != c:
+                    return False
+        return True
+
+    def dist(sq: int, c: bool) -> int:
+        r = chess.square_rank(sq)
+        return (7 - r) if c == chess.WHITE else r
+
+    best: int | None = None
+    # passed now
+    for sq in board.pieces(chess.PAWN, color):
+        if passed_on(board, sq, color):
+            d = dist(sq, color)
+            best = d if best is None else min(best, d)
+    # passed after one of the agent's legal pawn moves (push or capture = breakthrough)
+    if board.turn == color:
+        for mv in board.legal_moves:
+            pc = board.piece_at(mv.from_square)
+            if pc is None or pc.piece_type != chess.PAWN:
+                continue
+            b2 = board.copy(stack=False)
+            b2.push(mv)
+            for sq in b2.pieces(chess.PAWN, color):
+                if passed_on(b2, sq, color):
+                    # +1 because making the breakthrough costs this tempo
+                    d = dist(sq, color) + 1
+                    best = d if best is None else min(best, d)
+    return best
+
+
 def _passed_pawn_lines(board: chess.Board, own: bool) -> list[str]:
     """List passed pawns for both sides with distance to promotion."""
     def passed(sq: int, color: bool) -> bool:
@@ -1299,12 +1345,31 @@ def _passed_pawn_lines(board: chess.Board, own: bool) -> list[str]:
                 f"You MUST block/capture the promotion square or give check NOW, or they win."
             )
         elif warning:
-            lines.append(
-                f"- **WARNING: Opponent pawn(s) {', '.join(warning)} promote in 1 move.** "
-                f"Your next move MUST deal with this threat (block, capture, or check) or "
-                f"you will face a new queen. If you can deliver checkmate in 1, do it — "
-                f"otherwise stop the pawns first."
-            )
+            # Is the agent ALSO in the race? If it has a passed pawn just as close
+            # to promoting (and especially one whose promotion gives check), the
+            # right call may be to PUSH OWN PAWN / break through rather than defend
+            # — a panic "stop the pawns first" loses won races (WRHef: c6! bxc6 b7
+            # queens with the agent's own passer while the agent instead defended
+            # the g2-pawn with Kh2). Surface the race instead of prescribing defence.
+            own_dist = _nearest_passer_distance(board, own)
+            race = own_dist is not None and own_dist <= 3
+            if race:
+                lines.append(
+                    f"- **PAWN RACE: opponent pawn(s) {', '.join(warning)} promote in 1 move — but "
+                    f"you have a passed pawn ~{own_dist} move(s) from queening too.** Do NOT reflexively "
+                    f"defend: calculate whether PUSHING your own pawn (or a breakthrough pawn sacrifice "
+                    f"that clears its path) queens first or WITH CHECK — if so, race, don't defend. Use "
+                    f"`imagine_line` to play the race out to both queens. Defend only if your pawn is "
+                    f"genuinely slower."
+                )
+            else:
+                lines.append(
+                    f"- **WARNING: Opponent pawn(s) {', '.join(warning)} promote in 1 move.** "
+                    f"Your next move should deal with this threat (block, capture, check, or queen "
+                    f"your own pawn first with check) or you will face a new queen. If you can deliver "
+                    f"checkmate in 1, do it. Before defending, check whether a faster counter-promotion "
+                    f"or a forcing move wins the race."
+                )
         else:
             lines.append(f"- Opponent passed pawn(s): {', '.join(theirs)} — do not let them run.")
     return lines
