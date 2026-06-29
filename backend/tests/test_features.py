@@ -416,6 +416,31 @@ def test_trap_detector_flags_baited_capture():
     assert detect_traps(safe) == []
 
 
+def test_trap_detector_excludes_removing_defender_sacrifice():
+    """A material-losing capture that REMOVES THE SOLE DEFENDER of an attacked
+    enemy piece is a deliberate sacrifice, not a bait — it must NOT be flagged as a
+    trap (doing so steers the agent away from the solution, 7e5N5). Here the e7
+    knight is defended only by the d8 queen; Qxd8 loses the queen by SEE but wins
+    the knight next move (Rxe7), so it should be excluded from the trap list while
+    the genuine baits (Rxe7, Bxa6) remain."""
+    from _features import detect_traps
+    b = chess.Board("r2q1rk1/1p2nppp/p4n2/5P2/4R3/8/PPP2PPP/R2Q1BK1 w - - 1 16")
+    fs = detect_traps(b)
+    trap_text = " ".join(f.text for f in fs)
+    assert "Qxd8" not in trap_text          # the removing-the-defender sac is NOT a trap
+    assert "Rxe7" in trap_text               # a genuine bait still flagged
+
+
+def test_trap_detector_excludes_checking_capture():
+    """A capture that GIVES CHECK is forcing and must be judged by the line, not by
+    one-ply SEE — it must not be flagged as a trap (VhRSK: Bxh7+ is a
+    discovered-attack check, not a bait)."""
+    from _features import detect_traps
+    b = chess.Board("r4rk1/pb3ppp/1p1q1n2/2p5/2p5/P2BPN1P/1P3PP1/R2Q1RK1 w - - 0 17")
+    fs = detect_traps(b)
+    assert all("Bxh7" not in f.text for f in fs)
+
+
 # ── new detectors (king safety, material, overload, luft) — gap-fill audit ──
 
 def test_material_up_advises_trade():

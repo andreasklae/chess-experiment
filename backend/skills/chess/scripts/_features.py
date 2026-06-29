@@ -328,6 +328,32 @@ def _phase_is_opening(board: chess.Board) -> bool:
     return board.fullmove_number <= 12
 
 
+def _tactical_sacrifice_squares(board: chess.Board, stm: bool) -> set[int]:
+    """Squares where a capture by `stm` removes the SOLE defender of an attacked
+    enemy piece (≥ minor) — i.e. a removing-the-defender sacrifice, not a bait.
+    Same single-defender logic as detect_removable_defender; factored out so the
+    trap detector can exclude these squares. Mechanics only."""
+    enemy = not stm
+    out: set[int] = set()
+    for tsq in chess.SQUARES:
+        ep = board.piece_at(tsq)
+        if not ep or ep.color != enemy or ep.piece_type in (chess.KING, chess.PAWN):
+            continue
+        if not board.attackers(stm, tsq):
+            continue
+        defenders = [d for d in board.attackers(enemy, tsq) if d != tsq]
+        if len(defenders) != 1:
+            continue
+        guard = defenders[0]
+        gp = board.piece_at(guard)
+        if gp is None or gp.piece_type == chess.KING:
+            continue
+        # is the guard capturable by stm? if so its square is a tactical sac square
+        if board.attackers(stm, guard):
+            out.add(guard)
+    return out
+
+
 def detect_traps(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
     """Trap / bait detection (only meaningful for the side to move): a capture
     that LOOKS free — grabbing an enemy piece or pawn — but actually LOSES
@@ -348,11 +374,24 @@ def detect_traps(board: chess.Board, perspective: bool | None = None) -> list[Fi
         return []  # we only assess the side actually on move
     findings: list[Finding] = []
     baited: list[str] = []
+    # A material-losing capture is only a "trap" if it's a NAIVE greedy grab. A
+    # capture that GIVES CHECK, or that REMOVES THE SOLE DEFENDER of an attacked
+    # enemy piece, is a deliberate tactical sacrifice — the win comes a move later
+    # (Qxd8 removes the e7-knight's guard; Bxh7+ is a discovered-attack check).
+    # Flagging those as "traps" steers the agent AWAY from the solution (7e5N5,
+    # VhRSK). Compute the squares of such tactical captures and exclude them; they
+    # are surfaced by the removing-the-defender / discovered-attack detectors with
+    # the right "calculate the whole line" framing instead.
+    tactical_to_squares = _tactical_sacrifice_squares(board, stm)
     for mv in board.legal_moves:
         victim = board.piece_at(mv.to_square)
         if victim is None or victim.piece_type == chess.KING:
             continue  # not a capture (en-passant handled below is rare; skip)
         after = board.copy(); after.push(mv)
+        if after.is_check():
+            continue  # a checking capture is forcing — judge it by the line, not SEE
+        if mv.to_square in tactical_to_squares:
+            continue  # removes a sole defender — a sacrifice, not a bait
         # SEE from the opponent's side on the landing square: how much they win back.
         see_loss = static_exchange_eval(after, mv.to_square, not stm)
         if see_loss >= 150:  # capturing here loses ~1.5+ pawns net → bait
