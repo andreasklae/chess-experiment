@@ -1253,6 +1253,52 @@ def _nearest_passer_distance(board: chess.Board, color: bool) -> int | None:
     return best
 
 
+def _breakthrough_pushes(board: chess.Board, color: bool) -> list[str]:
+    """Pawn PUSH moves by `color` that, after a forced/likely opponent pawn capture,
+    leave `color` with a passed pawn (the classic breakthrough sacrifice). Returns
+    their SANs. Requires that the push is itself a non-capturing pawn advance the
+    opponent CAN capture with a pawn. Mechanics; the agent calculates whether the
+    resulting passer actually queens in time."""
+    def passed_on(b: chess.Board, sq: int, c: bool) -> bool:
+        f, r = chess.square_file(sq), chess.square_rank(sq)
+        ahead = range(r + 1, 8) if c == chess.WHITE else range(0, r)
+        for x in (f - 1, f, f + 1):
+            if not 0 <= x <= 7:
+                continue
+            for rr in ahead:
+                p = b.piece_at(chess.square(x, rr))
+                if p is not None and p.piece_type == chess.PAWN and p.color != c:
+                    return False
+        return True
+
+    if board.turn != color:
+        return []
+    out: set[str] = set()
+    for mv in board.legal_moves:
+        pc = board.piece_at(mv.from_square)
+        if pc is None or pc.piece_type != chess.PAWN or board.is_capture(mv):
+            continue
+        b2 = board.copy(stack=False)
+        try:
+            san = board.san(mv)
+        except Exception:
+            continue
+        b2.push(mv)
+        # opponent must have a pawn capture; after it, do we get a passer?
+        for rep in b2.legal_moves:
+            if not b2.is_capture(rep):
+                continue
+            rpc = b2.piece_at(rep.from_square)
+            if rpc is None or rpc.piece_type != chess.PAWN:
+                continue
+            b3 = b2.copy(stack=False)
+            b3.push(rep)
+            if any(passed_on(b3, sq, color) for sq in b3.pieces(chess.PAWN, color)):
+                out.add(san)
+                break
+    return sorted(out)
+
+
 def _passed_pawn_lines(board: chess.Board, own: bool) -> list[str]:
     """List passed pawns for both sides with distance to promotion."""
     def passed(sq: int, color: bool) -> bool:
@@ -1344,6 +1390,19 @@ def _passed_pawn_lines(board: chess.Board, own: bool) -> list[str]:
             f"- Your passed pawn(s): {', '.join(mine)}. A passed pawn escorted "
             f"by its king promotes — read `{_PAGE_KP}`.{push_note}"
         )
+    # BREAKTHROUGH: even with NO current passer, a pawn push the opponent must
+    # capture can leave you a passed pawn (WRHef: c6! bxc6 b7→b8=Q). The agent, faced
+    # with the opponent's own promotion threat, never spots its own breakthrough.
+    # Surface the push move(s) that create a passer as candidates to calculate.
+    if not mine and board.turn == own:
+        bt = _breakthrough_pushes(board, own)
+        if bt:
+            lines.append(
+                f"- **POSSIBLE BREAKTHROUGH: {', '.join(bt)}.** You have no passed pawn YET, but "
+                f"this pawn push forces the enemy to capture and leaves you a passed pawn that runs "
+                f"to promotion. In a pawn race a breakthrough (even sacrificing a pawn) can queen "
+                f"first or with tempo — calculate it with `imagine_line` before defending."
+            )
     if theirs:
         # Categorize opponent pawns by urgency: 2 moves away, 1 move away, or already promoting
         critical = []

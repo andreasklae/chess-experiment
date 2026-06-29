@@ -12006,8 +12006,8 @@
     "solved_plies": 0,
     "total_plies": 3,
     "aborted_reason": "agent played g1h2, expected c5c6",
-    "run_id": "run_1782768701",
-    "ts": "2026-06-29T23:31:50",
+    "run_id": "run_1782768839",
+    "ts": "2026-06-29T23:34:09",
     "category": {
       "legal_moves_count": 2,
       "in_check": false,
@@ -12042,7 +12042,7 @@
         "played_san": "Kh2",
         "correct": false,
         "accepted_as": null,
-        "reasoning": "The opponent has a pawn on g2 that will promote to a queen on the next move (g1=Q+). Moving the king to h2 places the king directly in front of the promotion square g1 (controlling it) and attacks the g2 pawn. The alternative move c6 loses a pawn to bxc6 and does not stop the promotion. \u00b7 goal: stop the g2 pawn from promoting immediately \u00b7 plan: Stop the immediate promotion of the g2 pawn using the king, then attempt to create counterplay with the queenside pawns."
+        "reasoning": "The opponent has a passed pawn on g2 that is one square away from promotion. Moving the king to h2 blocks the promotion square (g1 is now covered by Kh2 and the king stays adjacent to g2) and prevents immediate promotion. Moving c6 would be a blunder as it allows the pawn to promote immediately (g1=Q) with check or simply win more material. \u00b7 goal: Blockade the g2 pawn and stabilize the king's position. \u00b7 plan: Prevent the promotion of the g2 pawn and attempt to hold the position or create counterplay with the queenside pawns."
       }
     ]
   },
