@@ -394,3 +394,16 @@ def test_nearly_mate_silent_when_many_replies(im):
     # Rook check on the e-file: king on e8 can go to d7/d8/f7/f8 -> several replies
     out = im.render_imagine(b, chess.Move.from_uci("e2e7"))
     assert "NEARLY MATE" not in out
+
+
+def test_boxing_check_escape_count_is_correct_in_check(im):
+    """Regression: the enemy-king escape count after a check must count the king's
+    legal moves DIRECTLY (it is in check, its turn) — never via a null move, which
+    is illegal while in check and silently misreports. 1pYEx: after Bh5+ the king
+    has 2 real escapes (NOT boxed); only Bb5+/Bg4+ box it to <=1. The old null-move
+    method wrongly reported 0 escapes for every check."""
+    b = chess.Board("rnb1kb1r/ppp2npp/3p1q2/8/8/8/PPPPBPPP/RNBQR1K1 w kq - 2 9")
+    sans, esc = im._uncalculated_mating_checks(b)
+    assert esc <= 1
+    assert "Bb5+" in sans            # the real mating candidate
+    assert "Bh5+" not in sans        # NOT boxing (2 escapes) — must be excluded

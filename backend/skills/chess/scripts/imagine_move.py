@@ -459,12 +459,10 @@ def _uncalculated_mating_checks(board: chess.Board) -> tuple[list[str], int] | N
         enemy_king = b.king(b.turn)
         if enemy_king is None:
             continue
-        probe = b.copy(stack=False)
-        try:
-            probe.push(chess.Move.null())
-        except Exception:
-            continue
-        esc = sum(1 for m in probe.legal_moves if m.from_square == enemy_king)
+        # The enemy is in check (b.is_check() above) and it's their turn, so the
+        # king's own legal moves ARE its escape squares — count them directly. A
+        # null move is illegal while in check and must not be used here.
+        esc = sum(1 for m in b.legal_moves if m.from_square == enemy_king)
         if esc <= 1:
             found.append((san, esc))
     if not found:
@@ -694,9 +692,23 @@ def render_imagine(
     # the agent still calculates. Only for the agent's own move.
     if board_after.is_check() and not opp_move and not board_after.is_checkmate():
         replies = list(board_after.legal_moves)
-        if 1 <= len(replies) <= 2:
+        # How boxed is the enemy king after THIS check? Count its escape squares
+        # (give it the move via a null). A check can leave the king 0 escape squares
+        # yet still allow many BLOCKS/captures (1pYEx: Bh5+ boxes the king to 0
+        # escapes but the opponent has 7 replies — all blocks). The mating-attack
+        # signal must key on king-escapes, not total reply count, or it misses
+        # discovered checks where the bishop has many discovering squares.
+        king_escapes = None
+        ek = board_after.king(board_after.turn)
+        if ek is not None:
+            # It is the enemy king's turn and it is IN CHECK, so its own legal moves
+            # ARE its escape squares — count them directly. (Do NOT push a null move:
+            # that is illegal while in check and silently misreports the count.)
+            king_escapes = sum(1 for m in board_after.legal_moves if m.from_square == ek)
+        boxed = king_escapes is not None and king_escapes <= 1
+        if (1 <= len(replies) <= 2) or boxed:
             reply_sans = []
-            for r in replies:
+            for r in replies[:6]:
                 try:
                     reply_sans.append(board_after.san(r))
                 except Exception:
@@ -704,20 +716,25 @@ def render_imagine(
             mv_san = board_before.san(move)
             nxt = reply_sans[0] if reply_sans else "their reply"
             out.append("")
+            if len(replies) <= 2:
+                head = (f"this check leaves the opponent only {len(replies)} legal "
+                        f"repl{'y' if len(replies)==1 else 'ies'} ({', '.join(reply_sans)})")
+            else:
+                head = (f"this check boxes the enemy king to {king_escapes} escape square(s) "
+                        f"(it must block or capture — {len(replies)} replies)")
             out.append(
-                f"**⚠ NEARLY MATE — this check leaves the opponent only {len(replies)} legal "
-                f"repl{'y' if len(replies)==1 else 'ies'} ({', '.join(reply_sans)}).** A check that "
-                f"forces the king into a box is how mating combinations work — **extend ONE move with "
-                f"`chess__imagine_line(moves=\"{mv_san},{nxt}\")`** and read the leaf for 'CHECKMATE'. "
-                f"Do NOT reject this check because it loses material at one ply — if it MATES, material "
-                f"is irrelevant."
+                f"**⚠ NEARLY MATE — {head}.** A check that forces the king into a box is how "
+                f"mating combinations work — **extend with `chess__imagine_line(moves=\"{mv_san},"
+                f"{nxt}\")`** and read the leaf for 'CHECKMATE'. Do NOT reject this check because it "
+                f"loses material at one ply — if it MATES, material is irrelevant."
             )
             # SIBLING boxing checks: several checks can box the king equally, yet
-            # only ONE has a mating follow-up (I5Hd8: Qe6+ AND Qf7+ both force Kh8,
-            # only Qf7+ mates via Qf8+ Rxf8 Rxf8#). When the agent picks a boxing
-            # check that does NOT immediately mate, remind it the OTHER boxing checks
-            # exist and must each be calculated — it routinely commits to the first
-            # boxing check it tries. Mechanics only; the agent calculates which mates.
+            # only ONE has a mating follow-up (I5Hd8: Qe6+/Qf7+ both force Kh8, only
+            # Qf7+ mates; 1pYEx: 8 bishop discovered-checks box to 0, only Bb5+ mates
+            # via Bb5+ Kd8 Re8#). When the agent picks a boxing check that does NOT
+            # immediately mate, remind it the OTHER boxing checks exist and must each
+            # be calculated — it routinely commits to the first it tries. Mechanics
+            # only; the agent calculates which mates.
             others = []
             try:
                 allc = _uncalculated_mating_checks(board_before)
@@ -728,8 +745,8 @@ def render_imagine(
             if others:
                 # List them all when few; when many, give the count + first several
                 # AND make explicit the list is partial, so the agent doesn't assume
-                # the winning check is among the shown ones (I5Hd8 has 8 boxing
-                # checks; only Qf7+ mates — a truncated list can hide the winner).
+                # the winning check is among the shown ones (a truncated list can hide
+                # the winner).
                 if len(others) <= 6:
                     body = (f"Other checks also box the king: {', '.join(others)}. "
                             f"**Calculate EACH of them.**")
