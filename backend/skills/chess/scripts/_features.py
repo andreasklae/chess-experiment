@@ -1655,6 +1655,43 @@ def why_stronger(board_before: chess.Board, move: chess.Move) -> list[str]:
     return out
 
 
+def _pawn_capture_opens_attack(board: chess.Board, mv: chess.Move) -> bool:
+    """True if this pawn capture has a tactical point beyond winning a pawn: after
+    it, the moving side attacks an enemy piece (>= minor) OR a square adjacent to the
+    enemy king that it did NOT attack before (a line/diagonal opened by the capture,
+    or the captured pawn was a defender). Pure mechanics — used to surface
+    combination-starting pawn captures (clearance/attraction/line-opening) in the
+    forcing-move list without flooding it with every pawn grab."""
+    mover = board.turn
+    enemy = not mover
+    ek = board.king(enemy)
+    def targets(b: chess.Board) -> set[int]:
+        # squares the moving side attacks that hold an enemy minor+ OR are next to
+        # the enemy king
+        hit: set[int] = set()
+        for sq in chess.SQUARES:
+            p = b.piece_at(sq)
+            valuable = p is not None and p.color == enemy and p.piece_type in (
+                chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN)
+            near_king = ek is not None and chess.square_distance(sq, ek) <= 1
+            if (valuable or near_king) and b.attackers(mover, sq):
+                hit.add(sq)
+        return hit
+    before = targets(board)
+    after_b = board.copy(stack=False)
+    after_b.push(mv)
+    # recompute on the post-capture board but still from the mover's seat
+    after_hit: set[int] = set()
+    for sq in chess.SQUARES:
+        p = after_b.piece_at(sq)
+        valuable = p is not None and p.color == enemy and p.piece_type in (
+            chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN)
+        near_king = ek is not None and chess.square_distance(sq, ek) <= 1
+        if (valuable or near_king) and after_b.attackers(mover, sq):
+            after_hit.add(sq)
+    return bool(after_hit - before)
+
+
 def _forcing_moves_line(board: chess.Board) -> str:
     """List the side-to-move's forcing moves — CHECKS and meaningful CAPTURES
     (the C-C of Checks/Captures/Threats) — to calculate FIRST. Pure enumeration
@@ -1679,11 +1716,19 @@ def _forcing_moves_line(board: chess.Board) -> str:
         if gives_check:
             checks.append(san)
         elif is_cap:
-            # only surface captures of a real piece (>= minor) or any capture
-            # that is SEE-sound-ish; a quiet pawn-grab is not a "forcing move".
+            # Surface captures of a real piece (>= minor). A bare pawn-grab is
+            # usually not a "forcing move" — EXCEPT a LINE-OPENING / defender-
+            # removing pawn capture that is the start of a combination (BLrYl:
+            # exf6 opens the f-file for Rf7+; clearance/attraction motifs often
+            # START with such a pawn capture). Include a pawn capture when it gives
+            # the moving side a NEW attack on an enemy piece (>= minor) or on a
+            # square next to the enemy king that it did not have before — i.e. it
+            # has a tactical point, not just a pawn. Mechanics; the agent calculates.
             victim = board.piece_at(mv.to_square)
             vt = victim.piece_type if victim else chess.PAWN  # en-passant = pawn
             if vt != chess.PAWN:
+                captures.append(san)
+            elif _pawn_capture_opens_attack(board, mv):
                 captures.append(san)
     if not checks and not captures:
         return ""

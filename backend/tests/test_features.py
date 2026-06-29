@@ -741,3 +741,17 @@ def test_remove_the_defender_no_false_positive_start_and_double_defended():
     # a piece defended by TWO pieces is not removable by eliminating one defender
     b = _c.Board("4k3/8/8/3n4/8/2N1N3/8/4K3 w - - 0 1")
     assert detect_removable_defender(b) == []
+
+
+def test_forcing_line_includes_line_opening_pawn_capture():
+    """BLrYl: the winning move exf6 is a PAWN capture, but it opens the f-file/attacks
+    the e7-bishop (a clearance combination start). A bare pawn-grab is excluded, but a
+    line-opening / defender-removing pawn capture must appear in the forcing list."""
+    from _features import _forcing_moves_line, _pawn_capture_opens_attack
+    import chess as c
+    b = c.Board("r3rk2/pR1Rb2p/2p1pp2/4P3/5Pp1/2P3P1/P1P4P/5K2 w - - 2 23")
+    line = _forcing_moves_line(b)
+    assert "exf6" in line
+    # a bare pawn grab with no tactical point is NOT flagged
+    plain = c.Board("4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1")
+    assert not _pawn_capture_opens_attack(plain, plain.parse_san("exd5"))
