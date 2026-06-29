@@ -417,5 +417,5 @@ def test_zwischenzug_nudge_on_natural_recapture(im):
     b = chess.Board("8/p2r2kp/1p4p1/2n5/8/3R2P1/4PP1P/q4RK1 w - - 0 45")
     out = im.render_imagine(b, b.parse_san("Rxa1"))
     assert "ZWISCHENZUG" in out and "Rxd7+" in out
-    # a recapture with NO check available must not nudge
-    assert im._available_checks(chess.Board("4k3/8/8/8/8/8/4r3/4R1K1 w - - 0 1")) == []
+    # a quiet position with NO check available -> helper returns empty
+    assert im._available_checks(chess.Board("4k3/8/8/8/8/8/P7/4K3 w - - 0 1")) == []
