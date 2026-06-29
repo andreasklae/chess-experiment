@@ -9636,15 +9636,15 @@
     ]
   },
   "1pYEx": {
-    "status": "failed",
+    "status": "solved",
     "topic": "discovered-check",
     "difficulty": "easy",
     "rating": 849,
-    "solved_plies": 0,
+    "solved_plies": 2,
     "total_plies": 2,
-    "aborted_reason": "agent played e2h5, expected e2b5",
-    "run_id": "run_1782768234",
-    "ts": "2026-06-29T23:24:11",
+    "aborted_reason": null,
+    "run_id": "run_1782768351",
+    "ts": "2026-06-29T23:26:13",
     "category": {
       "legal_moves_count": 27,
       "in_check": false,
@@ -9668,20 +9668,31 @@
       "ends_in_mate": true,
       "signature": "bishop check"
     },
-    "tool_calls_total": 6,
+    "tool_calls_total": 9,
     "imagine_line_calls": 1,
-    "imagine_move_calls": 1,
+    "imagine_move_calls": 2,
     "attempts": [
       {
         "ply": 0,
         "fen_before": "rnb1kb1r/ppp2npp/3p1q2/8/8/8/PPPPBPPP/RNBQR1K1 w kq - 2 9",
         "expected_uci": "e2b5",
         "expected_san": "Bb5+",
-        "played_uci": "e2h5",
-        "played_san": "Bh5+",
-        "correct": false,
-        "accepted_as": null,
-        "reasoning": "Played Bh5+, which delivers a discovered check from the rook on e1. This is a forcing move that pins the knight on f7 against the king and maintains the initiative. I've verified that it doesn't hang material and creates several tactical possibilities (like Bg6 or Rxe7+) depending on Black's reply. Rejected quiet moves like d4 or Nc3 because the discovered check is too forcing to ignore. \u00b7 goal: Pin the knight on f7 and create threats against the exposed king on e8. \u00b7 plan: Capitalize on the open e-file and exposed black king. Use discovered checks and pins (starting with Bh5+) to win back material and restrict the opponent's king. Avoid back-rank mate by creating luft soon."
+        "played_uci": "e2b5",
+        "played_san": "Bb5+",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "I have a winning tactical sequence. Bb5+ is a discovered check from the rook on e1. This forces the black king to d8 (the only legal move). After Kd8, the rook can move to e8 to deliver checkmate (Re8#), as the king is trapped by its own pieces and the bishop on b5 covers the escape. Checked with imagine_line: Bb5+, Kd8, Re8# is forced mate. \u00b7 goal: Deliver checkmate in 2 moves. \u00b7 plan: Force checkmate: Use the discovered attack on the e-file. 1. Bb5+ forces Kd8, 2. Re8# mate."
+      },
+      {
+        "ply": 1,
+        "fen_before": "rnbk1b1r/ppp2npp/3p1q2/1B6/8/8/PPPP1PPP/RNBQR1K1 w - - 4 10",
+        "expected_uci": "e1e8",
+        "expected_san": "Re8#",
+        "played_uci": "e1e8",
+        "played_san": "Re8#",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Per my plan: the discovered attack on the e-file has forced the king to d8. Now, Re8# delivers checkmate as the rook is defended by the bishop on b5 and the king has no legal escape squares."
       }
     ]
   },

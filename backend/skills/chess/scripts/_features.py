@@ -1202,13 +1202,39 @@ def detect_discovered_attacks(board: chess.Board, perspective: bool | None = Non
                             f.moves = movers[:6]
                         findings.append(f)
                     else:
+                        # Among the discovering moves, which ALSO give check? A
+                        # discovered attack delivered WITH CHECK is far stronger than
+                        # a quiet one: the opponent must answer the check and CANNOT
+                        # also save the discovered-attacked piece, so it falls (VhRSK:
+                        # Bxh7+ discovers Qd1-vs-Qd6 AND checks → Kxh7, then Qxd6 wins
+                        # the queen; the agent otherwise picks a quiet discovering
+                        # move that merely "attacks" the well-defended/movable queen).
+                        checking_movers = []
+                        if board.turn == color:
+                            for s in movers:
+                                try:
+                                    m = board.parse_san(s)
+                                except Exception:
+                                    continue
+                                if board.gives_check(m):
+                                    checking_movers.append(s)
                         desc = (f"your {PIECE_NAME[sp.piece_type]} on {_sq(screen)} screens your "
                                 f"{PIECE_NAME[bp.piece_type]} on {_sq(back_sq)} from the enemy "
                                 f"{PIECE_NAME[tp.piece_type]} on {_sq(target)} — moving it discovers an "
                                 f"attack while the mover makes its own threat (two threats at once)")
+                        if checking_movers:
+                            desc += (f". ⚡ STRONGEST: a discovering move that ALSO gives CHECK "
+                                     f"({', '.join(sorted(set(checking_movers)))}) is usually winning — "
+                                     f"the opponent must answer the check and CANNOT also save the "
+                                     f"{PIECE_NAME[tp.piece_type]} on {_sq(target)}. Calculate it with "
+                                     f"`imagine_line` (check → their forced reply → capture the "
+                                     f"{PIECE_NAME[tp.piece_type]}) even if the checking move looks like a "
+                                     f"sacrifice")
                         f = Finding(True, "potential", desc, wiki="discovered")
                         if movers:
-                            f.moves = movers[:6]
+                            # surface the checking discoverers FIRST
+                            ordered_m = sorted(set(checking_movers)) + [m for m in movers if m not in checking_movers]
+                            f.moves = ordered_m[:6]
                         findings.append(f)
                 else:
                     if is_check_line:
