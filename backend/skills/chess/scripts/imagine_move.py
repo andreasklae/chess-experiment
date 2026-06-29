@@ -471,6 +471,23 @@ def _uncalculated_mating_checks(board: chess.Board) -> tuple[list[str], int] | N
     return ([s for s, _ in found], found[0][1])
 
 
+def _available_checks(board: chess.Board, exclude: chess.Move | None = None) -> list[str]:
+    """SANs of the side-to-move's legal CHECKS, excluding `exclude`. Used for the
+    zwischenzug nudge — naming the in-between checks the agent could insert before a
+    natural capture. Mechanics only; the agent decides whether one wins more."""
+    out: list[str] = []
+    for mv in board.legal_moves:
+        if exclude is not None and mv == exclude:
+            continue
+        if board.gives_check(mv):
+            try:
+                out.append(board.san(mv))
+            except Exception:
+                pass
+    # capturing checks first (sharpest), then quiet checks
+    return sorted(out, key=lambda s: (0 if "x" in s else 1, s))
+
+
 def _material_loss(board_before: chess.Board, board_after: chess.Board,
                    move: chess.Move) -> tuple[int, str | None]:
     """Largest single-square material loss this move causes (centipawns) and
@@ -681,6 +698,28 @@ def render_imagine(
             out.append(f"_This is a capture — the opponent can recapture on {tsq}. "
                        f"Run `chess__imagine_trade(target=\"{tsq}\")` to see the full "
                        f"exchange and whether you end up + or − material._")
+            out.append("")
+    # ZWISCHENZUG (in-between move) nudge. The agent's largest medium holdout is
+    # playing the natural recapture/capture immediately when an in-between CHECK
+    # wins more: the check forces a reply and the capture usually still stands after
+    # it (46IHG: Rxa1 recaptures, but Rxd7+ FIRST then Nxd7 then Rxa1 wins the d7
+    # piece too; 9E8ij/HIYQC similar; SQi65 Rg3+ before Rxh5 makes it mate). When
+    # the imagined move is a NON-CHECK capture and the agent has a legal check
+    # available, point it at the zwischenzug. Mechanics (lists the checks); the
+    # agent calculates whether inserting one wins more.
+    if (board_before.is_capture(move) and not opp_move
+            and not board_after.is_check()):
+        checks_avail = _available_checks(board_before, exclude=move)
+        if checks_avail:
+            shown = checks_avail[:4]
+            out.append(
+                f"**↹ ZWISCHENZUG? Before this recapture/capture, you have check(s) available: "
+                f"{', '.join(shown)}.** An IN-BETWEEN check played FIRST often wins more — the check "
+                f"forces a reply and your capture here usually still stands afterwards (e.g. check → "
+                f"they answer → you take what you were going to take, plus the check won something). "
+                f"**Calculate the check first with `chess__imagine_line(moves=\"{shown[0]},...\")`** "
+                f"before settling for the immediate capture."
+            )
             out.append("")
     out.append(f"**Check:** {check_text}")
     # NEARLY-MATE nudge: a check that leaves the opponent very few legal replies

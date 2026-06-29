@@ -407,3 +407,15 @@ def test_boxing_check_escape_count_is_correct_in_check(im):
     assert esc <= 1
     assert "Bb5+" in sans            # the real mating candidate
     assert "Bh5+" not in sans        # NOT boxing (2 escapes) — must be excluded
+
+
+def test_zwischenzug_nudge_on_natural_recapture(im):
+    """46IHG: after the opponent grabs the queen on a1, the win is the in-between
+    check Rxd7+ FIRST, then Nxd7, then Rxa1 -- not the immediate recapture Rxa1.
+    When the agent imagines the natural recapture (a non-check capture) and a legal
+    check exists, imagine_move must surface the zwischenzug."""
+    b = chess.Board("8/p2r2kp/1p4p1/2n5/8/3R2P1/4PP1P/q4RK1 w - - 0 45")
+    out = im.render_imagine(b, b.parse_san("Rxa1"))
+    assert "ZWISCHENZUG" in out and "Rxd7+" in out
+    # a recapture with NO check available must not nudge
+    assert im._available_checks(chess.Board("4k3/8/8/8/8/8/4r3/4R1K1 w - - 0 1")) == []
