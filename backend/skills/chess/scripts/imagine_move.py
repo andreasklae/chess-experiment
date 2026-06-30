@@ -850,6 +850,37 @@ def render_imagine(
     # checks; def_1c8d91/def_a646e4: a quiet 'active' move ignores a mate threat).
     # Only for the agent's OWN move, and only when its king isn't already perfectly
     # safe. Mechanics (count the opponent's checks / one-ply mate); the agent decides.
+    # MATE-DEFENSE check: if the opponent was threatening mate before this move, does
+    # THIS move actually stop it? Delivered at the decision point so the agent can't
+    # play a move that ignores the mate (or wrongly dismiss one that defends). Only
+    # the agent's own move, and only when a mate was genuinely threatened.
+    if not opp_move and not board_after.is_checkmate():
+        try:
+            from _features import _opponent_threat
+            pre_threat = _opponent_threat(board_before)
+        except Exception:
+            pre_threat = None
+        if pre_threat and pre_threat[0] == "mate":
+            # does the opponent STILL have mate-in-1 after this move?
+            still_mate = False
+            if not board_after.is_game_over():
+                for r in board_after.legal_moves:
+                    c = board_after.copy(stack=False); c.push(r)
+                    if c.is_checkmate():
+                        still_mate = True; break
+            if still_mate:
+                out.append(
+                    f"⛔ **THIS MOVE DOES NOT STOP THE MATE — the opponent was threatening "
+                    f"{pre_threat[1]} and still mates after this. This move loses on the spot.** "
+                    f"Pick a move from the mate-defence shortlist in show_position's Situation header."
+                )
+            else:
+                out.append(
+                    f"✓ **This move STOPS the threatened mate ({pre_threat[1]}).** Good — now verify "
+                    f"with `imagine_line` that it doesn't lose to a DIFFERENT follow-up (a second threat "
+                    f"or a winning check), and compare it to the other mate-stoppers."
+                )
+            out.append("")
     if not opp_move and not board_after.is_checkmate():
         kd = _own_king_danger(board_after)
         if kd is not None:

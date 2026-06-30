@@ -1498,6 +1498,7 @@ def assess_situation(board: chess.Board, perspective: bool | None = None) -> dic
     mat_str = (f"+{diff}" if diff > 0 else str(diff))
 
     # priority decision tree (first match wins)
+    savers: list[str] = []
     if in_check:
         prio = ("RESPOND TO THE CHECK", "you are in check — you must address it. Among your legal "
                 "replies, prefer the one that leaves your king SAFEST (fewest follow-up checks / no "
@@ -1510,18 +1511,11 @@ def assess_situation(board: chess.Board, perspective: bool | None = None) -> dic
         # and miss a material-losing one like Rxc8 that also holds). Listing them is
         # mechanics; the agent still calculates which survives.
         savers = _moves_that_prevent_mate(board)
-        saver_str = ""
-        if savers:
-            shown = savers[:8]
-            saver_str = (f" The ONLY moves that stop the mate are: {', '.join(shown)}"
-                         + ("…" if len(savers) > 8 else "")
-                         + " — calculate EACH with `imagine_line` and pick the one that survives "
-                           "(some may lose material and STILL be correct; some may fail to a second threat).")
         prio = ("SURVIVAL — you are being mated", f"the opponent threatens MATE ({threat[1]}) next move. "
                 "This DOMINATES everything: defend the mate before any other consideration. **Material is "
                 "secondary — a move that LOSES material but stops the mate is correct; a 'free' capture "
                 "or a quiet improving move that allows the mate is losing.** Ignore the trap/greed "
-                f"warnings below if the move they flag is what defends the king.{saver_str}")
+                "warnings below if the move they flag is what defends the king.")
     elif threat and threat[0] == "material":
         prio = ("MEET THE THREAT", f"the opponent threatens to win material ({threat[1]}) next move. "
                 "Address it — defend the target, move it, or make a bigger/forcing threat of your own — "
@@ -1568,8 +1562,21 @@ def assess_situation(board: chess.Board, perspective: bool | None = None) -> dic
            (f"**Threat against you:** {threat[1]} ({threat[0]})." if threat else "**No immediate threat against you.**")),
         f"- {body}",
     ]
+    # The mate-saver shortlist gets its OWN prominent line (delivery location beats
+    # burying it in the paragraph — the model otherwise asserts a listed saver
+    # 'doesn't address the mate' without checking). One of these IS the move.
+    if savers:
+        shown = savers[:10]
+        lines.append(
+            f"- **🛡 ONLY these moves stop the mate — the answer is ONE of them: "
+            f"{', '.join(shown)}{'…' if len(savers) > 10 else ''}.** Play EACH out with "
+            f"`imagine_line`; anything else loses to {threat[1]}. Do not dismiss a move as "
+            f"'irrelevant to the king' — if it is on this list, it provably stops the mate "
+            f"(it may cost material and STILL be correct)."
+        )
     return dict(material=mat, material_diff=diff, phase=phase, in_check=in_check,
-                threat=threat, have_forcing=have_forcing, priority=head, lines=lines)
+                threat=threat, have_forcing=have_forcing, priority=head,
+                mate_savers=savers, lines=lines)
 
 
 def detect_material(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
