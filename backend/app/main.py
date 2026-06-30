@@ -81,6 +81,14 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
             "puzzles": _pb / "puzzles_defensive.json",
             "progress": PuzzleProgress(_pb / "results" / "progress_defensive.json"),
         },
+        # London set: London-System opening puzzles from the Lichess DB (white solver),
+        # split into 'book' (the solution is a London theory move) and 'tactic' (a
+        # London-middlegame tactic the wiki/guide should help with). Tests the opening
+        # wiki + the chess__opening_book / chess__opening_guide tools.
+        "london": {
+            "puzzles": _pb / "puzzles_london.json",
+            "progress": PuzzleProgress(_pb / "results" / "progress_london.json"),
+        },
     }
     fastapi_app.state.puzzle_progress = fastapi_app.state.puzzle_sets["offensive"]["progress"]
     logger.info("startup · ready")
