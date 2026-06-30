@@ -125,3 +125,29 @@ def test_tools_only_answer_for_white():
     b = _board("d4")  # black to move
     assert "Not White to move" in obt.render(b)
     assert "Not White to move" in ogt.render(b)
+
+
+def test_setup_rule_defers_to_a_mate_in_1():
+    """The book must NOT suggest a quiet setup move when a forcing tactic (mate-in-1 /
+    winning capture) is on the board — that would mislead. Position: White can play a
+    setup move structurally, but Qh7# is available → book stays silent."""
+    # White to move, London-ish structure, but mate-in-1 Qh7# available.
+    b = chess.Board("6rk/6pp/8/8/8/8/5PPP/3Q1RK1 w - - 0 1")
+    # Qh7 is not mate here; build a clean mate-in-1 instead:
+    b = chess.Board("7k/6pp/8/8/8/7Q/6PP/6K1 w - - 0 1")  # Qxh7#? h7 occupied by pawn
+    b = chess.Board("5rk1/6pp/8/8/8/6Q1/6PP/6K1 w - - 0 1")  # Qg3-g7? not mate
+    # Simplest reliable mate-in-1: back-rank.
+    b = chess.Board("6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1")  # Ra8#
+    assert any((lambda m: (lambda c: (c.push(m), c.is_checkmate())[1])(b.copy()))(m)
+               for m in b.legal_moves)
+    # The exact-book/rule lookup should not invent a setup move in a non-London bare
+    # position anyway; the point is the guard helper detects the tactic.
+    assert ob._strong_tactic_available(b) is True
+
+
+def test_strong_tactic_helper_quiet_position_is_false():
+    quiet = chess.Board("rnbqkb1r/ppp1pppp/5n2/3p4/3P1B2/4P3/PPP2PPP/RN1QKBNR w KQkq - 0 3")
+    assert ob._strong_tactic_available(quiet) is False
+    # and the book still gives the setup move in this quiet position
+    e = ob.lookup(quiet)
+    assert e is not None

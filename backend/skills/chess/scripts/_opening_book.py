@@ -214,7 +214,48 @@ def _bishop_developed_dark(board: chess.Board) -> bool:
         board.pieces(chess.BISHOP, W))
 
 
+def _strong_tactic_available(board: chess.Board) -> bool:
+    """Is there a DECISIVE forcing tactic a player would always take over their opening
+    prep? — a mate-in-1, or a capture/sequence winning at least a MINOR PIECE (>= ~300cp
+    by static exchange). If so, the SETUP RULES stay silent: a book that says 'play c3'
+    while Qh7# (or a free knight) is on the board would mislead. We deliberately do NOT
+    defer for a mere 1-pawn grab — in the opening, a small SEE pawn-win (e.g. the f4
+    bishop snatching c7) is usually worse than completing development, so the book
+    should still give the setup move. Pure mechanics (legal-move scan + SEE), NOT an
+    engine search."""
+    try:
+        from _eval import static_exchange_eval, MATERIAL
+    except Exception:
+        static_exchange_eval = None; MATERIAL = {}
+    mover = board.turn
+    for mv in board.legal_moves:
+        if board.gives_check(mv):
+            c = board.copy(stack=False); c.push(mv)
+            if c.is_checkmate():
+                return True
+        if board.is_capture(mv) and static_exchange_eval is not None:
+            # Net material for the MOVER = value captured minus what the opponent wins
+            # back on the recapture sequence (SEE from the OPPONENT's seat on that square,
+            # after the capture). >0 means a genuine winning capture for us. (The earlier
+            # version had the sign wrong: a high opponent-SEE means the capture LOSES.)
+            victim = board.piece_at(mv.to_square)
+            vval = MATERIAL.get(victim.piece_type, 0) if victim else 100  # ep = pawn
+            c = board.copy(stack=False); c.push(mv)
+            try:
+                recapture = max(0, static_exchange_eval(c, mv.to_square, not mover))
+            except Exception:
+                recapture = 0
+            if vval - recapture >= 300:   # nets at least a minor piece
+                return True
+    return False
+
+
 def _rule_lookup(board: chess.Board) -> BookEntry | None:
+    # A setup move is only the right answer in a QUIET book position. If an obvious
+    # forcing tactic exists, defer — do not tell the agent to play a developing move
+    # when a mate or a winning capture is on the board.
+    if _strong_tactic_available(board):
+        return None
     for r in SETUP_RULES:
         try:
             if not r.predicate(board):

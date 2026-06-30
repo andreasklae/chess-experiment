@@ -62,7 +62,8 @@ def render(board: chess.Board) -> str:
         return "\n".join(out)
 
     moves = entry.moves
-    tag = "line" if entry.source == "line" else "setup rule"
+    is_rule = entry.source == "rule"
+    tag = "exact line" if not is_rule else "setup rule"
     head = (f"**Book move: {moves[0]}**" if len(moves) == 1
             else f"**Book moves: {', '.join(moves)}** (any is theory; pick by the idea)")
     lines = [
@@ -70,10 +71,22 @@ def render(board: chess.Board) -> str:
         f"_Line:_ {entry.line}  ·  _({tag})_",
         f"_Idea:_ {entry.idea}",
         "",
-        "This is prepared theory — you may play it, but it is YOUR decision: read the "
-        "idea, confirm it fits, then commit with `chess__make_move`. When the position "
-        "leaves the book, `chess__opening_book` will say so.",
     ]
+    if is_rule:
+        # Setup-rule moves are the right DEVELOPING move for a quiet position, but the
+        # book cannot see every tactic. Tell the agent to check forcing moves first —
+        # don't play a quiet setup move if a check/capture/threat actually decides.
+        lines.append(
+            "**This is the developing move for a QUIET position. FIRST check the forcing "
+            "moves (the list in `chess__show_position`): if a check, a winning capture, "
+            "or a concrete threat is available, calculate THAT instead — a tactic always "
+            "beats a quiet book move. Only play this if nothing forcing is on the "
+            "board.** It is your decision; commit with `chess__make_move`.")
+    else:
+        lines.append(
+            "This is prepared theory — you may play it, but it is YOUR decision: read the "
+            "idea, confirm it fits (no tactic is being missed), then commit with "
+            "`chess__make_move`. When the position leaves the book, the tool will say so.")
     return "\n".join(lines)
 
 
