@@ -1,0 +1,584 @@
+{
+ "white": {
+  "player": "white",
+  "n_games": 34,
+  "mean_accuracy_pct": 89.8,
+  "mean_avg_centipawn_loss": 605.1,
+  "label_counts": {
+   "brilliant": 17,
+   "great": 102,
+   "best": 553,
+   "excellent": 754,
+   "good": 305,
+   "inaccuracy": 195,
+   "mistake": 90,
+   "blunder": 71,
+   "forced": 27
+  },
+  "weakness_tags": {
+   "under_threat:mate": {
+    "n_total": 8,
+    "n_mistakes": 4,
+    "mistake_rate": 0.5
+   },
+   "priority:SURVIVAL": {
+    "n_total": 8,
+    "n_mistakes": 4,
+    "mistake_rate": 0.5
+   },
+   "priority:CALCULATE": {
+    "n_total": 436,
+    "n_mistakes": 159,
+    "mistake_rate": 0.365
+   },
+   "phase:middlegame": {
+    "n_total": 663,
+    "n_mistakes": 209,
+    "mistake_rate": 0.315
+   },
+   "under_threat:material": {
+    "n_total": 282,
+    "n_mistakes": 60,
+    "mistake_rate": 0.213
+   },
+   "priority:MEET": {
+    "n_total": 282,
+    "n_mistakes": 60,
+    "mistake_rate": 0.213
+   },
+   "had_forcing_move": {
+    "n_total": 1586,
+    "n_mistakes": 280,
+    "mistake_rate": 0.177
+   },
+   "priority:PLAY": {
+    "n_total": 234,
+    "n_mistakes": 39,
+    "mistake_rate": 0.167
+   },
+   "phase:opening": {
+    "n_total": 289,
+    "n_mistakes": 39,
+    "mistake_rate": 0.135
+   },
+   "in_check": {
+    "n_total": 124,
+    "n_mistakes": 14,
+    "mistake_rate": 0.113
+   },
+   "priority:RESPOND": {
+    "n_total": 124,
+    "n_mistakes": 14,
+    "mistake_rate": 0.113
+   },
+   "phase:endgame": {
+    "n_total": 1162,
+    "n_mistakes": 108,
+    "mistake_rate": 0.093
+   },
+   "priority:CONSOLIDATE": {
+    "n_total": 917,
+    "n_mistakes": 75,
+    "mistake_rate": 0.082
+   },
+   "priority:COUNTERPLAY": {
+    "n_total": 73,
+    "n_mistakes": 5,
+    "mistake_rate": 0.068
+   }
+  },
+  "worst_moments": [
+   {
+    "ply": 60,
+    "move": "Kc1",
+    "classification": "blunder",
+    "win_pct_lost": 88.2,
+    "better_move": "Nd3",
+    "game_id": "80a0e42c0afa421d929a7399adc32563"
+   },
+   {
+    "ply": 46,
+    "move": "Qd1",
+    "classification": "blunder",
+    "win_pct_lost": 75.9,
+    "better_move": "Qxh7+",
+    "game_id": "e40c8d1674c04f01aae9879e2baf395a"
+   },
+   {
+    "ply": 140,
+    "move": "Bc3",
+    "classification": "blunder",
+    "win_pct_lost": 67.8,
+    "better_move": "Kf4",
+    "game_id": "a557302d58184349adc81bf7685575d2"
+   },
+   {
+    "ply": 62,
+    "move": "f6",
+    "classification": "blunder",
+    "win_pct_lost": 67.2,
+    "better_move": "Qf2",
+    "game_id": "3233802098014a5d9d3283778be117a3"
+   },
+   {
+    "ply": 94,
+    "move": "g3",
+    "classification": "blunder",
+    "win_pct_lost": 60.3,
+    "better_move": "Rxc8",
+    "game_id": "1d546705728143baae828965e0f91d8a"
+   },
+   {
+    "ply": 198,
+    "move": "Kg6",
+    "classification": "blunder",
+    "win_pct_lost": 50.0,
+    "better_move": "Kf6",
+    "game_id": "d71e59ac6a074f589141882342cfab8a"
+   },
+   {
+    "ply": 104,
+    "move": "Kh2",
+    "classification": "blunder",
+    "win_pct_lost": 47.8,
+    "better_move": "Rxg3",
+    "game_id": "1d546705728143baae828965e0f91d8a"
+   },
+   {
+    "ply": 50,
+    "move": "Kh2",
+    "classification": "blunder",
+    "win_pct_lost": 47.5,
+    "better_move": "Bf2",
+    "game_id": "9093df7cc430411382ec4d4215aa3d4a"
+   },
+   {
+    "ply": 48,
+    "move": "f3",
+    "classification": "blunder",
+    "win_pct_lost": 46.5,
+    "better_move": "Qe3",
+    "game_id": "9093df7cc430411382ec4d4215aa3d4a"
+   },
+   {
+    "ply": 44,
+    "move": "Nf3",
+    "classification": "blunder",
+    "win_pct_lost": 46.0,
+    "better_move": "Rxf5",
+    "game_id": "547bd4a610034131936a0be3608b2e39"
+   },
+   {
+    "ply": 28,
+    "move": "Nf3",
+    "classification": "blunder",
+    "win_pct_lost": 43.2,
+    "better_move": "Bxg4",
+    "game_id": "9c4b0de9bcf54d88b1011f8074514836"
+   },
+   {
+    "ply": 116,
+    "move": "Rh7",
+    "classification": "blunder",
+    "win_pct_lost": 42.6,
+    "better_move": "Kf6",
+    "game_id": "d71e59ac6a074f589141882342cfab8a"
+   },
+   {
+    "ply": 66,
+    "move": "e4",
+    "classification": "blunder",
+    "win_pct_lost": 42.2,
+    "better_move": "Nxf5",
+    "game_id": "1d546705728143baae828965e0f91d8a"
+   },
+   {
+    "ply": 56,
+    "move": "Rxf6",
+    "classification": "blunder",
+    "win_pct_lost": 42.2,
+    "better_move": "Qh3",
+    "game_id": "3233802098014a5d9d3283778be117a3"
+   },
+   {
+    "ply": 46,
+    "move": "h5",
+    "classification": "blunder",
+    "win_pct_lost": 40.6,
+    "better_move": "Qe3",
+    "game_id": "9093df7cc430411382ec4d4215aa3d4a"
+   },
+   {
+    "ply": 30,
+    "move": "a4",
+    "classification": "blunder",
+    "win_pct_lost": 38.2,
+    "better_move": "Qf6",
+    "game_id": "7a7fb0d8a1784ca48dc10796f653d816"
+   },
+   {
+    "ply": 20,
+    "move": "Nxg5",
+    "classification": "blunder",
+    "win_pct_lost": 38.1,
+    "better_move": "c4",
+    "game_id": "21a80e66a3f841069c10fe6e024bdf01"
+   },
+   {
+    "ply": 90,
+    "move": "Nf5",
+    "classification": "blunder",
+    "win_pct_lost": 38.0,
+    "better_move": "g4",
+    "game_id": "1d546705728143baae828965e0f91d8a"
+   },
+   {
+    "ply": 24,
+    "move": "Qe2",
+    "classification": "blunder",
+    "win_pct_lost": 37.5,
+    "better_move": "Bd2",
+    "game_id": "f501d94d12724b6aa43a45b5c2754829"
+   },
+   {
+    "ply": 46,
+    "move": "Nxd5",
+    "classification": "blunder",
+    "win_pct_lost": 35.9,
+    "better_move": "Kg1",
+    "game_id": "1d546705728143baae828965e0f91d8a"
+   },
+   {
+    "ply": 70,
+    "move": "Nd5",
+    "classification": "blunder",
+    "win_pct_lost": 34.9,
+    "better_move": "Bd4",
+    "game_id": "a557302d58184349adc81bf7685575d2"
+   },
+   {
+    "ply": 48,
+    "move": "f4",
+    "classification": "blunder",
+    "win_pct_lost": 34.7,
+    "better_move": "Bf4",
+    "game_id": "21a80e66a3f841069c10fe6e024bdf01"
+   },
+   {
+    "ply": 154,
+    "move": "Kc4",
+    "classification": "blunder",
+    "win_pct_lost": 34.5,
+    "better_move": "Ke5",
+    "game_id": "d71e59ac6a074f589141882342cfab8a"
+   },
+   {
+    "ply": 156,
+    "move": "h7",
+    "classification": "blunder",
+    "win_pct_lost": 34.4,
+    "better_move": "g4",
+    "game_id": "d71e59ac6a074f589141882342cfab8a"
+   },
+   {
+    "ply": 58,
+    "move": "Rxg6",
+    "classification": "blunder",
+    "win_pct_lost": 34.3,
+    "better_move": "Rf8+",
+    "game_id": "3233802098014a5d9d3283778be117a3"
+   }
+  ]
+ },
+ "black": {
+  "player": "black",
+  "n_games": 34,
+  "mean_accuracy_pct": 89.3,
+  "mean_avg_centipawn_loss": 400.8,
+  "label_counts": {
+   "brilliant": 70,
+   "great": 41,
+   "best": 471,
+   "excellent": 748,
+   "good": 261,
+   "inaccuracy": 190,
+   "mistake": 121,
+   "blunder": 65,
+   "forced": 121
+  },
+  "weakness_tags": {
+   "priority:CALCULATE": {
+    "n_total": 337,
+    "n_mistakes": 133,
+    "mistake_rate": 0.395
+   },
+   "priority:PLAY": {
+    "n_total": 311,
+    "n_mistakes": 107,
+    "mistake_rate": 0.344
+   },
+   "phase:middlegame": {
+    "n_total": 648,
+    "n_mistakes": 209,
+    "mistake_rate": 0.323
+   },
+   "phase:opening": {
+    "n_total": 286,
+    "n_mistakes": 78,
+    "mistake_rate": 0.273
+   },
+   "had_forcing_move": {
+    "n_total": 943,
+    "n_mistakes": 224,
+    "mistake_rate": 0.238
+   },
+   "under_threat:material": {
+    "n_total": 212,
+    "n_mistakes": 47,
+    "mistake_rate": 0.222
+   },
+   "priority:MEET": {
+    "n_total": 212,
+    "n_mistakes": 47,
+    "mistake_rate": 0.222
+   },
+   "priority:CONSOLIDATE": {
+    "n_total": 71,
+    "n_mistakes": 13,
+    "mistake_rate": 0.183
+   },
+   "priority:COUNTERPLAY": {
+    "n_total": 797,
+    "n_mistakes": 62,
+    "mistake_rate": 0.078
+   },
+   "phase:endgame": {
+    "n_total": 1154,
+    "n_mistakes": 89,
+    "mistake_rate": 0.077
+   },
+   "in_check": {
+    "n_total": 287,
+    "n_mistakes": 13,
+    "mistake_rate": 0.045
+   },
+   "priority:RESPOND": {
+    "n_total": 287,
+    "n_mistakes": 13,
+    "mistake_rate": 0.045
+   },
+   "under_threat:mate": {
+    "n_total": 36,
+    "n_mistakes": 1,
+    "mistake_rate": 0.028
+   },
+   "priority:SURVIVAL": {
+    "n_total": 36,
+    "n_mistakes": 1,
+    "mistake_rate": 0.028
+   }
+  },
+  "worst_moments": [
+   {
+    "ply": 63,
+    "move": "c5",
+    "classification": "blunder",
+    "win_pct_lost": 75.9,
+    "better_move": "Ne2+",
+    "game_id": "3233802098014a5d9d3283778be117a3"
+   },
+   {
+    "ply": 49,
+    "move": "Kg7",
+    "classification": "blunder",
+    "win_pct_lost": 65.1,
+    "better_move": "e6",
+    "game_id": "92121573d0cb4339aec26ef9a5ac9293"
+   },
+   {
+    "ply": 51,
+    "move": "f5",
+    "classification": "blunder",
+    "win_pct_lost": 61.9,
+    "better_move": "Bg5",
+    "game_id": "9093df7cc430411382ec4d4215aa3d4a"
+   },
+   {
+    "ply": 93,
+    "move": "Bc8",
+    "classification": "blunder",
+    "win_pct_lost": 57.6,
+    "better_move": "Re8",
+    "game_id": "1d546705728143baae828965e0f91d8a"
+   },
+   {
+    "ply": 195,
+    "move": "Kd8",
+    "classification": "blunder",
+    "win_pct_lost": 50.0,
+    "better_move": "Rc7+",
+    "game_id": "d71e59ac6a074f589141882342cfab8a"
+   },
+   {
+    "ply": 65,
+    "move": "Rh8",
+    "classification": "blunder",
+    "win_pct_lost": 49.7,
+    "better_move": "Nxe3",
+    "game_id": "1d546705728143baae828965e0f91d8a"
+   },
+   {
+    "ply": 163,
+    "move": "Kf8",
+    "classification": "blunder",
+    "win_pct_lost": 49.0,
+    "better_move": "Kf7",
+    "game_id": "21a80e66a3f841069c10fe6e024bdf01"
+   },
+   {
+    "ply": 47,
+    "move": "Qb7",
+    "classification": "blunder",
+    "win_pct_lost": 48.8,
+    "better_move": "Bg5",
+    "game_id": "9093df7cc430411382ec4d4215aa3d4a"
+   },
+   {
+    "ply": 49,
+    "move": "Qb8",
+    "classification": "blunder",
+    "win_pct_lost": 45.4,
+    "better_move": "Bg5",
+    "game_id": "9093df7cc430411382ec4d4215aa3d4a"
+   },
+   {
+    "ply": 23,
+    "move": "h5",
+    "classification": "blunder",
+    "win_pct_lost": 43.9,
+    "better_move": "c4",
+    "game_id": "3dfcc9c01764490cbc2594ace6d32855"
+   },
+   {
+    "ply": 143,
+    "move": "Rg8",
+    "classification": "blunder",
+    "win_pct_lost": 42.5,
+    "better_move": "Rc5",
+    "game_id": "a557302d58184349adc81bf7685575d2"
+   },
+   {
+    "ply": 11,
+    "move": "Qa4",
+    "classification": "blunder",
+    "win_pct_lost": 39.9,
+    "better_move": "Qc7",
+    "game_id": "46e558b485454d8ea7f813b6d26f6803"
+   },
+   {
+    "ply": 39,
+    "move": "Qd7",
+    "classification": "blunder",
+    "win_pct_lost": 38.9,
+    "better_move": "Re8",
+    "game_id": "a557302d58184349adc81bf7685575d2"
+   },
+   {
+    "ply": 15,
+    "move": "Qc8",
+    "classification": "blunder",
+    "win_pct_lost": 38.6,
+    "better_move": "Bg4",
+    "game_id": "d7f15693fc894d4ea382c83c71f48f55"
+   },
+   {
+    "ply": 23,
+    "move": "O-O",
+    "classification": "blunder",
+    "win_pct_lost": 38.5,
+    "better_move": "Ne5",
+    "game_id": "9c4b0de9bcf54d88b1011f8074514836"
+   },
+   {
+    "ply": 55,
+    "move": "Kg7",
+    "classification": "blunder",
+    "win_pct_lost": 37.2,
+    "better_move": "Ne6+",
+    "game_id": "541a090850d34a29817fce076a3de607"
+   },
+   {
+    "ply": 31,
+    "move": "a5",
+    "classification": "blunder",
+    "win_pct_lost": 37.2,
+    "better_move": "Qe7",
+    "game_id": "7a7fb0d8a1784ca48dc10796f653d816"
+   },
+   {
+    "ply": 103,
+    "move": "Rgxg3+",
+    "classification": "blunder",
+    "win_pct_lost": 36.9,
+    "better_move": "Nxg3",
+    "game_id": "1d546705728143baae828965e0f91d8a"
+   },
+   {
+    "ply": 29,
+    "move": "Qf8",
+    "classification": "blunder",
+    "win_pct_lost": 36.1,
+    "better_move": "Qb6",
+    "game_id": "7a7fb0d8a1784ca48dc10796f653d816"
+   },
+   {
+    "ply": 149,
+    "move": "Rb1",
+    "classification": "blunder",
+    "win_pct_lost": 34.5,
+    "better_move": "Rb5",
+    "game_id": "d71e59ac6a074f589141882342cfab8a"
+   },
+   {
+    "ply": 155,
+    "move": "Rd5",
+    "classification": "blunder",
+    "win_pct_lost": 34.5,
+    "better_move": "Rh1",
+    "game_id": "d71e59ac6a074f589141882342cfab8a"
+   },
+   {
+    "ply": 71,
+    "move": "Re6",
+    "classification": "blunder",
+    "win_pct_lost": 34.1,
+    "better_move": "Rf5",
+    "game_id": "a557302d58184349adc81bf7685575d2"
+   },
+   {
+    "ply": 73,
+    "move": "Rxg2+",
+    "classification": "blunder",
+    "win_pct_lost": 33.8,
+    "better_move": "Rg4",
+    "game_id": "9093df7cc430411382ec4d4215aa3d4a"
+   },
+   {
+    "ply": 141,
+    "move": "Rc8",
+    "classification": "blunder",
+    "win_pct_lost": 33.8,
+    "better_move": "Re3+",
+    "game_id": "a557302d58184349adc81bf7685575d2"
+   },
+   {
+    "ply": 47,
+    "move": "Bc4",
+    "classification": "blunder",
+    "win_pct_lost": 32.9,
+    "better_move": "Qe5",
+    "game_id": "21a80e66a3f841069c10fe6e024bdf01"
+   }
+  ]
+ }
+}
