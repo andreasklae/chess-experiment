@@ -862,19 +862,22 @@ def render_imagine(
                 )
             elif kd["winning_checks"]:
                 out.append(
-                    f"⚠ **YOUR KING STAYS IN DANGER — after this move the opponent has a check "
-                    f"that also wins material: {', '.join(kd['winning_checks'][:3])} "
-                    f"(and {kd['n_checks']} check(s) in all).** This move does not get your king to "
-                    f"safety — the attack continues with tempo. Prefer a reply that leaves the "
-                    f"opponent FEWER (ideally no) checks; compare candidates with `imagine_move` and "
-                    f"count the checks each one allows."
+                    f"⚠ **YOUR KING STAYS IN DANGER — after this move the opponent has a check that "
+                    f"also WINS MATERIAL: {', '.join(kd['winning_checks'][:3])}.** This move does not "
+                    f"get your king to safety — the opponent continues with tempo and nets material. "
+                    f"Look for a reply that does NOT allow a material-winning check (calculate the "
+                    f"candidate replies with `imagine_line`). (Note: more checks ≠ worse — a check you "
+                    f"can simply answer is harmless; what matters is whether a check WINS or MATES.)"
                 )
-            elif kd["n_checks"] >= 4:
+            elif kd["n_checks"] >= 5:
+                # Purely informational — do NOT claim 'fewer checks is safer' (a king
+                # can have many harmless checks yet be perfectly safe; def_71acaf: the
+                # HOLDING move Ke3 allows more checks than the LOSING Kg1). Just prompt
+                # calculation of whether any check actually wins/mates.
                 out.append(
-                    f"⚠ **King still exposed — after this move the opponent has {kd['n_checks']} "
-                    f"check(s) ({', '.join(kd['checks'][:5])}…).** A king facing many checks is often "
-                    f"getting hunted; a quieter square that allows FEWER checks is usually safer. "
-                    f"Compare the check-count of your candidate king moves before committing."
+                    f"_After this move the opponent has {kd['n_checks']} checks "
+                    f"({', '.join(kd['checks'][:5])}…). Many checks alone don't mean danger — "
+                    f"calculate whether ANY of them wins material or starts a mate with `imagine_line`._"
                 )
     # Why this move may be STRONG: an unanswerable threat — e.g. it attacks a
     # valuable piece WHILE giving check, so the side to reply can't both answer
