@@ -471,6 +471,54 @@ def _uncalculated_mating_checks(board: chess.Board) -> tuple[list[str], int] | N
     return ([s for s, _ in found], found[0][1])
 
 
+def _own_king_danger(board_after: chess.Board) -> dict | None:
+    """Assess whether the AGENT's OWN king is still under attack after its move —
+    the defensive twin of the offensive mate signals. It is now the opponent's turn;
+    look at what the opponent can do TO the agent's king:
+      - a forced mate-in-1 (opponent has a mating move) → walked INTO mate,
+      - a check that also wins material (a king-hunt continuation),
+      - the raw count of checks the opponent has (how exposed the king is).
+    Returns a dict, or None if the king is not meaningfully in danger. Pure mechanics
+    (enumerate the opponent's checks + one-ply material); the agent decides. Used to
+    stop the agent picking a 'one-ply-safe-looking' king move that walks into a
+    continued attack (def_83f3cf: Kf2 faces 6 checks incl. Qxf4+, while Kd1 holds)."""
+    opp = board_after.turn                       # opponent to move now
+    mate_moves, winning_checks, all_checks = [], [], []
+    try:
+        from _eval import static_exchange_eval, MATERIAL as _MAT
+    except Exception:
+        static_exchange_eval = None; _MAT = {}
+    for mv in board_after.legal_moves:
+        if not board_after.gives_check(mv):
+            continue
+        try:
+            san = board_after.san(mv)
+        except Exception:
+            san = board_after.uci(mv)
+        b = board_after.copy(stack=False); b.push(mv)
+        if b.is_checkmate():
+            mate_moves.append(san); all_checks.append(san); continue
+        all_checks.append(san)
+        # a check that also wins material off us (king-hunt with tempo): the
+        # captured piece's value MINUS what we win back on the recapture (SEE from
+        # OUR seat on that square). >0 means the checking capture nets material.
+        if board_after.is_capture(mv):
+            victim = board_after.piece_at(mv.to_square)
+            vval = _MAT.get(victim.piece_type, 0) if victim else 100  # ep = pawn
+            recap = 0
+            if static_exchange_eval is not None:
+                try:
+                    recap = max(0, static_exchange_eval(b, mv.to_square, board_after.turn))
+                except Exception:
+                    recap = 0
+            if vval - recap >= 100:
+                winning_checks.append(san)
+    if not all_checks and not mate_moves:
+        return None
+    return dict(mate=mate_moves, winning_checks=winning_checks,
+                n_checks=len(all_checks), checks=all_checks)
+
+
 def _available_checks(board: chess.Board, exclude: chess.Move | None = None) -> list[str]:
     """SANs of the side-to-move's legal CHECKS, excluding `exclude`. Used for the
     zwischenzug nudge — naming the in-between checks the agent could insert before a
@@ -798,6 +846,38 @@ def render_imagine(
                     f"check may have a mating follow-up; don't commit to the first you try."
                 )
             out.append("")
+    # KING-DANGER (item P, defensive): does THIS move leave the agent's OWN king
+    # under continued attack? The agent picks a one-ply-safe-looking king/quiet move
+    # and walks into a follow-up check/mate (def_83f3cf: Kf2 faces Qxf4+ and 5 more
+    # checks; def_1c8d91/def_a646e4: a quiet 'active' move ignores a mate threat).
+    # Only for the agent's OWN move, and only when its king isn't already perfectly
+    # safe. Mechanics (count the opponent's checks / one-ply mate); the agent decides.
+    if not opp_move and not board_after.is_checkmate():
+        kd = _own_king_danger(board_after)
+        if kd is not None:
+            if kd["mate"]:
+                out.append(
+                    f"⛔ **WALKS INTO MATE — after this move the opponent has checkmate: "
+                    f"{', '.join(kd['mate'][:3])}.** Do NOT play this; pick a different reply "
+                    f"that does not allow a mate (try another king square, a block, or capturing "
+                    f"the checker), and verify it with `imagine_move`."
+                )
+            elif kd["winning_checks"]:
+                out.append(
+                    f"⚠ **YOUR KING STAYS IN DANGER — after this move the opponent has a check "
+                    f"that also wins material: {', '.join(kd['winning_checks'][:3])} "
+                    f"(and {kd['n_checks']} check(s) in all).** This move does not get your king to "
+                    f"safety — the attack continues with tempo. Prefer a reply that leaves the "
+                    f"opponent FEWER (ideally no) checks; compare candidates with `imagine_move` and "
+                    f"count the checks each one allows."
+                )
+            elif kd["n_checks"] >= 4:
+                out.append(
+                    f"⚠ **King still exposed — after this move the opponent has {kd['n_checks']} "
+                    f"check(s) ({', '.join(kd['checks'][:5])}…).** A king facing many checks is often "
+                    f"getting hunted; a quieter square that allows FEWER checks is usually safer. "
+                    f"Compare the check-count of your candidate king moves before committing."
+                )
     # Why this move may be STRONG: an unanswerable threat — e.g. it attacks a
     # valuable piece WHILE giving check, so the side to reply can't both answer
     # the check and save the piece. Advisory; tells the agent to verify the line.
