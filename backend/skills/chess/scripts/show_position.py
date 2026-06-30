@@ -260,6 +260,46 @@ def _piece_list(board: chess.Board, color: bool) -> str:
     return ", ".join(f"{sym}{chess.square_name(sq)}" for _, sym, sq in pieces) or "(none)"
 
 
+def _opening_radar(board: chess.Board) -> list[str]:
+    """Inline opening guidance for White: the prepared book move (if any) + the theory
+    pages that fit the position. Surfaced in show_position because the agent does not
+    reliably call the opening tools on its own. Returns [] when not White to move or
+    nothing applies. Book is memorised theory; the routes are wiki pointers — neither
+    forces a move."""
+    if board.turn != chess.WHITE:
+        return []
+    lines: list[str] = []
+    # book move (memorised theory)
+    try:
+        import _opening_book as _ob
+        entry = _ob.lookup(board)
+    except Exception:
+        entry = None
+    if entry is not None:
+        mv = ", ".join(entry.moves)
+        if entry.source == "line":
+            lines.append(
+                f"- **📖 Opening book (memorised theory): {mv}** — {entry.line}. "
+                f"{entry.idea} You may play it (prepared theory), but confirm no tactic "
+                f"is being missed first.")
+        else:
+            lines.append(
+                f"- **📖 Book setup move: {mv}** ({entry.line}). {entry.idea} This is the "
+                f"developing move for a QUIET position — but FIRST check the forcing moves "
+                f"below; a check/capture/threat beats a quiet book move.")
+    # theory-page routes (the guide)
+    try:
+        import opening_guide as _og
+        rs = _og.routes(board)
+    except Exception:
+        rs = []
+    for situation, page, why in rs[:3]:
+        lines.append(f"- **📖 {situation}** → read `{page}` ({why}).")
+    if not lines:
+        return []
+    return ["## Opening", *lines, ""]
+
+
 def render_position(board: chess.Board, move_cap: int | None = None) -> str:
     """Markdown-formatted position report. Each section is a small heading
     so the agent (and the UI) can scan; the ASCII board sits in a fenced
@@ -284,8 +324,21 @@ def render_position(board: chess.Board, move_cap: int | None = None) -> str:
     except Exception:
         situation_lines = []
 
+    # OPENING book + guide, surfaced INLINE (the agent does not reliably CALL the
+    # chess__opening_book / chess__opening_guide tools — verified 0 calls over a 40-puzzle
+    # London run — so the prepared move + the theory-page routing are shown here, at the
+    # decision point, the same way the inline forcing-move list beats "look at forcing
+    # moves" prose. Book = memorised theory (fair); guide = a wiki pointer. Only when
+    # White to move and something applies.)
+    opening_lines: list[str] = []
+    try:
+        opening_lines = _opening_radar(board)
+    except Exception:
+        opening_lines = []
+
     out = [
         *situation_lines,
+        *opening_lines,
         f"**Phase:** {phase} (move {move}, phase score {score}/24)",
         "",
         f"**{render_eval_line(board)}**",
