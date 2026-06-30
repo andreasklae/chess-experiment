@@ -52,6 +52,11 @@ class PuzzleSpec:
     title: str = ""
     difficulty: str = ""
     lichess_url: str = ""
+    # Defensive puzzles have NO single forced answer — any move that HOLDS the
+    # position (Stockfish-verified) passes. When non-empty, _score accepts any of
+    # these UCI moves at the (single) solver ply, not just moves[1]. Empty for the
+    # standard offensive Lichess puzzles (exact-match + alt-mate).
+    acceptable_uci: list[str] = field(default_factory=list)
 
     @property
     def start_fen(self) -> str:
@@ -190,6 +195,10 @@ class PuzzlePlayer(Player):
             return False, None
         if played == expected:
             return True, "exact"
+        # Defensive puzzles: any Stockfish-verified holding move passes (no single
+        # forced answer — the goal is "don't lose", not "find THE move").
+        if self._spec.acceptable_uci and played.uci() in self._spec.acceptable_uci:
+            return True, "holds"
         # alternative mate: if the expected move is mate and the played move is
         # also mate, accept it (Lichess rule).
         if _is_mate(before, expected) and _is_mate(before, played):
@@ -228,4 +237,5 @@ def load_puzzle_set(path: str | Path) -> list[PuzzleSpec]:
                        rating=p.get("rating", 0), themes=p.get("themes", []),
                        topic=p.get("topic", ""), band=p.get("band", ""),
                        title=p.get("title", ""), difficulty=p.get("difficulty", ""),
-                       lichess_url=p.get("lichess_url", "")) for p in data]
+                       lichess_url=p.get("lichess_url", ""),
+                       acceptable_uci=p.get("acceptable_uci", [])) for p in data]

@@ -73,6 +73,14 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
             "puzzles": _pb / "puzzles.json",
             "progress": PuzzleProgress(_pb / "results" / "progress.json"),
         },
+        # Defensive set: pre-blunder positions mined from agent-lost-by-mate games,
+        # Stockfish-verified that a holding move existed. The agent must find ANY
+        # move that holds (graded via acceptable_uci). See
+        # experiments/puzzle-benchmark/puzzles_defensive.json + the Item-P note.
+        "defensive": {
+            "puzzles": _pb / "puzzles_defensive.json",
+            "progress": PuzzleProgress(_pb / "results" / "progress_defensive.json"),
+        },
     }
     fastapi_app.state.puzzle_progress = fastapi_app.state.puzzle_sets["offensive"]["progress"]
     logger.info("startup · ready")

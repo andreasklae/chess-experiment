@@ -1,0 +1,100 @@
+{
+  "def_aad3b3": {
+    "status": "failed",
+    "topic": "defensive-king-safety",
+    "difficulty": "defensive",
+    "rating": 0,
+    "solved_plies": 0,
+    "total_plies": 1,
+    "aborted_reason": "agent played h6h7, expected g2g4",
+    "run_id": "run_1782806047",
+    "ts": "2026-06-30T09:54:31",
+    "category": {
+      "legal_moves_count": 7,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 1,
+      "solver_moves": 1,
+      "material_before": -1,
+      "mover_piece": "pawn",
+      "first_move_is_capture": false,
+      "first_move_is_check": false,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": true,
+      "first_move_san": "g4",
+      "targets": [],
+      "n_targets": 0,
+      "targets_king": false,
+      "captured_value": 0,
+      "material_after_line": -1,
+      "ends_in_mate": false,
+      "signature": "quiet pawn move"
+    },
+    "tool_calls_total": 8,
+    "imagine_line_calls": 3,
+    "imagine_move_calls": 1,
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "8/8/2k4P/2Pr4/2K5/5P2/6P1/8 w - - 5 79",
+        "expected_uci": "g2g4",
+        "expected_san": "g4",
+        "played_uci": "h6h7",
+        "played_san": "h7",
+        "correct": false,
+        "accepted_as": null,
+        "reasoning": "Pushed the most advanced passed pawn to h7. This creates an immediate threat of promotion on h8. Even if Black plays Rxc5+, the pawn is only one square from promotion, and the Queen will be decisive. Rejected quiet king moves as the pawn race is the priority. \u00b7 goal: Promote h-pawn to Queen \u00b7 plan: Promote the h-pawn: push h6-h7-h8 and use the resulting Queen to force a mate. If Black captures c5, the promotion is still faster than any Rook counterplay."
+      }
+    ]
+  },
+  "def_450d16": {
+    "status": "solved",
+    "topic": "defensive-king-safety",
+    "difficulty": "defensive",
+    "rating": 0,
+    "solved_plies": 1,
+    "total_plies": 1,
+    "aborted_reason": null,
+    "run_id": "run_1782806047",
+    "ts": "2026-06-30T09:55:08",
+    "category": {
+      "legal_moves_count": 42,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 1,
+      "solver_moves": 1,
+      "material_before": 1,
+      "mover_piece": "pawn",
+      "first_move_is_capture": false,
+      "first_move_is_check": false,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": true,
+      "first_move_san": "h3",
+      "targets": [
+        "knight"
+      ],
+      "n_targets": 1,
+      "targets_king": false,
+      "captured_value": 0,
+      "material_after_line": 1,
+      "ends_in_mate": false,
+      "signature": "quiet pawn move"
+    },
+    "tool_calls_total": 12,
+    "imagine_line_calls": 0,
+    "imagine_move_calls": 8,
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "r1b2rk1/1pqp2pp/p3p3/8/4p1n1/P1P1BN2/2PQB1PP/R4RK1 w - - 0 16",
+        "expected_uci": "h2h3",
+        "expected_san": "h3",
+        "played_uci": "h2h3",
+        "played_san": "h3",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The knight on g4 is a significant nuisance, threatening h2 and e3. By playing h3, I force the knight to move or be captured. Moving the knight from f3 (Ng5, Nd4) was refuted by the immediate mate threat Qxh2#. h3 addresses the king safety issue and gains a tempo on the knight. While it allows Rxf3 or exf3, I have sufficient defenders (Rook f1, Bishop e2, Pawn g2) to make the exchange acceptable, or simply force the knight to retreat first. \u00b7 goal: Force the knight on g4 to move or capture it. \u00b7 plan: Repel the knight on g4 and stabilize king safety. Once the knight is driven back or traded, I will look to utilize my bishop pair and control the open f-file."
+      }
+    ]
+  }
+}

@@ -137,3 +137,62 @@ def test_puzzle_set_all_legal_and_oriented():
             assert mv in b.legal_moves, f"{s.id} illegal {uci}"
             b.push(mv)
         assert s.total_solver_plies >= 1
+
+
+# ---- defensive puzzles: any Stockfish-verified holding move passes ----
+
+_DEF_PUZZLES = Path(__file__).resolve().parents[2] / "experiments/puzzle-benchmark/puzzles_defensive.json"
+
+
+def test_defensive_grading_accepts_non_primary_holding_move():
+    """A defensive puzzle's acceptable_uci lists ALL Stockfish-verified holds; the
+    agent passes by playing ANY of them — including one that is NOT moves[1] — and is
+    scored accepted_as='holds'."""
+    # fen is BLACK to move (the opponent setup move), then White (agent) holds. The
+    # agent has several acceptable rook moves; it plays one that is NOT moves[1].
+    spec = PuzzleSpec(
+        id="def_test",
+        fen="6k1/5ppp/8/8/8/8/5PPP/R3K2R b KQ - 0 1",
+        moves=["g8h8", "a1d1"],            # setup (black Kh8), agent's primary Rd1
+        acceptable_uci=["a1b1", "a1c1", "a1d1"], topic="defensive-king-safety")
+    outcome, pp = _simulate(spec, ["a1b1"])   # a DIFFERENT acceptable move
+    assert outcome == "solved"
+    assert pp.attempts[-1]["accepted_as"] == "holds"
+
+
+def test_defensive_set_loads_and_is_well_formed():
+    import json as _json
+    if not _DEF_PUZZLES.exists():
+        pytest.skip("defensive set not generated")
+    specs = load_puzzle_set(_DEF_PUZZLES)
+    assert len(specs) >= 10
+    for s in specs:
+        # full line legal; after setup it's White (agent) to move; 1 solver ply
+        b = chess.Board(s.fen)
+        for uci in s.moves:
+            mv = chess.Move.from_uci(uci)
+            assert mv in b.legal_moves, f"{s.id} illegal {uci}"
+            b.push(mv)
+        assert s.agent_color == chess.WHITE
+        assert s.total_solver_plies == 1
+        assert s.acceptable_uci, f"{s.id} has no acceptable moves"
+        start = chess.Board(s.start_fen)
+        for uci in s.acceptable_uci:
+            assert chess.Move.from_uci(uci) in start.legal_moves
+
+
+def test_defensive_holding_move_passes_blunder_fails():
+    if not _DEF_PUZZLES.exists():
+        pytest.skip("defensive set not generated")
+    specs = load_puzzle_set(_DEF_PUZZLES)
+    # pick a single-holding-move puzzle for a clean pass/fail check
+    tight = next((s for s in specs if len(s.acceptable_uci) == 1), specs[0])
+    hold = tight.acceptable_uci[0]
+    outcome, pp = _simulate(tight, [hold])
+    assert outcome == "solved"
+    assert pp.attempts[-1]["accepted_as"] in ("exact", "holds")
+    # a non-holding legal move must fail
+    start = chess.Board(tight.start_fen)
+    bad = next(m.uci() for m in start.legal_moves if m.uci() not in tight.acceptable_uci)
+    outcome2, _ = _simulate(tight, [bad])
+    assert outcome2 == "failed"
