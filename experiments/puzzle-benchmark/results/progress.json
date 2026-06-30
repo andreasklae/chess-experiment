@@ -7,8 +7,8 @@
     "solved_plies": 2,
     "total_plies": 2,
     "aborted_reason": null,
-    "run_id": "run_1782476203",
-    "ts": "2026-06-26T14:17:05",
+    "run_id": "run_1782810867",
+    "ts": "2026-06-30T11:14:48",
     "category": {
       "legal_moves_count": 13,
       "in_check": false,
@@ -46,7 +46,7 @@
         "played_san": "Nd7+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "My knight on f6 was under attack by the bishop on e5. By playing Nd7+, I move the knight to safety, give check, and simultaneously fork the king and the undefended bishop. Since the king must move, I will be able to capture the bishop on the next turn, bringing the material balance back to roughly equal. \u00b7 goal: capture the undefended bishop on e5 \u00b7 plan: Eliminate the opponent's most active piece (the bishop) via the Nd7+ fork to equalize material, then neutralize the passed pawns on a6 and e6 using the knight and king."
+        "reasoning": "The opponent threatens Bxf6, which would leave me down significantly in material. Nd7+ is a forcing move that saves the knight, gives check, and forks the king and the undefended bishop on e5. As calculated with imagine_line, after the king moves, I will capture the bishop (Nxe5), bringing the material balance back to roughly equal. I rejected quiet moves like Kxa6 because they ignore the immediate threat to my knight and miss the tactical opportunity to win the bishop. \u00b7 goal: Capture the undefended bishop on e5 to equalize material. \u00b7 plan: Equalize material by executing the knight fork on the king and bishop. Then, focus on blockading the passed pawns (a6 and e6) using the knight and king."
       },
       {
         "ply": 1,
@@ -57,7 +57,7 @@
         "played_san": "Nxe5",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "Per my plan and current goal, I am capturing the undefended bishop on e5. This eliminates the opponent's most active piece, removes the threat to my h2 pawn, and brings the material balance back to roughly equal. The knight on e5 is safe and well-centralized."
+        "reasoning": "Per my plan and current goal, I am capturing the undefended bishop on e5. This not only equalizes the material but also saves my knight from being captured by the king on e7, turning a losing material deficit into a balanced endgame."
       }
     ]
   },
@@ -69,8 +69,35 @@
     "solved_plies": 2,
     "total_plies": 2,
     "aborted_reason": null,
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:07:10",
+    "run_id": "run_1782810867",
+    "ts": "2026-06-30T11:15:10",
+    "category": {
+      "legal_moves_count": 19,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 3,
+      "solver_moves": 2,
+      "material_before": -3,
+      "mover_piece": "knight",
+      "first_move_is_capture": true,
+      "first_move_is_check": true,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Nxe6+",
+      "targets": [
+        "king",
+        "rook"
+      ],
+      "n_targets": 2,
+      "targets_king": true,
+      "captured_value": 1,
+      "material_after_line": 3,
+      "ends_in_mate": false,
+      "signature": "knight double-attack \u2192 king,rook"
+    },
+    "tool_calls_total": 8,
+    "imagine_line_calls": 1,
+    "imagine_move_calls": 2,
     "attempts": [
       {
         "ply": 0,
@@ -81,7 +108,7 @@
         "played_san": "Nxe6+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "I have a tactical opportunity to fork the black king and the undefended rook on f4. By playing Nxe6+, I force the king to move, allowing me to capture the rook on f4 next turn. This converts a material deficit into a decisive lead. I verified the line with imagine_line: Nxe6+, (any king move), Nxf4. \u00b7 goal: Capture the rook on f4 to gain a decisive material advantage. \u00b7 plan: Winning material via fork: execute Nxe6+ to fork the king and the undefended rook on f4, then capture the rook on the following move to flip the material balance in White's favor. After winning the rook, simplify the position and push the c4 passed pawn."
+        "reasoning": "I am materially behind, so I must seek activity and tactical chances. Nxe6+ is a forcing move that delivers check and forks the undefended rook on f4. As calculated with imagine_line, after the king moves, I will capture the rook (Nxf4), swinging the material balance from -3 to +3. This is a decisive gain. \u00b7 plan: Win the rook on f4 via fork on e6, then stabilize the position by blockading the d4 passed pawn and utilizing the material advantage to win."
       },
       {
         "ply": 1,
@@ -92,7 +119,7 @@
         "played_san": "Nxf4",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "Per my plan: capture the undefended rook on f4 to gain a decisive material advantage. The opponent's move Kc8 did not create any threats that prevent this capture, and imagine_move confirms it is safe and flips the material balance in White's favor. \u00b7 goal: Simplify the position and neutralize the d4 passed pawn."
+        "reasoning": "Per my plan, I am winning the undefended rook on f4 with my knight. This eliminates black's most active piece and gives me a decisive material advantage (+3.70 eval), shifting the game from a slight deficit to a winning lead. \u00b7 goal: Blockade the d4 pawn and activate the king/rook. \u00b7 plan: Win the rook on f4, then stabilize the position by blockading the d4 passed pawn and utilizing the material advantage to win."
       }
     ]
   },
@@ -104,8 +131,35 @@
     "solved_plies": 2,
     "total_plies": 2,
     "aborted_reason": null,
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:07:35",
+    "run_id": "run_1782810867",
+    "ts": "2026-06-30T11:15:34",
+    "category": {
+      "legal_moves_count": 29,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 3,
+      "solver_moves": 2,
+      "material_before": -1,
+      "mover_piece": "knight",
+      "first_move_is_capture": false,
+      "first_move_is_check": true,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Ne7+",
+      "targets": [
+        "king",
+        "queen"
+      ],
+      "n_targets": 2,
+      "targets_king": true,
+      "captured_value": 0,
+      "material_after_line": 8,
+      "ends_in_mate": false,
+      "signature": "knight double-attack \u2192 king,queen"
+    },
+    "tool_calls_total": 9,
+    "imagine_line_calls": 2,
+    "imagine_move_calls": 2,
     "attempts": [
       {
         "ply": 0,
@@ -116,7 +170,7 @@
         "played_san": "Ne7+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "The knight on d5 was undefended and attacked by the queen. Ne7+ is a forcing move that checks the king and forks the undefended queen on c6. As calculated with imagine_line, Black must move the king (Kh8 or Kf7), allowing White to capture the queen (Nxc6), resulting in a decisive material advantage (+9.2). I also noted the back-rank weakness of my own king, but winning the queen is the immediate priority. \u00b7 goal: Win the black queen and consolidate material advantage. \u00b7 plan: Tactical sequence: Fork king and queen with Ne7+, then capture the queen on c6. After winning the queen, simplify the game by trading pieces and pushing the passed c- and d-pawns to promote."
+        "reasoning": "The knight on d5 was undefended and under attack by the queen on c6. Ne7+ is a forcing move that saves the knight, gives check to the king, and creates a royal fork attacking the undefended queen. Imagine_line confirms that after the king moves (e.g., Kh8), I can capture the queen (Nxc6), gaining a decisive material advantage (~+9). \u00b7 goal: Capture the black queen and consolidate the material advantage. \u00b7 plan: Execute a royal fork with Ne7+ to win the black queen. After winning the queen, simplify by trading pieces and leverage the passed c and d pawns to secure the win."
       },
       {
         "ply": 1,
@@ -127,7 +181,7 @@
         "played_san": "Nxc6",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "Per my plan, I am capturing the undefended queen on c6. This achieves the primary tactical goal of winning the queen and secures a decisive material advantage. I previously planned Ne7+, but the opponent played Kh8, making the capture direct and immediate. \u00b7 goal: Simplify the game by trading pieces and push the passed c- and d-pawns."
+        "reasoning": "Per my plan: capture the black queen and consolidate the material advantage. I examined the possibility of an intermediate check with Ng6+, but since the knight would then be on g6, it could no longer capture the queen on c6. Capturing the queen immediately is the most direct path to a decisive material advantage."
       }
     ]
   },
@@ -139,8 +193,35 @@
     "solved_plies": 2,
     "total_plies": 2,
     "aborted_reason": null,
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:07:56",
+    "run_id": "run_1782810867",
+    "ts": "2026-06-30T11:15:55",
+    "category": {
+      "legal_moves_count": 14,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 3,
+      "solver_moves": 2,
+      "material_before": -3,
+      "mover_piece": "knight",
+      "first_move_is_capture": false,
+      "first_move_is_check": true,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Nd5+",
+      "targets": [
+        "king",
+        "rook"
+      ],
+      "n_targets": 2,
+      "targets_king": true,
+      "captured_value": 0,
+      "material_after_line": 2,
+      "ends_in_mate": false,
+      "signature": "knight double-attack \u2192 king,rook"
+    },
+    "tool_calls_total": 8,
+    "imagine_line_calls": 1,
+    "imagine_move_calls": 2,
     "attempts": [
       {
         "ply": 0,
@@ -151,7 +232,7 @@
         "played_san": "Nd5+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "The knight on f4 was attacked by the rook on b4. By playing Nd5+, I deliver a check to the king while simultaneously attacking the rook (a fork). Since the rook is undefended, black must move the king, allowing me to capture the rook on the next move. This swings the material balance decisively in my favor. \u00b7 goal: Capture the rook on b4 and secure a material advantage. \u00b7 plan: Win the undefended rook on b4 via the Nd5+ fork, then transition to a won endgame by blockading the black f-pawns and promoting the h-pawn."
+        "reasoning": "The opponent threatened to capture my knight on f4. I played Nd5+ to move the knight to safety while simultaneously delivering a check and forking the rook on b4. Since the rook is undefended and the king is in check, the rook will be lost regardless of the king's move, turning a decisive material deficit into a material lead. \u00b7 plan: Win the rook via a knight fork (Nd5+), then transition to a winning K+N+P vs K+2P endgame by blockading the f-pawns and promoting the h-pawn."
       },
       {
         "ply": 1,
@@ -162,7 +243,7 @@
         "played_san": "Nxb4",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "Per my plan and short-term goal, I am capturing the undefended rook on b4. This flips the material advantage in my favor and removes Black's only major piece, making the transition to a won endgame much simpler."
+        "reasoning": "Per my standing plan, I am winning the rook via knight capture. The rook on b4 was undefended and the capture immediately shifts the material advantage to White, transitioning the game into a winning Knight + Pawn endgame. There were no useful intermediate checks (like Ne7+ or Nf4+) that would have improved the outcome before capturing the rook."
       }
     ]
   },
@@ -554,8 +635,34 @@
     "solved_plies": 2,
     "total_plies": 2,
     "aborted_reason": null,
-    "run_id": "run_1782416779",
-    "ts": "2026-06-25T21:46:55",
+    "run_id": "run_1782810867",
+    "ts": "2026-06-30T11:18:10",
+    "category": {
+      "legal_moves_count": 35,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 3,
+      "solver_moves": 2,
+      "material_before": 0,
+      "mover_piece": "bishop",
+      "first_move_is_capture": false,
+      "first_move_is_check": false,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": true,
+      "first_move_san": "Bb5",
+      "targets": [
+        "queen"
+      ],
+      "n_targets": 1,
+      "targets_king": false,
+      "captured_value": 0,
+      "material_after_line": 9,
+      "ends_in_mate": false,
+      "signature": "quiet bishop move"
+    },
+    "tool_calls_total": 14,
+    "imagine_line_calls": 4,
+    "imagine_move_calls": 3,
     "attempts": [
       {
         "ply": 0,
@@ -566,7 +673,7 @@
         "played_san": "Bb5",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "The position assessment identified a strong tactical opportunity: Bb5 creates an absolute pin on the black queen against the king on e8. According to `tactics/pins-and-skewers.md`, an absolute pin is rock-solid, and the pinned piece defends nothing. I imagined Bb5 and verified it restricts the queen's movement. While the bishop on b5 is attacked by the queen, the queen cannot move, making the bishop safe for now. I also checked the line Bb5, O-O and saw that while the pin breaks after castling, it forces black to deal with the immediate threat and creates a window for white to consolidate and potentially win material. I reject passive developing moves like Bd3 in favor of this forcing tactical shot. \u00b7 goal: Win the black queen or force major concessions by exploiting the pin on c6. \u00b7 plan: Exploit the absolute pin on the black queen on c6 using Bb5. Once pinned, I will aim to pile attackers on the queen (e.g., with a pawn or another piece) or exploit the fact that the queen no longer effectively defends its targets, while ensuring my own king gets to safety."
+        "reasoning": "I calculated the forcing move Qd8+, but it leads to the loss of my queen without a forced mate (Kxd8 leaves me down material). Bb5 is a strong positional and tactical move that pins the black queen to the king. While it leaves g2 temporarily undefended, the pin on the queen is a far more significant advantage, effectively paralyzing Black's most active piece. \u00b7 goal: Win the black queen by piling attackers on the b5 pin. \u00b7 plan: Create a decisive pin on the black queen using Bb5, then use a pawn or another piece to win the queen. Develop the remaining pieces and secure the king."
       },
       {
         "ply": 1,
@@ -577,7 +684,7 @@
         "played_san": "Bxc6",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "Per my plan, I am exploiting the pin on c6. By capturing the queen with Bxc6, I win a queen for a bishop (net gain of ~6 points), which is a decisive material advantage. Even though black can recapture the bishop, the material trade is overwhelmingly in my favor. \u00b7 goal: Consolidate the material lead and get the king to safety."
+        "reasoning": "Per my plan, I am executing the win of the black queen. The move Bxc6 captures the queen; although black can recapture the bishop (with the bishop on d7 or pawn on b7), white emerges with a decisive material advantage (Queen for Bishop), which is a winning trade. \u00b7 plan: Win the black queen by exploiting the pin/skewer on c6. After the exchange, secure the king by castling and simplify the position to convert the material advantage into a win."
       }
     ]
   },
@@ -589,8 +696,35 @@
     "solved_plies": 2,
     "total_plies": 2,
     "aborted_reason": null,
-    "run_id": "run_1782396386",
-    "ts": "2026-06-25T16:09:22",
+    "run_id": "run_1782810867",
+    "ts": "2026-06-30T11:18:40",
+    "category": {
+      "legal_moves_count": 26,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 3,
+      "solver_moves": 2,
+      "material_before": -2,
+      "mover_piece": "knight",
+      "first_move_is_capture": false,
+      "first_move_is_check": true,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Ne6+",
+      "targets": [
+        "king",
+        "rook"
+      ],
+      "n_targets": 2,
+      "targets_king": true,
+      "captured_value": 0,
+      "material_after_line": 3,
+      "ends_in_mate": false,
+      "signature": "knight double-attack \u2192 king,rook"
+    },
+    "tool_calls_total": 9,
+    "imagine_line_calls": 1,
+    "imagine_move_calls": 2,
     "attempts": [
       {
         "ply": 0,
@@ -601,7 +735,7 @@
         "played_san": "Ne6+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "The move Ne6+ forks the king on g7 and the undefended rook on d4. While the knight is technically 'hanging' to the f7 pawn, that pawn is pinned to the king, meaning it cannot legally capture the knight. This forces the black king to move, allowing white to capture the rook on the next turn (Nxd4), turning a material deficit into a decisive lead. I've verified with imagine_line that even after a check like Bg2+, white can simply capture the bishop (Kxg2), further increasing the advantage. \u00b7 goal: Capture the rook on d4 to gain a decisive material advantage. \u00b7 plan: Tactical conversion: Use the fork Ne6+ to win the undefended rook on d4, then simplify the endgame by trading remaining pieces while maintaining the material lead."
+        "reasoning": "The move Ne6+ delivers a check and forks the undefended rook on d4. Calculations with imagine_line confirm that after the king moves (e.g., Kh8), I can capture the rook (Nxd4), gaining a decisive material advantage (+4.10 eval). While the knight on e6 is technically attacked by the f7 pawn, that pawn is pinned to the king on g7, meaning the knight is safe for the immediate check and capture sequence. \u00b7 goal: Win the rook on d4 using the Ne6+ fork. \u00b7 plan: Execute the Ne6+ fork to win the rook on d4, flipping the material balance in White's favor, then simplify the position to convert the win."
       },
       {
         "ply": 1,
@@ -612,7 +746,7 @@
         "played_san": "Nxd4",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "The move Ne6+ forks the king on g7 and the undefended rook on d4. The SAFETY CHECK flags the knight as 'hanging' on e6, but the only piece that can capture it is the pawn on f7, which is currently PINNED to the king on g7. Therefore, the knight is safe from capture this turn. After the king moves (e.g., Kh6 or Kg8), I will play Nxd4, winning a rook for nothing and shifting the material balance from -1.15 to approximately +3.90. Calculation with imagine_line confirms this sequence is sound. \u00b7 goal: Capture the rook on d4 to gain a decisive material advantage. \u00b7 plan: Tactical conversion: Use the fork Ne6+ to win the undefended rook on d4, then simplify the endgame by trading remaining pieces while maintaining the material lead."
+        "reasoning": "I am overriding the safety check because this is a calculated tactical sequence. 1. Ne6+ forks the king and the undefended rook on d4. The opponent must respond to the check. 2. Regardless of where the king moves (e.g., Kh8, Kg8), the rook on d4 remains undefended. 3. I then play Nxd4, winning the exchange and gaining a decisive material lead (eval shifts from -1.15 to +4.10). The loss of the knight on e6 is only possible if the opponent could capture it *instead* of moving the king, but the f7 pawn is pinned to the king on g7 and cannot capture. Thus, the rook falls. \u00b7 goal: Win the rook on d4 using the Ne6+ fork. \u00b7 plan: Execute the Ne6+ fork to win the rook on d4, flipping the material balance in White's favor, then simplify the position to convert the win."
       }
     ]
   },
@@ -624,8 +758,35 @@
     "solved_plies": 1,
     "total_plies": 1,
     "aborted_reason": null,
-    "run_id": "run_1782416554",
-    "ts": "2026-06-25T21:43:06",
+    "run_id": "run_1782810867",
+    "ts": "2026-06-30T11:18:51",
+    "category": {
+      "legal_moves_count": 38,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 1,
+      "solver_moves": 1,
+      "material_before": -11,
+      "mover_piece": "rook",
+      "first_move_is_capture": false,
+      "first_move_is_check": true,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Re8#",
+      "targets": [
+        "bishop",
+        "king"
+      ],
+      "n_targets": 2,
+      "targets_king": true,
+      "captured_value": 0,
+      "material_after_line": -11,
+      "ends_in_mate": true,
+      "signature": "rook double-attack \u2192 bishop,king"
+    },
+    "tool_calls_total": 4,
+    "imagine_line_calls": 0,
+    "imagine_move_calls": 1,
     "attempts": [
       {
         "ply": 0,
@@ -636,7 +797,7 @@
         "played_san": "Re8#",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "The opponent's back rank is completely exposed. The rook move to e8 delivers immediate checkmate as the king has no legal escape squares and the rook cannot be captured. I ignored the material deficit because checkmate ends the game immediately."
+        "reasoning": "The opponent's king is trapped on the back rank. Moving the rook to e8 delivers immediate checkmate, as the king has no legal moves and the rook cannot be captured. This overrides the material deficit and the threat to my knight on d2. \u00b7 plan: Deliver immediate checkmate via back-rank weakness."
       }
     ]
   },
@@ -648,8 +809,34 @@
     "solved_plies": 2,
     "total_plies": 2,
     "aborted_reason": null,
-    "run_id": "run_1782416779",
-    "ts": "2026-06-25T21:47:20",
+    "run_id": "run_1782810867",
+    "ts": "2026-06-30T11:19:21",
+    "category": {
+      "legal_moves_count": 48,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 3,
+      "solver_moves": 2,
+      "material_before": 0,
+      "mover_piece": "bishop",
+      "first_move_is_capture": false,
+      "first_move_is_check": false,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": true,
+      "first_move_san": "Bb5",
+      "targets": [
+        "queen"
+      ],
+      "n_targets": 1,
+      "targets_king": false,
+      "captured_value": 0,
+      "material_after_line": 6,
+      "ends_in_mate": false,
+      "signature": "quiet bishop move"
+    },
+    "tool_calls_total": 12,
+    "imagine_line_calls": 3,
+    "imagine_move_calls": 3,
     "attempts": [
       {
         "ply": 0,
@@ -660,7 +847,7 @@
         "played_san": "Bb5",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "I played Bb5 to create an absolute pin on the black queen at c6 against the king at e8. While this leaves the g2 pawn undefended, the pin significantly restricts the queen's mobility and creates tactical opportunities to win material or force black into passive defense. I rejected Bxa7 because the radar warned it was a trap. \u00b7 goal: Establish a strong pin on the black queen and coordinate development. \u00b7 plan: Control the center and exploit pins. I will start by pinning the black queen with Bb5, then focus on king safety (castling) and improving my queen's position to pressure black's kingside/center."
+        "reasoning": "Calculated Qd8+, but it is a losing sacrifice with no immediate mate (Kxd8 leaves me down a queen for nothing). Bb5 creates an absolute pin on the black queen against the king. Although it leaves g2 undefended, the pin on c6 is a powerful tactical asset that restricts black's coordination and potentially wins the queen. \u00b7 plan: Pin the black queen on c6 against the king on e8 using the light-squared bishop. Once pinned, I will look to pile attackers on the queen or exploit its inability to defend key squares."
       },
       {
         "ply": 1,
@@ -671,7 +858,7 @@
         "played_san": "Nxb5",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "The opponent played Qxb5, leaving the queen undefended on b5. Per the position radar and imagine_move, capturing the queen with Nxb5 is a winning move that puts white in a decisive material lead. No immediate tactical threats from black are visible in the legal replies. \u00b7 plan: Win the queen, then secure the king by castling and use the material advantage to simplify and win."
+        "reasoning": "The opponent played Qxb5, leaving the queen undefended and directly attacked by my knight on a3. Capturing the queen with Nxb5 immediately gains a decisive material advantage and removes the most dangerous enemy piece. I considered the intermediate check Qd8+, but that just trades queens and leaves the material balance roughly equal, whereas Nxb5 keeps my queen and takes theirs. \u00b7 plan: Win the undefended queen to regain material lead, then focus on king safety (castling) and exploiting the center."
       }
     ]
   },
@@ -7701,8 +7888,8 @@
     "solved_plies": 2,
     "total_plies": 2,
     "aborted_reason": null,
-    "run_id": "run_1782476940",
-    "ts": "2026-06-26T14:29:20",
+    "run_id": "run_1782810867",
+    "ts": "2026-06-30T11:16:21",
     "category": {
       "legal_moves_count": 11,
       "in_check": false,
@@ -7727,8 +7914,8 @@
       "ends_in_mate": false,
       "signature": "knight double-attack \u2192 bishop,king"
     },
-    "tool_calls_total": 8,
-    "imagine_line_calls": 1,
+    "tool_calls_total": 10,
+    "imagine_line_calls": 2,
     "imagine_move_calls": 2,
     "attempts": [
       {
@@ -7740,7 +7927,7 @@
         "played_san": "Nxe5+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "Nxe5+ is a forcing move that gives check and creates a fork, attacking the king on c4 and the undefended bishop on g6. This sequence wins a full piece, shifting the material balance decisively in White's favor (+4.10). I verified with imagine_line that after the king moves, I can safely capture the bishop (Nxg6), leaving me with a knight and two pawns against two pawns, which is a winning endgame. \u00b7 goal: Win the bishop on g6 and then promote the h-pawn. \u00b7 plan: Execute the fork on e5 to win the bishop, then use the material advantage and the passed h-pawn to force a win in the endgame."
+        "reasoning": "The move Nxe5+ is a forcing knight fork that wins material. It captures the e5 pawn with check, forcing the king to move, and leaves the bishop on g6 undefended. Calculation shows that after any king move (e.g., Kd5), I can play Nxg6, gaining a decisive material advantage (+4). No counter-threats or captures of the knight were found in the imagine_move output. \u00b7 goal: Capture the bishop on g6 and consolidate the material advantage. \u00b7 plan: Win material via knight fork: capture the e5 pawn with check, then capture the undefended bishop on g6. After winning the piece, simplify the endgame by supporting the h-pawn and neutralizing black's a-pawn."
       },
       {
         "ply": 1,
@@ -7751,7 +7938,7 @@
         "played_san": "Nxg6",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "Per my plan: win the bishop on g6. While Black can capture the a3 pawn in response (Kxa3), the material gain of a piece (+3) far outweighs the loss of one pawn (-1), and my passed h-pawn remains the decisive factor."
+        "reasoning": "Per my plan, I am capturing the undefended bishop on g6. While this allows the opponent to capture my pawn on a3, the material gain of a bishop (+3) far outweighs the loss of a pawn (-1), leaving me with a decisive material advantage in the endgame. From here, I will use the knight to blockade the a-pawn and advance my h-pawn to victory. \u00b7 goal: Consolidate the material lead and begin neutralizing the a-pawn. \u00b7 plan: Win the endgame by leveraging the material advantage (Knight vs Pawns). Use the knight to blockade the opponent's a-pawn and support the promotion of the h-pawn."
       }
     ]
   },
@@ -7763,8 +7950,8 @@
     "solved_plies": 2,
     "total_plies": 2,
     "aborted_reason": null,
-    "run_id": "run_1782476940",
-    "ts": "2026-06-26T14:29:43",
+    "run_id": "run_1782810867",
+    "ts": "2026-06-30T11:16:46",
     "category": {
       "legal_moves_count": 16,
       "in_check": false,
@@ -7802,7 +7989,7 @@
         "played_san": "Nf6+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "Calculated a forcing sequence: Nf6+ checks the king and forks the undefended rook on h5. The king must move, allowing Nxh5+ to win the exchange and shift the material balance from -3.5 to +1.15. This is a decisive tactical gain that overrides other positional concerns. \u00b7 goal: Capture the undefended rook on h5 to regain material parity and take the lead. \u00b7 plan: Execute the knight fork on f6 to win the rook on h5. Once the material is recovered, focus on blockading the h3 passed pawn and converting the endgame advantage."
+        "reasoning": "I am materially behind, so I must seek active counterplay. Nf6+ is a forcing move that delivers a check and forks the king on g8 and the undefended rook on h5. Since the king is forced to move, I will win the rook on the next turn (Nxh5+), swinging the material balance in my favor. I rejected Rxh3 because the radar warned it was a trap that would lose material after the recapture. \u00b7 goal: Win the rook on h5 using the knight fork. \u00b7 plan: Immediate counterplay: execute the knight fork Nf6+ to win the undefended rook on h5. After winning the rook, transition to a winning endgame by neutralizing the h3 passed pawn."
       },
       {
         "ply": 1,
@@ -7813,7 +8000,7 @@
         "played_san": "Nxh5+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "Per my plan and current goal, I am capturing the undefended rook on h5. This move is especially strong as it comes with check, forcing the opponent's king to move and regaining significant material parity. This transforms the game from a decisive material disadvantage to a material lead for white."
+        "reasoning": "Per my plan: the rook on h5 is undefended. Capturing it with the knight (Nxh5+) wins a major piece, delivers a check to the king, and removes the threat to my knight on f6. This shifts the material balance significantly in my favor. \u00b7 goal: Now that the rook is won, neutralize the passed h3 pawn and coordinate the remaining pieces for a win."
       }
     ]
   },
@@ -7825,8 +8012,8 @@
     "solved_plies": 2,
     "total_plies": 2,
     "aborted_reason": null,
-    "run_id": "run_1782476940",
-    "ts": "2026-06-26T14:30:03",
+    "run_id": "run_1782810867",
+    "ts": "2026-06-30T11:17:08",
     "category": {
       "legal_moves_count": 15,
       "in_check": false,
@@ -7864,7 +8051,7 @@
         "played_san": "Ne5+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "I have a forcing check with Ne5+ that forks the king on d7 and the undefended rook on f3. Imagine_line confirms that after any king move, I can capture the rook (Nxf3), gaining a decisive material advantage (+4.85). This is a clear winning tactical sequence. \u00b7 goal: Capture the rook on f3. \u00b7 plan: Win the rook via fork, then promote the b-pawn or use the knight to coordinate a win."
+        "reasoning": "Calculated Ne5+ which forks the black king on d7 and the undefended rook on f3. The opponent must move the king, allowing Nxf3 on the next turn. This transition from a slightly losing material position (-0.40) to a decisively winning one (+4.55) is the highest priority. \u00b7 goal: Win the rook on f3 using the fork. \u00b7 plan: Tactical Win: Execute the Ne5+ fork to capture the undefended rook on f3, then convert the resulting material advantage (Knight + 3 pawns vs 2 pawns) by pushing the passed b-pawn."
       },
       {
         "ply": 1,
@@ -7875,7 +8062,7 @@
         "played_san": "Nxf3",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "Per my plan and current goal: the opponent's rook on f3 is undefended. Capturing it wins a decisive amount of material and removes black's only active piece, leaving me with a winning knight and pawn advantage. \u00b7 goal: Promote the b-pawn or create a mating net with the knight. \u00b7 plan: Win the rook via fork/capture, then promote the b-pawn or coordinate the knight and king to win."
+        "reasoning": "Per my plan and current goal, I am capturing the undefended rook on f3. This removes black's only active piece and leaves me with a decisive material advantage (Knight + 3 pawns vs 2 pawns), which I will convert by pushing my passed b-pawn."
       }
     ]
   },
@@ -7887,8 +8074,8 @@
     "solved_plies": 2,
     "total_plies": 2,
     "aborted_reason": null,
-    "run_id": "run_1782476940",
-    "ts": "2026-06-26T14:30:28",
+    "run_id": "run_1782810867",
+    "ts": "2026-06-30T11:17:32",
     "category": {
       "legal_moves_count": 25,
       "in_check": false,
@@ -7926,7 +8113,7 @@
         "played_san": "Nd7+",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "The move Nd7+ delivers a royal fork, attacking both the king on f8 and the undefended rook on b8. Black is forced to move the king, after which I will capture the rook on b8 (Nxb8), gaining a decisive material advantage (+5). I verified this sequence with imagine_line; it is forced and wins material. \u00b7 goal: Win the exchange (rook for knight) and then push the passed a-pawn. \u00b7 plan: Tactical win: execute the Nd7+ fork to win the rook on b8, then leverage the material advantage and the passed a-pawn to win the endgame."
+        "reasoning": "The move Nd7+ is a forcing check that forks the king on f8 and the undefended rook on b8. As verified by `chess__imagine_line`, the opponent must move the king, allowing me to capture the rook on b8 (Nxb8) next turn, gaining a decisive material lead (+5). I rejected quiet moves like a6 or Rab1 because winning a full rook is the most direct path to victory. \u00b7 goal: Capture the rook on b8 to gain a decisive material advantage. \u00b7 plan: Convert the material advantage: Win the rook on b8 via the Nd7+ fork, then simplify the game by trading pieces while pushing the passed a-pawn."
       },
       {
         "ply": 1,
@@ -7937,7 +8124,7 @@
         "played_san": "Nxb8",
         "correct": true,
         "accepted_as": "exact",
-        "reasoning": "Per my plan: execute the fork to win the rook. Opponent played Ke7 to attack the knight, but the rook on b8 is undefended. Capturing the rook now wins the exchange and secures a decisive material advantage. \u00b7 goal: Push the passed a-pawn and simplify the position."
+        "reasoning": "Per my plan and goal, I am capturing the undefended rook on b8. This resolves the threat to my knight on d7 (by moving it) and gains a decisive material advantage."
       }
     ]
   },

@@ -1527,10 +1527,21 @@ def assess_situation(board: chess.Board, perspective: bool | None = None) -> dic
                 "Address it — defend the target, move it, or make a bigger/forcing threat of your own — "
                 "UNLESS a forcing move of yours wins more. Don't play a slow move that lets the threat land.")
     elif diff >= 3 and phase != "opening":
-        prio = ("CONSOLIDATE — you are ahead", "you are materially ahead and your king is not under "
-                "immediate threat. The win is CONVERSION, not winning more: trade PIECES (not pawns) to "
-                "simplify toward a won endgame, keep your king safe, and avoid unnecessary complications. "
-                "Do NOT grab more material if it loosens your position — a clean simple position wins itself.")
+        # 'Consolidate' means different things with vs without pieces on the board.
+        has_pieces = any(board.pieces(pt, c)
+                         for pt in (chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN)
+                         for c in (chess.WHITE, chess.BLACK))
+        if has_pieces:
+            body = ("you are materially ahead and your king is not under immediate threat. The win is "
+                    "CONVERSION, not winning more: trade PIECES (not pawns) to simplify toward a won "
+                    "endgame, keep your king safe, and avoid unnecessary complications. Do NOT grab more "
+                    "material if it loosens your position — a clean simple position wins itself.")
+        else:
+            body = ("you are ahead in a KING-AND-PAWN endgame (no pieces left). Technique wins this, not "
+                    "more material: ACTIVATE YOUR KING toward the key pawns, shepherd your passed pawn "
+                    "with the king in front, take the OPPOSITION to force the enemy king back, and create "
+                    "an outside passed pawn if you can. Don't shuffle or drift the king away from the action.")
+        prio = ("CONSOLIDATE — you are ahead", body)
     elif diff <= -3:
         prio = ("COUNTERPLAY — you are behind", "you are materially behind but not in immediate danger. "
                 "Passive defense loses slowly. Seek ACTIVITY and complications: forcing moves, attacks on "
