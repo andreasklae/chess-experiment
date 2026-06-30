@@ -1420,6 +1420,47 @@ def _opponent_threat(board: chess.Board) -> tuple[str, str] | None:
     return None
 
 
+def _moves_that_prevent_mate(board: chess.Board) -> list[str]:
+    """When the opponent threatens mate-in-1 (after the side-to-move passes), return
+    the SANs of the side-to-move's moves that stop it — i.e. after the move, the
+    opponent no longer has a mate-in-1 (or the move itself mates/ends the game). Pure
+    mechanics ('which of my moves defend this mate'); the agent still calculates which
+    actually survives deeper. Returns [] if no mate is threatened."""
+    def opp_has_mate(bd: chess.Board) -> bool:
+        if bd.is_game_over():
+            return False
+        for m in bd.legal_moves:
+            c = bd.copy(stack=False); c.push(m)
+            if c.is_checkmate():
+                return True
+        return False
+    # confirm a mate is actually threatened (via null move)
+    if board.is_check():
+        threatened = True   # being in check, a mate-in-1 may follow any non-escaping move
+    else:
+        probe = board.copy(stack=False)
+        try:
+            probe.push(chess.Move.null())
+        except Exception:
+            return []
+        threatened = opp_has_mate(probe)
+    if not threatened:
+        return []
+    savers = []
+    for mv in board.legal_moves:
+        c = board.copy(stack=False); c.push(mv)
+        if c.is_game_over():          # we mated/stalemated — counts as 'not mated'
+            if c.is_checkmate():
+                savers.append(board.san(mv))
+            continue
+        if not opp_has_mate(c):
+            try:
+                savers.append(board.san(mv))
+            except Exception:
+                pass
+    return savers
+
+
 def assess_situation(board: chess.Board, perspective: bool | None = None) -> dict:
     """Mechanical SITUATION assessment that sets the agent's PRIORITY for this move.
 
@@ -1463,12 +1504,24 @@ def assess_situation(board: chess.Board, perspective: bool | None = None) -> dic
                 "walk into a new attack), not just the first that escapes. A block or a capture of the "
                 "checker can be better than running the king — calculate each with imagine_move.")
     elif threat and threat[0] == "mate":
+        # Enumerate the moves that actually PREVENT the threatened mate — a fair,
+        # mechanical narrowing ('which of my moves stop this mate') that hands the
+        # agent the right shortlist (it tends to fixate on the first defence it sees
+        # and miss a material-losing one like Rxc8 that also holds). Listing them is
+        # mechanics; the agent still calculates which survives.
+        savers = _moves_that_prevent_mate(board)
+        saver_str = ""
+        if savers:
+            shown = savers[:8]
+            saver_str = (f" The ONLY moves that stop the mate are: {', '.join(shown)}"
+                         + ("…" if len(savers) > 8 else "")
+                         + " — calculate EACH with `imagine_line` and pick the one that survives "
+                           "(some may lose material and STILL be correct; some may fail to a second threat).")
         prio = ("SURVIVAL — you are being mated", f"the opponent threatens MATE ({threat[1]}) next move. "
-                "This DOMINATES everything: defend the mate (block, guard the square, give a check of "
-                "your own, or remove the attacker) before any other consideration. **Material is "
+                "This DOMINATES everything: defend the mate before any other consideration. **Material is "
                 "secondary — a move that LOSES material but stops the mate is correct; a 'free' capture "
                 "or a quiet improving move that allows the mate is losing.** Ignore the trap/greed "
-                "warnings below if the move they flag is what defends the king.")
+                f"warnings below if the move they flag is what defends the king.{saver_str}")
     elif threat and threat[0] == "material":
         prio = ("MEET THE THREAT", f"the opponent threatens to win material ({threat[1]}) next move. "
                 "Address it — defend the target, move it, or make a bigger/forcing threat of your own — "
