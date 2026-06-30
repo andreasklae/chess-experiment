@@ -499,20 +499,18 @@ def _own_king_danger(board_after: chess.Board) -> dict | None:
         if b.is_checkmate():
             mate_moves.append(san); all_checks.append(san); continue
         all_checks.append(san)
-        # a check that also wins material off us (king-hunt with tempo): the
-        # captured piece's value MINUS what we win back on the recapture (SEE from
-        # OUR seat on that square). >0 means the checking capture nets material.
-        if board_after.is_capture(mv):
-            victim = board_after.piece_at(mv.to_square)
-            vval = _MAT.get(victim.piece_type, 0) if victim else 100  # ep = pawn
-            recap = 0
-            if static_exchange_eval is not None:
-                try:
-                    recap = max(0, static_exchange_eval(b, mv.to_square, board_after.turn))
-                except Exception:
-                    recap = 0
-            if vval - recap >= 100:
-                winning_checks.append(san)
+        # a check that also wins material off us (king-hunt with tempo): does the
+        # OPPONENT's capturing check NET material? Use SEE from the opponent's seat
+        # on the capture square BEFORE the capture (the standard "is this capture
+        # good for the mover" exchange) — this correctly nets our recapture, so a
+        # check that merely TRADES (e.g. Qxe4+ Kxe4 winning the queen back) is NOT
+        # flagged, only one that actually wins material with check.
+        if board_after.is_capture(mv) and static_exchange_eval is not None:
+            try:
+                if static_exchange_eval(board_after, mv.to_square, opp) >= 100:
+                    winning_checks.append(san)
+            except Exception:
+                pass
     if not all_checks and not mate_moves:
         return None
     return dict(mate=mate_moves, winning_checks=winning_checks,
