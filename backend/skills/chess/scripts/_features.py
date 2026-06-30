@@ -1374,6 +1374,140 @@ def _material_count(board: chess.Board, color: bool) -> int:
                for pt in (chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN))
 
 
+def _opponent_threat(board: chess.Board) -> tuple[str, str] | None:
+    """What does the opponent threaten on its NEXT move if the side-to-move does
+    nothing relevant? Give the opponent a free move (null) and read its strongest
+    immediate threat. Returns ('mate', san) | ('material', san) | None. Pure 1-ply
+    mechanics — the standard 'pass and see' threat test a human does. (If already in
+    check, the threat IS the check; handled by the caller.)"""
+    if board.is_check():
+        return None
+    try:
+        from _eval import static_exchange_eval
+    except Exception:
+        static_exchange_eval = None
+    b = board.copy(stack=False)
+    try:
+        b.push(chess.Move.null())
+    except Exception:
+        return None
+    opp = b.turn
+    # mate threat first
+    for mv in b.legal_moves:
+        c = b.copy(stack=False); c.push(mv)
+        if c.is_checkmate():
+            try:
+                return ("mate", b.san(mv))
+            except Exception:
+                return ("mate", b.uci(mv))
+    # material threat: a capture that nets >= ~2 pawns by SEE, or a fork-ish double
+    if static_exchange_eval is not None:
+        best = None
+        for mv in b.legal_moves:
+            if not b.is_capture(mv):
+                continue
+            try:
+                gain = static_exchange_eval(b, mv.to_square, opp)
+            except Exception:
+                continue
+            if gain >= 200 and (best is None or gain > best[1]):
+                try:
+                    best = (b.san(mv), gain)
+                except Exception:
+                    best = (b.uci(mv), gain)
+        if best:
+            return ("material", best[0])
+    return None
+
+
+def assess_situation(board: chess.Board, perspective: bool | None = None) -> dict:
+    """Mechanical SITUATION assessment that sets the agent's PRIORITY for this move.
+
+    A strong player triages first — *what does this position demand?* — and that
+    decides which features matter. The same fact (e.g. 'this capture loses material')
+    means opposite things when you are being mated (a defensive sac may be forced)
+    versus when you are winning and safe (don't grab — simplify). This computes the
+    triage from mechanical facts only (material count, check/threat via null move,
+    forcing-move existence, phase) and names a priority. It NEVER picks a move —
+    exactly the context a coach gives ('you're up a piece, just trade').
+
+    Returns a dict with the classification + a 'lines' list rendered at the top of
+    show_position. Fair under the rulebook (informative, not move-selecting)."""
+    stm = board.turn if perspective is None else perspective
+    # _material_count uses PIECE_VALUE in PAWN units (P=1,N=B=3,R=5,Q=9) — already pawns.
+    diff = _material_count(board, stm) - _material_count(board, not stm)
+    phase = _phase(board)
+    in_check = board.is_check() and board.turn == stm
+    threat = _opponent_threat(board) if board.turn == stm else None
+    # do I have a forcing move (a check or a capture of a real piece)?
+    have_forcing = False
+    for mv in board.legal_moves:
+        if board.gives_check(mv):
+            have_forcing = True; break
+        if board.is_capture(mv):
+            v = board.piece_at(mv.to_square)
+            if v and v.piece_type != chess.PAWN:
+                have_forcing = True; break
+
+    if diff >= 5:    mat = "winning big"
+    elif diff >= 2:  mat = "ahead"
+    elif diff >= -1: mat = "roughly equal"
+    elif diff > -5:  mat = "behind"
+    else:            mat = "losing big"
+    mat_str = (f"+{diff}" if diff > 0 else str(diff))
+
+    # priority decision tree (first match wins)
+    if in_check:
+        prio = ("RESPOND TO THE CHECK", "you are in check — you must address it. Among your legal "
+                "replies, prefer the one that leaves your king SAFEST (fewest follow-up checks / no "
+                "walk into a new attack), not just the first that escapes. A block or a capture of the "
+                "checker can be better than running the king — calculate each with imagine_move.")
+    elif threat and threat[0] == "mate":
+        prio = ("SURVIVAL — you are being mated", f"the opponent threatens MATE ({threat[1]}) next move. "
+                "This DOMINATES everything: defend the mate (block, guard the square, give a check of "
+                "your own, or remove the attacker) before any other consideration. **Material is "
+                "secondary — a move that LOSES material but stops the mate is correct; a 'free' capture "
+                "or a quiet improving move that allows the mate is losing.** Ignore the trap/greed "
+                "warnings below if the move they flag is what defends the king.")
+    elif threat and threat[0] == "material":
+        prio = ("MEET THE THREAT", f"the opponent threatens to win material ({threat[1]}) next move. "
+                "Address it — defend the target, move it, or make a bigger/forcing threat of your own — "
+                "UNLESS a forcing move of yours wins more. Don't play a slow move that lets the threat land.")
+    elif diff >= 3 and phase != "opening":
+        prio = ("CONSOLIDATE — you are ahead", "you are materially ahead and your king is not under "
+                "immediate threat. The win is CONVERSION, not winning more: trade PIECES (not pawns) to "
+                "simplify toward a won endgame, keep your king safe, and avoid unnecessary complications. "
+                "Do NOT grab more material if it loosens your position — a clean simple position wins itself.")
+    elif diff <= -3:
+        prio = ("COUNTERPLAY — you are behind", "you are materially behind but not in immediate danger. "
+                "Passive defense loses slowly. Seek ACTIVITY and complications: forcing moves, attacks on "
+                "the king, pawn breaks, tactical chances. A sharp or speculative move that creates problems "
+                "for the opponent is justified here — safe-but-passive play just prolongs a lost game.")
+    elif have_forcing:
+        prio = ("CALCULATE FORCING MOVES FIRST", "no immediate threat against you, but you have checks/"
+                "captures available (see the forcing list). Calculate those FIRST — a forcing move that "
+                "wins beats any quiet plan — then, if none works, play positionally.")
+    else:
+        plan = {"opening": "develop a new piece, fight for the centre, get your king castled — don't grab "
+                           "pawns or move the same piece twice without reason",
+                "middlegame": "improve your worst-placed piece, target a weakness, control key files/"
+                             "diagonals; keep your king safe",
+                "endgame": "activate your KING (it is a fighting piece now), push passed pawns with support, "
+                          "use opposition — king and pawns decide here"}[phase]
+        prio = ("PLAY POSITIONALLY", f"quiet position, no immediate threat or tactic. {plan}.")
+
+    head, body = prio
+    lines = [
+        f"## Situation — **PRIORITY: {head}**",
+        f"- **Material:** {mat} ({mat_str} pawns, from your side).  **Phase:** {phase}.  "
+        + (f"**Your king:** IN CHECK." if in_check else
+           (f"**Threat against you:** {threat[1]} ({threat[0]})." if threat else "**No immediate threat against you.**")),
+        f"- {body}",
+    ]
+    return dict(material=mat, material_diff=diff, phase=phase, in_check=in_check,
+                threat=threat, have_forcing=have_forcing, priority=head, lines=lines)
+
+
 def detect_material(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
     """Material balance → trading advice (principles/material-and-trading).
     Up material: trade pieces (not pawns), keep a rook/queen for mating. Down

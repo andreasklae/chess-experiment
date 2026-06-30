@@ -755,3 +755,37 @@ def test_forcing_line_includes_line_opening_pawn_capture():
     # a bare pawn grab with no tactical point is NOT flagged
     plain = c.Board("4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1")
     assert not _pawn_capture_opens_attack(plain, plain.parse_san("exd5"))
+
+
+# ---- adaptive situation/priority header ----
+
+def test_situation_survival_when_mate_threatened():
+    """def_0c0765: roughly equal but the opponent threatens Rg3# — priority must be
+    SURVIVAL (defend the king; material secondary), not a material/greed framing."""
+    from _features import assess_situation
+    s = assess_situation(chess.Board("1rb5/7p/1pR2pk1/5N1n/P1P1P1KP/1P1r4/6P1/6R1 w - - 21 48"))
+    assert "SURVIVAL" in s["priority"]
+    assert s["threat"] and s["threat"][0] == "mate"
+
+
+def test_situation_consolidate_when_winning_and_safe():
+    """Up a clean piece, no threat, not opening → CONSOLIDATE (simplify; don't grab)."""
+    from _features import assess_situation
+    # White up a full rook, king safe, nothing hanging or threatened.
+    s = assess_situation(chess.Board("6k1/5ppp/8/8/8/8/R4PPP/6K1 w - - 0 1"))
+    assert s["material_diff"] >= 3
+    assert "CONSOLIDATE" in s["priority"]
+
+
+def test_situation_counterplay_when_losing():
+    """Down a rook, king has luft (no back-rank mate), no immediate threat → COUNTERPLAY."""
+    from _features import assess_situation
+    s = assess_situation(chess.Board("6k1/5pp1/7p/8/8/6P1/r4P1P/6K1 w - - 0 1"))
+    assert s["material_diff"] <= -3
+    assert "COUNTERPLAY" in s["priority"]
+
+
+def test_situation_respond_to_check():
+    from _features import assess_situation
+    s = assess_situation(chess.Board("6k1/5ppp/8/8/8/8/5PPP/4q1K1 w - - 0 1"))
+    assert s["in_check"] and "CHECK" in s["priority"]

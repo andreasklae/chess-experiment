@@ -272,7 +272,20 @@ def render_position(board: chess.Board, move_cap: int | None = None) -> str:
     opp_color = not own_color
     phase, score, move = detect_phase(board)
 
+    # SITUATION header (adaptive priority) — the first thing the agent reads. It
+    # triages the position from mechanical facts (material / threat / forcing / phase)
+    # and names what to prioritise, so the same feature below is weighted correctly
+    # for THIS position (e.g. a material-losing capture is fine when defending a mate,
+    # bad when winning and safe). Informative, never move-selecting.
+    situation_lines = []
+    try:
+        from _features import assess_situation
+        situation_lines = assess_situation(board).get("lines", []) + [""]
+    except Exception:
+        situation_lines = []
+
     out = [
+        *situation_lines,
         f"**Phase:** {phase} (move {move}, phase score {score}/24)",
         "",
         f"**{render_eval_line(board)}**",
