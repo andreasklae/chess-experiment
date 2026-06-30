@@ -148,7 +148,6 @@ _SYSTEM_PROMPT_EXTRA = (
     "irrelevant. Hesitating and changing moves turns a 5-move mate into a 50-move grind."
 )
 
-
 # ── Gemma 4 thought-channel marker stripping ─────────────────────────────
 #
 # Gemma 4 wraps its chain-of-thought in ``<|channel>thought ... <channel|>``
