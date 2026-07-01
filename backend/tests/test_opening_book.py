@@ -107,9 +107,28 @@ def test_book_never_suggests_an_illegal_move_on_a_sweep():
 def test_opening_book_tool_renders_move_and_out_of_book():
     b = _board("d4", "d5")
     out = obt.render(b)
-    assert "Book move: Bf4" in out
+    assert "Bf4" in out and "Book candidate" in out
+    # a book move carries its assumptions + the "you decide" framing (not an oracle)
+    assert "Assumes:" in out and "You decide" in out
     sic = chess.Board("rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2")
     assert "Out of book" in obt.render(sic)
+
+
+def test_book_entries_carry_assumptions_and_exceptions():
+    """Every book entry (exact line or setup rule) must come WITH its assumptions and
+    exceptions, so the agent reasons over it rather than treating it as an oracle."""
+    # every entry carries assumptions + exceptions + a wiki pointer
+    for seq in (["d4", "d5", "Bf4", "c5", "e3", "Qb6"],   # exact-line ...Qb6 (Qc1)
+                ["d4", "d5"]):                            # setup rule (Bf4)
+        e = ob.lookup(_board(*seq))
+        assert e is not None
+        assert len(e.moves) >= 1 and e.assumes and e.exceptions and e.wiki
+    # the ...Qb6 SETUP RULE (deep position, not an exact line) carries the
+    # "position moved on -> may be a blunder" exception so the agent reasons.
+    deep_qb6 = chess.Board("r3kb1r/pp3ppp/1qn5/4P3/2p1pBb1/2P1PN2/PPQ2PPP/R3KB1R w KQkq - 0 11")
+    e2 = ob.lookup(deep_qb6)
+    assert e2 is not None and e2.source == "rule"
+    assert "no longer" in e2.exceptions.lower() or "moved on" in e2.exceptions.lower()
 
 
 def test_opening_guide_routes_qb6_and_greek_gift():

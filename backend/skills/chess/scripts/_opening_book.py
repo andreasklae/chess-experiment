@@ -61,10 +61,13 @@ def position_key(board: chess.Board) -> str:
 
 @dataclass
 class BookEntry:
-    moves: list[str] = field(default_factory=list)   # book move SAN(s) for this position
+    moves: list[str] = field(default_factory=list)   # candidate book move SAN(s), best-first
     line: str = ""
     idea: str = ""
     source: str = "line"                             # "line" or "rule"
+    assumes: str = ""                                # the condition under which this is book
+    exceptions: str = ""                             # when NOT to play it / reason yourself
+    wiki: str = ""                                   # the London page to reason from
 
 
 def _build_exact() -> dict[str, BookEntry]:
@@ -84,6 +87,12 @@ def _build_exact() -> dict[str, BookEntry]:
                     e.moves.append(bsan)
                 if not e.line:
                     e.line, e.idea = name, idea
+                    e.assumes = ("this is a known main-line London position reached by "
+                                 "standard moves")
+                    e.exceptions = ("if the opponent has deviated or a tactic is on the "
+                                    "board, the theory move may not fit — verify it still "
+                                    "makes sense before playing it")
+                    e.wiki = "openings/london-system"
             b.push(mv)
     return book
 
@@ -115,92 +124,125 @@ def _legal_san(board: chess.Board, san: str) -> str | None:
     return board.san(mv) if mv in board.legal_moves else None
 
 
-# Each rule: (name, idea, predicate(board) -> bool, candidate SANs in priority order)
+# Every rule carries, besides the candidate move(s): the ASSUMPTIONS under which it is
+# book, and the EXCEPTIONS where the agent should reason for itself (from the London
+# pages) rather than reflexively playing the move. The tool presents all of this so the
+# AGENT DECIDES — a real repertoire move comes with its conditions, not as an oracle.
 @dataclass
 class Rule:
     name: str
     idea: str
     predicate: object            # Callable[[chess.Board], bool]
-    candidates: list[str]
+    candidates: list[str]        # reasonable moves, best-first — the agent picks among them
+    assumes: str = ""            # the condition under which these are book
+    exceptions: str = ""         # when NOT to play them / reason yourself
+    wiki: str = ""               # the London page to reason from
 
 
 W = chess.WHITE
 B = chess.BLACK
 
+# Assumptions/exceptions shared by the routine setup moves.
+_SETUP_ASSUMES = ("a quiet opening position where you are still completing the London "
+                  "structure and nothing forcing is happening")
+_SETUP_EXCEPT = ("if a check, a winning capture, a real threat against you, or a clearly "
+                 "better developing move is available, play THAT — the setup move is only "
+                 "right when the position is genuinely quiet")
+
 SETUP_RULES: list[Rule] = [
     # --- EXCEPTION TRIGGERS (specific, checked first) ---
     Rule("London vs ...Qb6 — b2 under fire",
-         "Black's queen hits the loose b2-pawn. If c3 is already in, Qb3 offers the "
-         "trade; otherwise the queen can't reach b3 — defend with Qc1 (or b3). "
-         "Read openings/london-vs-qb6.",
+         "Black's queen eyes the loose b2-pawn.",
          lambda bd: _has(bd, chess.QUEEN, B, chess.B6)
                     and bool(bd.attackers(B, chess.B2)),
-         ["Qb3", "Qc1", "b3"]),   # Qb3 tried first but only used if LEGAL (needs c3 in)
+         ["Qb3", "Qc1", "b3"],
+         assumes=("Black has just brought the queen to b6 hitting b2 in a still-standard "
+                  "London structure. Qb3 (offering the queen trade) needs c3 already "
+                  "played — otherwise the queen can't reach b3, so use Qc1 or b3"),
+         exceptions=("if the queen has been on b6 for a while and the position has moved "
+                     "on (pieces developed, files opened, a tactic in the air), Qb3 is "
+                     "OFTEN NO LONGER RIGHT — it can be a positional blunder. Do not play "
+                     "it reflexively: weigh Qb3/Qc1/b3 against a better developing move or "
+                     "a tactic, using the page"),
+         wiki="openings/london-vs-qb6"),
     Rule("London vs ...Nh5 — save the dark bishop",
-         "Black's ...Nh5 attacks your f4/g3 bishop (a key London piece). Retreat: Bh2 "
-         "if h3 is in, else Bg5; or allow ...Nxg3 hxg3 for the open h-file. "
-         "Read openings/london-vs-nh5.",
+         "Black's ...Nh5 attacks your f4/g3 dark-squared bishop (a key London piece).",
          lambda bd: _has(bd, chess.KNIGHT, B, chess.H5)
                     and (bool(bd.attackers(B, chess.F4)) or bool(bd.attackers(B, chess.G3))),
-         ["Bh2", "Bg5", "Bg3"]),
-    Rule("London vs ...g6 — use Be2 not Bd3",
-         "Black is fianchettoing (...g6). Develop the light bishop to e2 (Bd3 has little "
-         "scope vs the wall) and get h3 in. Read openings/london-vs-kings-indian.",
+         ["Bh2", "Bg5", "Bg3"],
+         assumes=("your dark bishop is attacked and worth keeping. Bh2 is safest once h3 "
+                  "is in; Bg5 keeps it active; allowing ...Nxg3 hxg3 trades it for the "
+                  "open h-file"),
+         exceptions=("if Bg5 runs into ...f6/...h6 kicking it, or a queen+bishop battery "
+                     "eyes g5, prefer Bh2 / the hxg3 trade. And if a tactic is available, "
+                     "the bishop's safety is secondary — take the tactic"),
+         wiki="openings/london-vs-nh5"),
+    Rule("London vs ...g6 — develop with Be2 not Bd3",
+         "Black is fianchettoing (...g6, King's Indian setup).",
          lambda bd: _black_pawn(bd, chess.G6)
                     and not _has(bd, chess.BISHOP, W, chess.D3)
                     and not _has(bd, chess.BISHOP, W, chess.E2)
                     and _has(bd, chess.BISHOP, W, chess.F1),
-         ["Be2"]),
+         ["Be2"],
+         assumes=("vs the ...g6 wall a bishop on d3 has little scope, so Be2 is the "
+                  "developing square; get h3 in too so Bf4 can retreat to h2"),
+         exceptions=("this is a preference, not forced — if a concrete tactic or a more "
+                     "active developing move fits the position, use it"),
+         wiki="openings/london-vs-kings-indian"),
     # --- ROUTINE SETUP MOVES (broad; "play the London structure") ---
-    # Each fires when its London piece/pawn is not yet placed and the earlier setup
-    # pieces are in (so the move order stays sane). The candidate is only USED if legal,
-    # so these never override a position where the move is actually impossible/illegal.
     Rule("London setup — bishop out to f4",
-         "Get the dark-squared bishop OUTSIDE the pawn chain (f4) before playing e3 — "
-         "the whole point of the London.",
+         "Get the dark-squared bishop OUTSIDE the pawn chain (f4) before playing e3.",
          lambda bd: _has(bd, chess.PAWN, W, chess.D4)
                     and _has(bd, chess.BISHOP, W, chess.C1)
                     and not _black_pawn_attacks_f4(bd),
-         ["Bf4"]),
+         ["Bf4"],
+         assumes=_SETUP_ASSUMES, exceptions=_SETUP_EXCEPT, wiki="openings/london-system"),
     Rule("London setup — e3",
          "Support d4 and free the f1-bishop.",
          lambda bd: _bishop_developed_dark(bd)
                     and _has(bd, chess.PAWN, W, chess.E2)
                     and not _has(bd, chess.KNIGHT, W, chess.F3),
-         ["e3"]),
+         ["e3"],
+         assumes=_SETUP_ASSUMES, exceptions=_SETUP_EXCEPT, wiki="openings/london-system"),
     Rule("London setup — Nf3",
          "Develop the king's knight; it heads for e5 later.",
          lambda bd: _bishop_developed_dark(bd)
                     and not _has(bd, chess.PAWN, W, chess.E2)   # e3 played
                     and _has(bd, chess.KNIGHT, W, chess.G1),
-         ["Nf3"]),
+         ["Nf3"],
+         assumes=_SETUP_ASSUMES, exceptions=_SETUP_EXCEPT, wiki="openings/london-system"),
     Rule("London setup — Bd3",
-         "Develop the light bishop to d3 (aims at h7). (Use Be2 instead vs a ...g6 "
-         "fianchetto — handled above.)",
+         "Develop the light bishop to d3 (aims at h7).",
          lambda bd: _has(bd, chess.KNIGHT, W, chess.F3)
                     and _has(bd, chess.BISHOP, W, chess.F1)
                     and not _black_pawn(bd, chess.G6),
-         ["Bd3"]),
+         ["Bd3"],
+         assumes=_SETUP_ASSUMES,
+         exceptions=(_SETUP_EXCEPT + "; and use Be2 instead of Bd3 vs a ...g6 fianchetto"),
+         wiki="openings/london-system"),
     Rule("London setup — c3",
          "Support d4 with c3 (the third side of the triangle).",
          lambda bd: _bishop_developed_dark(bd)
                     and not _has(bd, chess.PAWN, W, chess.E2)   # e3 in
                     and _has(bd, chess.PAWN, W, chess.C2)
                     and not _has(bd, chess.KNIGHT, W, chess.C3),
-         ["c3"]),
+         ["c3"],
+         assumes=_SETUP_ASSUMES, exceptions=_SETUP_EXCEPT, wiki="openings/london-system"),
     Rule("London setup — Nbd2",
-         "Develop the queen's knight to d2 (supports e4/Ne5, keeps c-pawn free).",
+         "Develop the queen's knight to d2 (supports e4/Ne5, keeps the c-pawn free).",
          lambda bd: _has(bd, chess.KNIGHT, W, chess.B1)
                     and _has(bd, chess.KNIGHT, W, chess.F3)
                     and bd.piece_at(chess.D2) is None,
-         ["Nbd2"]),
+         ["Nbd2"],
+         assumes=_SETUP_ASSUMES, exceptions=_SETUP_EXCEPT, wiki="openings/london-system"),
     Rule("London setup — castle short",
          "Get the king safe — castle kingside once the kingside is developed.",
          lambda bd: bd.has_kingside_castling_rights(W)
                     and _has(bd, chess.KNIGHT, W, chess.F3)
                     and bd.piece_at(chess.F1) is None
                     and bd.piece_at(chess.G1) is None,
-         ["O-O"]),
+         ["O-O"],
+         assumes=_SETUP_ASSUMES, exceptions=_SETUP_EXCEPT, wiki="openings/london-system"),
 ]
 
 
@@ -262,10 +304,16 @@ def _rule_lookup(board: chess.Board) -> BookEntry | None:
                 continue
         except Exception:
             continue
+        # collect ALL of the rule's legal candidates (best-first) so the agent can
+        # reason among them — a book move comes with its alternatives, not as one answer.
+        legal = []
         for san in r.candidates:
             good = _legal_san(board, san)
-            if good:
-                return BookEntry(moves=[good], line=r.name, idea=r.idea, source="rule")
+            if good and good not in legal:
+                legal.append(good)
+        if legal:
+            return BookEntry(moves=legal, line=r.name, idea=r.idea, source="rule",
+                             assumes=r.assumes, exceptions=r.exceptions, wiki=r.wiki)
     return None
 
 

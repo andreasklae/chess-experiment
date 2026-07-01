@@ -317,24 +317,22 @@ def _opening_radar(board: chess.Board) -> list[str]:
                         break
                 except Exception:
                     pass
+        label = "candidate" if len(entry.moves) == 1 else "candidates (reason among them)"
         if in_check and book_answers_check:
             lines.append(
-                f"- **📖 IN CHECK — the book answer is {mv}** ({entry.line}). {entry.idea} "
+                f"- **📖 IN CHECK — book {label}: {mv}** ({entry.line}). {entry.idea} "
                 f"This is a BLOCK/response to the check, not a quiet move. It may look like "
                 f"it loses a pawn — **calculate it through with `imagine_line` "
-                f"({mv} → their capture → your recapture)**: a block the checker takes "
-                f"usually WINS material back (or the initiative). Do NOT just run the king "
-                f"to escape a pawn loss the recapture erases.")
-        elif entry.source == "line":
-            lines.append(
-                f"- **📖 Opening book (memorised theory): {mv}** — {entry.line}. "
-                f"{entry.idea} You may play it (prepared theory), but confirm no tactic "
-                f"is being missed first.")
+                f"({entry.moves[0]} → their capture → your recapture)**: a block the checker "
+                f"takes usually WINS material back. Don't just run the king to escape a pawn "
+                f"loss the recapture erases.")
         else:
-            lines.append(
-                f"- **📖 Book setup move: {mv}** ({entry.line}). {entry.idea} This is the "
-                f"developing move for a QUIET position — but FIRST check the forcing moves "
-                f"below; a check/capture/threat beats a quiet book move.")
+            line = f"- **📖 Book {label}: {mv}** ({entry.line}). {entry.idea}"
+            if entry.exceptions:
+                line += (f" **BUT this is prepared theory, not forced — EXCEPTION: "
+                         f"{entry.exceptions}.** Reason from `{entry.wiki}` and decide; a "
+                         f"check/capture/threat below beats a quiet book move.")
+            lines.append(line)
     # theory-page routes (the guide)
     try:
         import opening_guide as _og

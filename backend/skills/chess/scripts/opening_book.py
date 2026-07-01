@@ -64,29 +64,28 @@ def render(board: chess.Board) -> str:
     moves = entry.moves
     is_rule = entry.source == "rule"
     tag = "exact line" if not is_rule else "setup rule"
-    head = (f"**Book move: {moves[0]}**" if len(moves) == 1
-            else f"**Book moves: {', '.join(moves)}** (any is theory; pick by the idea)")
+    head = (f"**Book candidate: {moves[0]}**" if len(moves) == 1
+            else f"**Book candidates (reason among them, best-first): {', '.join(moves)}**")
     lines = [
         head,
         f"_Line:_ {entry.line}  ·  _({tag})_",
         f"_Idea:_ {entry.idea}",
-        "",
     ]
-    if is_rule:
-        # Setup-rule moves are the right DEVELOPING move for a quiet position, but the
-        # book cannot see every tactic. Tell the agent to check forcing moves first —
-        # don't play a quiet setup move if a check/capture/threat actually decides.
-        lines.append(
-            "**This is the developing move for a QUIET position. FIRST check the forcing "
-            "moves (the list in `chess__show_position`): if a check, a winning capture, "
-            "or a concrete threat is available, calculate THAT instead — a tactic always "
-            "beats a quiet book move. Only play this if nothing forcing is on the "
-            "board.** It is your decision; commit with `chess__make_move`.")
-    else:
-        lines.append(
-            "This is prepared theory — you may play it, but it is YOUR decision: read the "
-            "idea, confirm it fits (no tactic is being missed), then commit with "
-            "`chess__make_move`. When the position leaves the book, the tool will say so.")
+    if entry.assumes:
+        lines.append(f"_Assumes:_ {entry.assumes}.")
+    if entry.exceptions:
+        lines.append(f"_EXCEPTION — do not play it blindly:_ {entry.exceptions}.")
+    if entry.wiki:
+        lines.append(f"_Reason it out from:_ `read_reference(skill_name=\"chess\", "
+                     f"path=\"{entry.wiki}\")`.")
+    lines += [
+        "",
+        "A book move is prepared theory, not an oracle: it holds under the ASSUMPTIONS "
+        "above. **You decide** — if the exception applies (the position has moved on, a "
+        "tactic/threat is present, the opponent deviated), reason from the page and pick "
+        "the best move yourself; a check/capture/mate always beats a quiet book move. "
+        "Then commit with `chess__make_move`.",
+    ]
     return "\n".join(lines)
 
 
