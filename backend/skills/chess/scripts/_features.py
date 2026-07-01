@@ -563,17 +563,27 @@ def detect_knight_forks(board: chess.Board, perspective: bool | None = None) -> 
             kinds = [targets[t] for t in hit]
             # Flag a potential fork only when it actually WINS material:
             #  - two pieces each worth a rook or more (K+Q, K+R, Q+R, R+R), OR
-            #  - the king plus a piece the knight can then PROFITABLY take, i.e.
-            #    the other target is undefended (else the king moves and the
-            #    defended piece survives — a K+minor "fork" that wins nothing).
+            #  - the KING or a QUEEN (a piece that MUST flee the fork) alongside another
+            #    target the knight can then PROFITABLY take — i.e. that other target is
+            #    UNDEFENDED, or is worth more than the knight and its capture nets
+            #    material by SEE. (A king/queen fork forces the major to move; whatever
+            #    else is hanging then falls. A K/Q + a *defended equal minor* wins
+            #    nothing, so it stays suppressed to avoid noise.)
             heavy = [k for k in kinds if k in (chess.QUEEN, chess.ROOK)]
-            king_plus_loose = (
-                chess.KING in kinds and
-                any(t for t in hit if targets[t] != chess.KING and
-                    not board.attackers(enemy, t))   # the other target is undefended
+            forcing = chess.KING in kinds or chess.QUEEN in kinds  # a piece that must flee
+            fleeing_types = {chess.KING, chess.QUEEN}
+            other_targets = [t for t in hit if targets[t] not in fleeing_types
+                             or (targets[t] == chess.QUEEN and len(hit) > 1)]
+            # a takeable "other" target: undefended, OR a rook/queen (worth more than N)
+            takeable = any(
+                t for t in hit
+                if targets[t] not in ({chess.KING} if chess.KING in kinds else set())
+                and (not board.attackers(enemy, t)              # hanging
+                     or targets[t] in (chess.ROOK, chess.QUEEN))  # worth > knight
             )
-            worth_it = len(heavy) >= 2 or (chess.KING in kinds and len(heavy) >= 1) \
-                or king_plus_loose
+            fork_wins = (len(heavy) >= 2) or (forcing and takeable) \
+                or (chess.KING in kinds and len(heavy) >= 1)
+            worth_it = fork_wins
             if len(hit) >= 2 and len(valuable) >= 1 and worth_it:
                 desc = ", ".join(f"{PIECE_NAME[targets[t]]} on {_sq(t)}" for t in hit)
                 # is the landing square safe-ish (not defended by a pawn)?
