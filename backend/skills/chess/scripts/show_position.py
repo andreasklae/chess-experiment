@@ -192,10 +192,34 @@ def _safe_squares_line(board: chess.Board, sq: int, own_color: bool) -> str | No
     if not safe:
         return "  ↳ no safe square to relocate it — consider defending it, "\
                "capturing the attacker, or counter-attacking instead."
-    names = ", ".join(chess.square_name(s) for s in safe)
-    return f"  ↳ safe squares to move it (not losing material there): {names}"\
-           " — verify the full move with imagine_move (this ignores discovered"\
-           " attacks)."
+    # A safe square that is ALSO a capture lets the attacked piece escape AND win
+    # material — the best kind of "retreat". Highlight these separately: the agent
+    # has moved an attacked knight to a bare "safe" square while a safe square that
+    # CAPTURED A ROOK was on the list (e.g. an attacked Nf7 with Nxh8 available — it
+    # ran to a check instead of grabbing the rook). Name the piece each captures.
+    piece = board.piece_at(sq)
+    capture_escapes: list[str] = []
+    plain: list[str] = []
+    for dsq in safe:
+        victim = board.piece_at(dsq)
+        if victim is not None and victim.color != own_color:
+            try:
+                san = board.san(chess.Move(sq, dsq))
+            except Exception:
+                san = chess.square_name(dsq)
+            capture_escapes.append(f"{san} (grabs the {PIECE_NAMES[victim.piece_type]})")
+        else:
+            plain.append(chess.square_name(dsq))
+    parts: list[str] = []
+    if capture_escapes:
+        parts.append(
+            "  ↳ **BEST: move it to safety WITH A CAPTURE — escapes the attack AND "
+            f"wins material: {', '.join(capture_escapes)}. Take it (verify with imagine_move).**")
+    if plain:
+        parts.append(
+            f"  ↳ safe squares to move it (not losing material there): {', '.join(plain)}"
+            " — verify the full move with imagine_move (this ignores discovered attacks).")
+    return "\n".join(parts)
 
 
 def attack_defense_section(
