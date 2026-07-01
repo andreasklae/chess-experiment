@@ -277,7 +277,31 @@ def _opening_radar(board: chess.Board) -> list[str]:
         entry = None
     if entry is not None:
         mv = ", ".join(entry.moves)
-        if entry.source == "line":
+        # Is the book move a legal answer to a check we are under? Then it is NOT a
+        # "quiet setup move to skip for tactics" — it IS the forcing response, and it
+        # often looks like it loses a pawn (a pawn/piece block the checker captures)
+        # while actually winning after the recapture. This is the exact spot the agent
+        # bailed on repeatedly (in check, book says c3, agent plays Kf1 because 'c3
+        # loses a pawn'). Reframe: calculate the block through, don't run the king.
+        in_check = board.is_check()
+        book_answers_check = False
+        if in_check:
+            for san in entry.moves:
+                try:
+                    if board.parse_san(san) in board.legal_moves:
+                        book_answers_check = True
+                        break
+                except Exception:
+                    pass
+        if in_check and book_answers_check:
+            lines.append(
+                f"- **📖 IN CHECK — the book answer is {mv}** ({entry.line}). {entry.idea} "
+                f"This is a BLOCK/response to the check, not a quiet move. It may look like "
+                f"it loses a pawn — **calculate it through with `imagine_line` "
+                f"({mv} → their capture → your recapture)**: a block the checker takes "
+                f"usually WINS material back (or the initiative). Do NOT just run the king "
+                f"to escape a pawn loss the recapture erases.")
+        elif entry.source == "line":
             lines.append(
                 f"- **📖 Opening book (memorised theory): {mv}** — {entry.line}. "
                 f"{entry.idea} You may play it (prepared theory), but confirm no tactic "
