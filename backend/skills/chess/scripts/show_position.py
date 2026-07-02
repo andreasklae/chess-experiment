@@ -256,10 +256,28 @@ def attack_defense_section(
         # decisions/2026-06-23-board-visualization-benchmark.md.
         n_atk = len(attacker_chain)
         n_def = len(defender_chain)
-        lines.append(
+        line = (
             f"- {desc}: {action} {n_atk} ({atk_str}); "
             f"defended by {n_def} ({def_str})"
         )
+        # For OUR pieces: attacker/defender COUNTS do not decide an exchange —
+        # the capture ORDER does (least valuable attacker first). Surface the
+        # SEE verdict so "2 attackers vs 1 defender but it's just a trade"
+        # prose-reasoning can't survive contact with the arithmetic, and name
+        # the imagine_trade call that settles it. (Game 2358c1 move 67: agent
+        # counted "a trade" on d2; SEE says the opponent wins ~320cp.)
+        if show_safe_squares:
+            see = static_exchange_eval(board, sq, opp_color)
+            if see >= 100:
+                sq_name = chess.square_name(sq)
+                line += (
+                    f" — **the opponent WINS ~{see}cp capturing here (exchange "
+                    f"arithmetic, not attacker counts). If your move this turn "
+                    f"doesn't save/defend it or win more elsewhere, you are "
+                    f"giving this piece away — verify the exchange with "
+                    f"`chess__imagine_trade(target=\"{sq_name}\")`.**"
+                )
+        lines.append(line)
         # For OUR attacked pieces, when the piece is actually losing material
         # on its square, list where it can go without re-hanging it.
         if show_safe_squares:

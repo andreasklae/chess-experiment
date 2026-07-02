@@ -419,3 +419,44 @@ def test_zwischenzug_nudge_on_natural_recapture(im):
     assert "ZWISCHENZUG" in out and "Rxd7+" in out
     # a quiet position with NO check available -> helper returns empty
     assert im._available_checks(chess.Board("4k3/8/8/8/8/8/P7/4K3 w - - 0 1")) == []
+
+
+class TestStillHangingOwnPieces:
+    """A candidate move that IGNORES a pre-existing hang must say so — the
+    newly-hanging scan deliberately skips pieces that were already unsafe, which
+    made such candidates render clean (game 2358c1 mv67: imagine_move(Kh3) said
+    nothing about the d2 knight the opponent was winning; the agent asserted
+    'it's only a trade' with the wrong capture order and lost a piece)."""
+
+    FEN_2358C1 = "6r1/p4p2/4k3/1p1pP2p/7P/Pn4P1/2rN2K1/3R4 w - - 7 34"
+
+    def _render(self, im, fen, san):
+        b = chess.Board(fen)
+        return im.render_imagine(b, b.parse_san(san))
+
+    def test_ignoring_move_flags_still_hanging(self, im):
+        out = self._render(im, self.FEN_2358C1, "Kh3")
+        assert "Still hanging (this move ignores it)" in out
+        assert "knight on d2" in out
+        assert 'imagine_trade(target="d2")' in out
+
+    def test_saving_move_is_silent(self, im):
+        # Rxd2?? is illegal (own piece); moving the attacked-piece scenario:
+        # defend d2 is impossible here, but a move BY the hanging piece must not
+        # flag (use a position where the hanging piece moves away).
+        fen = "4k3/8/8/8/8/1n6/3N4/4K2R w K - 0 1"  # Nd2 attacked by Nb3, undefended
+        out = self._render(im, fen, "Nf3")  # moves the hanging piece away
+        assert "Still hanging" not in out
+
+    def test_check_giving_move_is_silent(self, im):
+        # Same 2358c1 position: a checking move forces the reply, opponent
+        # cannot cash the d2 hang on the immediate reply.
+        b = chess.Board(self.FEN_2358C1)
+        checks = [m for m in b.legal_moves if b.gives_check(m)]
+        if checks:
+            out = im.render_imagine(b, checks[0])
+            assert "Still hanging" not in out
+
+    def test_safe_pieces_never_flag(self, im):
+        out = self._render(im, chess.STARTING_FEN, "e4")
+        assert "Still hanging" not in out

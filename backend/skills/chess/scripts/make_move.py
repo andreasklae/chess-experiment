@@ -421,8 +421,10 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | No
                     f"{chess.square_name(psq)} is hanging (the opponent wins "
                     f"material in the exchange there), and a move this turn "
                     f"could save it — you are leaving it to be taken. If that "
-                    f"is not a deliberate sacrifice, rescue it instead. Use "
-                    f"chess__imagine_move to confirm it is really safe.",
+                    f"is not a deliberate sacrifice, rescue it instead. Do NOT "
+                    f"judge that exchange by counting attackers in prose — run "
+                    f"chess__imagine_trade(target=\"{chess.square_name(psq)}\") "
+                    f"for the exact capture order.",
                     severe,
                 )
     return None

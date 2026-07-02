@@ -1597,9 +1597,19 @@ def assess_situation(board: chess.Board, perspective: bool | None = None) -> dic
                 "or a quiet improving move that allows the mate is losing.** Ignore the trap/greed "
                 "warnings below if the move they flag is what defends the king.")
     elif threat and threat[0] == "material":
+        # Name the exact imagine_trade call for the threatened square. The agent's
+        # recurring failure here is judging the exchange in PROSE ("it's just a
+        # trade", "the pawn is pinned") with the wrong capture order — game 2358c1
+        # move 67 reasoned "Rxd2 Rxd2 Nxd2, a trade" when the opponent takes with
+        # the KNIGHT first and wins a piece (SEE +320). imagine_trade computes the
+        # exact least-valuable-attacker order; demand it at the decision point.
+        tsq = threat[1].rstrip("+#")[-2:]
         prio = ("MEET THE THREAT", f"the opponent threatens to win material ({threat[1]}) next move. "
                 "Address it — defend the target, move it, or make a bigger/forcing threat of your own — "
-                "UNLESS a forcing move of yours wins more. Don't play a slow move that lets the threat land.")
+                "UNLESS a forcing move of yours wins more. Don't play a slow move that lets the threat land. "
+                f"**Before you reason about that exchange in words, run `chess__imagine_trade(target=\"{tsq}\")` "
+                f"— it plays out the exact capture order. Do NOT assert 'it's only a trade' from counting "
+                f"attackers; the capture ORDER decides who wins it.**")
     elif diff >= 3 and phase != "opening":
         # 'Consolidate' means different things with vs without pieces on the board.
         has_pieces = any(board.pieces(pt, c)

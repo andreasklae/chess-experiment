@@ -341,6 +341,48 @@ def _newly_hanging_own_pieces(board_before: chess.Board, board_after: chess.Boar
     return new_hanging
 
 
+def _still_hanging_own_pieces(board_before: chess.Board, board_after: chess.Board,
+                              move: chess.Move) -> list[str]:
+    """Own pieces that were ALREADY losing the exchange before this move and
+    STILL are after it — i.e. the imagined move ignores an existing hang. The
+    newly-hanging scan above deliberately skips these ('not this move's
+    fault'), which made a candidate that ignores a threatened piece look
+    clean: game 2358c1 mv67, imagine_move(Kh3) said nothing about the d2
+    knight the opponent was winning (~320cp), and the agent talked itself into
+    'it's only a trade'. Pure single-square SEE, netted against any capture
+    the move makes; silent when the move gives check (the opponent must answer
+    the check before cashing the hang)."""
+    mover_color = board_before.turn
+    enemy_color = not mover_color
+    if board_after.is_check():
+        return []
+    captured_cp = _captured_value_cp(board_before, move)
+    still: list[str] = []
+    for sq in chess.SQUARES:
+        if sq == move.to_square:
+            continue
+        piece = board_after.piece_at(sq)
+        if piece is None or piece.color != mover_color:
+            continue
+        before_piece = board_before.piece_at(sq)
+        if before_piece is None or before_piece.color != mover_color:
+            continue
+        see_before = static_exchange_eval(board_before, sq, enemy_color)
+        see_after = static_exchange_eval(board_after, sq, enemy_color)
+        if see_before < 150 or see_after < 150:
+            continue
+        if captured_cp >= see_after:
+            continue  # the move cashes at least as much as it concedes
+        still.append(
+            f"{describe_piece(board_after, sq)} — the opponent was ALREADY winning "
+            f"~{see_after // 100} pawn(s) capturing here before this move, and this move "
+            f"does NOT address it (doesn't move, defend, or out-trade it). Verify with "
+            f"`chess__imagine_trade(target=\"{chess.square_name(sq)}\")` — if the exchange "
+            f"is really lost, prefer a move that saves the piece or makes a bigger threat."
+        )
+    return still
+
+
 def _en_passant_offered(board_after: chess.Board) -> str | None:
     """If this move grants the opponent an en-passant capture, describe it."""
     if board_after.ep_square is None:
@@ -1011,6 +1053,18 @@ def render_imagine(
     else:
         out.append("- (none)")
     out.append("")
+
+    # Pre-existing hangs this move IGNORES (own moves only): without this, a
+    # candidate that walks past a piece the opponent is already winning renders
+    # completely clean and the agent judges the exchange in prose instead.
+    if not opp_move:
+        still_hanging = _still_hanging_own_pieces(board_before, board_after, move)
+        if still_hanging:
+            out.append("## ⚠ Still hanging (this move ignores it)")
+            out.append("")
+            for h in still_hanging:
+                out.append(f"- {h}")
+            out.append("")
 
     if ep_text:
         out.append(f"**En passant available:** {ep_text}")
