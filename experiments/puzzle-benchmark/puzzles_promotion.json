@@ -5,10 +5,15 @@
   "kind": "promotion-technique",
   "title": "Winning endgame: make progress with the f6-passer (push it or escort it)",
   "acceptable_uci": [
-   "e7f7",
-   "e1d1",
    "e1c1",
-   "e7a7"
+   "e1d1",
+   "e1f1",
+   "e7a7",
+   "e7f7",
+   "f6f7",
+   "g2f3",
+   "g2g3",
+   "g2h3"
   ],
   "technique_uci": [
    "e7f7"
@@ -29,7 +34,8 @@
   "moves": [
    "b5b4",
    "e7f7"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  },
  {
   "id": "pr_08e916_9",
@@ -37,10 +43,14 @@
   "kind": "promotion-technique",
   "title": "Winning endgame: make progress with the a3-passer (push it or escort it)",
   "acceptable_uci": [
-   "h6e6",
-   "h6f6",
+   "a3a4",
+   "b6a6",
+   "b6e6",
    "h2g1",
-   "b6e6"
+   "h2g2",
+   "h2g3",
+   "h6e6",
+   "h6f6"
   ],
   "technique_uci": [
    "h2g1"
@@ -61,7 +71,8 @@
   "moves": [
    "b5c5",
    "h2g1"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  },
  {
   "id": "pr_9eddc0_115",
@@ -69,10 +80,12 @@
   "kind": "promotion-technique",
   "title": "Winning endgame: make progress with the g6-passer (push it or escort it)",
   "acceptable_uci": [
+   "d4b5",
+   "d4e2",
    "d4e6",
    "g3f4",
-   "d4b5",
-   "d4e2"
+   "g3g4",
+   "g3h4"
   ],
   "technique_uci": [
    "g3f4"
@@ -93,7 +106,8 @@
   "moves": [
    "f8g7",
    "g3f4"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  },
  {
   "id": "pr_3b7cfe_63",
@@ -103,8 +117,10 @@
   "acceptable_uci": [
    "b8a8",
    "b8d8",
-   "g1h2",
-   "b8f8"
+   "b8f8",
+   "f2f3",
+   "f2f4",
+   "g1h2"
   ],
   "technique_uci": [
    "b8f8"
@@ -125,7 +141,8 @@
   "moves": [
    "h5h4",
    "b8f8"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  },
  {
   "id": "pr_dfcb60_85",
@@ -133,8 +150,10 @@
   "kind": "promotion-technique",
   "title": "Winning endgame: make progress with the a2-passer (push it or escort it)",
   "acceptable_uci": [
-   "a6b5",
-   "a2a4"
+   "a2a3",
+   "a2a4",
+   "a6a5",
+   "a6b5"
   ],
   "technique_uci": [
    "a6b5",
@@ -156,7 +175,8 @@
   "moves": [
    "d5e5",
    "a6b5"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  },
  {
   "id": "pr_dfcb60_93",
@@ -164,6 +184,7 @@
   "kind": "promotion-technique",
   "title": "Winning endgame: make progress with the a2-passer (push it or escort it)",
   "acceptable_uci": [
+   "a2a3",
    "a2a4",
    "a6a7"
   ],
@@ -186,7 +207,8 @@
   "moves": [
    "d6c7",
    "a2a4"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  },
  {
   "id": "pr_cbe33c_89",
@@ -194,10 +216,12 @@
   "kind": "promotion-technique",
   "title": "Winning endgame: make progress with the h3-passer (push it or escort it)",
   "acceptable_uci": [
-   "h3h4",
-   "e7f7",
    "e1e4",
-   "g2g3"
+   "e7f7",
+   "e7h7",
+   "g1h2",
+   "g2g3",
+   "h3h4"
   ],
   "technique_uci": [
    "h3h4"
@@ -218,7 +242,8 @@
   "moves": [
    "g7h6",
    "h3h4"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  },
  {
   "id": "pr_f4ee81_21",
@@ -226,10 +251,12 @@
   "kind": "promotion-technique",
   "title": "Winning endgame: make progress with the a2-passer (push it or escort it)",
   "acceptable_uci": [
+   "a2a3",
+   "a2a4",
    "e1e7",
-   "g1f2",
    "e1e8",
-   "g1f1"
+   "g1f1",
+   "g1f2"
   ],
   "technique_uci": [
    "g1f2",
@@ -251,7 +278,8 @@
   "moves": [
    "h7g6",
    "g1f2"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  },
  {
   "id": "pr_23adc3_115",
@@ -259,10 +287,11 @@
   "kind": "promotion-technique",
   "title": "Winning endgame: make progress with the h6-passer (push it or escort it)",
   "acceptable_uci": [
-   "d4e4",
-   "d4d5",
+   "d4c3",
    "d4c5",
-   "d4c3"
+   "d4d5",
+   "d4e4",
+   "d4e5"
   ],
   "technique_uci": [
    "d4e4"
@@ -283,7 +312,8 @@
   "moves": [
    "g7h7",
    "d4e4"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  },
  {
   "id": "pr_ca221a_69",
@@ -291,8 +321,10 @@
   "kind": "promotion-technique",
   "title": "Winning endgame: make progress with the h2-passer (push it or escort it)",
   "acceptable_uci": [
-   "h4g5",
+   "g8h8",
+   "h2h3",
    "h4g3",
+   "h4g5",
    "h4h3"
   ],
   "technique_uci": [
@@ -315,7 +347,8 @@
   "moves": [
    "d7c7",
    "h4g3"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  },
  {
   "id": "pr_05b5db_81",
@@ -323,9 +356,12 @@
   "kind": "promotion-technique",
   "title": "Winning endgame: make progress with the b4-passer (push it or escort it)",
   "acceptable_uci": [
-   "e4d5",
+   "b4b5",
+   "c6b6",
    "c6c1",
-   "b4b5"
+   "e4d3",
+   "e4d4",
+   "e4d5"
   ],
   "technique_uci": [
    "e4d5",
@@ -347,7 +383,8 @@
   "moves": [
    "e8d8",
    "e4d5"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  },
  {
   "id": "pr_7e75d3_77",
@@ -358,6 +395,7 @@
    "c3c4",
    "d1d3",
    "d1d7",
+   "h2g1",
    "h2g2"
   ],
   "technique_uci": [
@@ -380,7 +418,8 @@
   "moves": [
    "f7f8",
    "c3c4"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  },
  {
   "id": "pr_7e75d3_93",
@@ -388,6 +427,8 @@
   "kind": "promotion-technique",
   "title": "Winning endgame: make progress with the c3-passer (push it or escort it)",
   "acceptable_uci": [
+   "c3c4",
+   "f3e2",
    "f3e3"
   ],
   "technique_uci": [
@@ -409,7 +450,8 @@
   "moves": [
    "h6h5",
    "f3e3"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  },
  {
   "id": "pr_a8723c_85",
@@ -418,9 +460,10 @@
   "title": "Winning endgame: make progress with the e3-passer (push it or escort it)",
   "acceptable_uci": [
    "c6e6",
+   "e3e4",
+   "f2f3",
    "f2g3",
-   "g2g4",
-   "f2f3"
+   "g2g4"
   ],
   "technique_uci": [
    "c6e6"
@@ -441,7 +484,8 @@
   "moves": [
    "h6h7",
    "c6e6"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  },
  {
   "id": "pr_187683_61",
@@ -450,8 +494,11 @@
   "title": "Winning endgame: make progress with the b3-passer (push it or escort it)",
   "acceptable_uci": [
    "b3b4",
+   "c1b1",
    "c8a8",
-   "c8g8"
+   "c8b8",
+   "c8g8",
+   "g1f1"
   ],
   "technique_uci": [
    "b3b4"
@@ -472,7 +519,8 @@
   "moves": [
    "d2e2",
    "b3b4"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  },
  {
   "id": "pr_72aa5c_121",
@@ -480,7 +528,11 @@
   "kind": "promotion-technique",
   "title": "Winning endgame: make progress with the b4-passer (push it or escort it)",
   "acceptable_uci": [
+   "b2b3",
    "b4b5",
+   "e6b6",
+   "h2g1",
+   "h2g3",
    "h8c3"
   ],
   "technique_uci": [
@@ -502,7 +554,8 @@
   "moves": [
    "d8d7",
    "b4b5"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  },
  {
   "id": "pr_72aa5c_129",
@@ -510,10 +563,14 @@
   "kind": "promotion-technique",
   "title": "Winning endgame: make progress with the b4-passer (push it or escort it)",
   "acceptable_uci": [
-   "e7h7",
+   "b2b3",
+   "b4b5",
    "e7a7",
    "e7b7",
-   "e7c7"
+   "e7c7",
+   "e7h7",
+   "h2g1",
+   "h2g3"
   ],
   "technique_uci": [
    "e7b7"
@@ -534,7 +591,8 @@
   "moves": [
    "c8d8",
    "e7b7"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  },
  {
   "id": "pr_3baf10_63",
@@ -542,10 +600,13 @@
   "kind": "promotion-technique",
   "title": "Winning endgame: make progress with the h3-passer (push it or escort it)",
   "acceptable_uci": [
-   "g1g2",
+   "d6a6",
    "d6c6",
    "d6d7",
-   "d6a6"
+   "d6h6",
+   "g1g2",
+   "g1h2",
+   "h3h4"
   ],
   "technique_uci": [
    "g1g2"
@@ -566,7 +627,8 @@
   "moves": [
    "g7g8",
    "g1g2"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  },
  {
   "id": "pr_3baf10_71",
@@ -574,10 +636,12 @@
   "kind": "promotion-technique",
   "title": "Winning endgame: make progress with the h3-passer (push it or escort it)",
   "acceptable_uci": [
-   "g1h2",
    "f7a7",
+   "f7b7",
+   "g1g2",
    "g1h1",
-   "f7b7"
+   "g1h2",
+   "h3h4"
   ],
   "technique_uci": [
    "g1h2"
@@ -598,7 +662,8 @@
   "moves": [
    "f5g6",
    "g1h2"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  },
  {
   "id": "pr_cfb1b2_111",
@@ -606,7 +671,8 @@
   "kind": "promotion-technique",
   "title": "Winning endgame: make progress with the c5-passer (push it or escort it)",
   "acceptable_uci": [
-   "c5c6"
+   "c5c6",
+   "e6d5"
   ],
   "technique_uci": [
    "c5c6"
@@ -627,6 +693,7 @@
   "moves": [
    "e4g6",
    "c5c6"
-  ]
+  ],
+  "grading": "technique: any passer-push/king-approach/rook-to-file move keeping eval >= max(best-100, +200) at depth 14, plus engine top moves"
  }
 ]
