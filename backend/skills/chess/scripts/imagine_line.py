@@ -15,6 +15,12 @@ chess__imagine_move (check/mate, material, the moved piece's safety, newly
 hanging pieces, the legal replies, and basic-mate confinement facts). A
 breadcrumb of the line so far is shown above it.
 
+The verdict labels every opponent reply in your line as FORCED (their only
+legal move) or CHOSEN BY YOU (they had alternatives). A gain or mate is only
+PROVEN when every opponent reply was forced and the final position is quiet
+(no piece of yours left en prise at the end). An UNPROVEN verdict tells you
+exactly which alternatives to test before you may trust the line.
+
 This is calculation YOU drive — the tool searches nothing and recommends
 nothing. The live game is NOT changed; nothing is committed. When you like a
 line, play its FIRST move with chess__make_move.
@@ -44,7 +50,7 @@ import chess
 _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
-from _eval import parse_move  # noqa: E402
+from _eval import parse_move, static_exchange_eval  # noqa: E402
 from _live import board_with_history, fetch_state  # noqa: E402
 from imagine_move import render_imagine  # noqa: E402
 
@@ -78,22 +84,53 @@ def _material(board: chess.Board, color: bool) -> int:
                for pt in (chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN))
 
 
-def _leaf_verdict(start: chess.Board, leaf: chess.Board, agent_color: bool) -> str:
+def _leaf_verdict(start: chess.Board, leaf: chess.Board, agent_color: bool,
+                  chosen: list | None = None,
+                  leaf_hang: tuple | None = None) -> str:
     """State the OUTCOME at the end of the calculated line, as facts a human would
     read off the final position: is it forced mate, and what is the net material
     swing (start → leaf) from the agent's side. This is the result of the agent's
     OWN calculation — not an engine verdict, not a move recommendation. The agent
     still has to choose the line because it now understands the resulting
-    position. (A line is 'forced' only as far as the agent supplied the opponent's
-    replies; the branch nudges below remind it to test the alternatives.)"""
+    position.
+
+    ``chosen`` is the forcedness audit of the line: one entry per opponent move
+    that was NOT forced — ``(step, san, n_alternatives, alt_sans)`` — i.e. a
+    reply the AGENT picked on the opponent's behalf. ``leaf_hang`` is the leaf
+    quiescence audit: ``(piece_name, square_name, see_cp)`` when the agent's
+    last-moved piece can be profitably captured at the leaf, meaning the
+    material count is not settled yet. Both are pure mechanics on the line the
+    agent itself constructed (legal-move counts and single-square SEE — the
+    same arithmetic a human does at the board), so a rosy count can no longer
+    masquerade as a proven one. This closes the 2026-07-02 finding: 32/40
+    blunder-overrides were 'justified' by a +count over a line whose opponent
+    replies the agent had chosen itself, 18/40 by a count taken while the
+    capturing piece was still en prise."""
+    chosen = chosen or []
+    def _chosen_warning() -> str:
+        picks = "; ".join(
+            f"step {step} ({san} — {n_alts} other legal move(s)"
+            + (f": try **{', '.join(alts)}**" if alts else "") + ")"
+            for step, san, n_alts, alts in chosen[:2])
+        more = f" and {len(chosen) - 2} more reply/replies further in" if len(chosen) > 2 else ""
+        return (f"**⚠ UNPROVEN — you PICKED the opponent's replies: {picks}{more}.** "
+                f"The opponent will play THEIR best move, not the one your plan needs. "
+                f"Until this line survives their most testing alternatives, treat the "
+                f"count as HOPE, not calculation: re-run `chess__imagine_line` with each "
+                f"alternative in place of the reply you assumed. ")
+
     # Mate / stalemate at the leaf.
     if leaf.is_checkmate():
         # whoever is to move is mated
         mated = leaf.turn
         if mated != agent_color:
-            return ("✅ **THIS LINE ENDS IN CHECKMATE — you mate the opponent.** If every "
-                    "opponent reply in it was forced (their only legal/safe move), this WINS: "
-                    "play the first move. Re-check that each of their replies was truly forced.")
+            if not chosen:
+                return ("✅ **THIS LINE ENDS IN CHECKMATE — you mate the opponent, and every "
+                        "opponent reply in it was FORCED (their only legal move). The mate is "
+                        "PROVEN: play the first move.**")
+            return ("✅ **THIS LINE ENDS IN CHECKMATE — you mate the opponent — but only if "
+                    "they cooperate.** " + _chosen_warning() +
+                    "A mate that fails against one legal defence is not a mate.")
         return ("⛔ **THIS LINE ENDS IN CHECKMATE AGAINST YOU.** Do not play it — backtrack and "
                 "find another move.")
     if leaf.is_stalemate():
@@ -141,6 +178,20 @@ def _leaf_verdict(start: chess.Board, leaf: chess.Board, agent_color: bool) -> s
     # jJAE7 Qxf7+ Kh8 [0 escapes, +1 material] Qf8+ Rxf8 Rxf8#.)
     mating_attack = king_escapes is not None and king_escapes <= 1
 
+    # Leaf quiescence: a "+2" counted while your capturing piece is still en
+    # prise is not a result — it is the middle of an exchange. Surface the
+    # settled count after the opponent's profitable recapture.
+    if leaf_hang is not None and not mating_attack:
+        piece_name, sq_name, see_cp = leaf_hang
+        settled = leaf_diff - (see_cp + 50) // 100
+        verdict += (
+            f"**⚠ COUNT NOT SETTLED — the position is not quiet: your {piece_name} on "
+            f"{sq_name} can be captured (the opponent wins ~{see_cp}cp in the exchange "
+            f"there). After that recapture you stand at ~{'+' if settled >= 0 else '−'}"
+            f"{abs(settled)}, not {sign}{abs(leaf_diff)}. EXTEND the line through the "
+            f"opponent's recapture before reading anything into this count.** "
+        )
+
     if mating_attack:
         verdict += (
             f"**⚠ The enemy king is nearly mated here — only {king_escapes} escape square(s).** This is "
@@ -148,10 +199,20 @@ def _leaf_verdict(start: chess.Board, leaf: chess.Board, agent_color: bool) -> s
             f"forcing check) and hunt for CHECKMATE a move or two further. Do not settle for the "
             f"material count (up OR down) while the king is boxed; a mate is worth any material."
         )
+        if chosen:
+            verdict += (" (Note: " + _chosen_warning().lstrip("*⚠ ").rstrip() +
+                        " The king is only 'boxed' if it stays boxed against those too.)")
     elif swing > 0:
-        verdict += ("This line WINS material if the opponent's replies were forced — but a one-ply "
-                    "loss earlier in the line can still be regained later, so trust the END count, "
-                    "not the scary middle. Verify each opponent reply was their best.")
+        if not chosen and leaf_hang is None:
+            verdict += ("**Every opponent reply in this line was FORCED (their only legal move) "
+                        "and the final position is quiet — this gain is PROVEN.** A one-ply loss "
+                        "earlier in the line is regained by the end, so trust this END count, "
+                        "not the scary middle.")
+        elif chosen:
+            verdict += _chosen_warning() + (
+                "Only when the line holds against every testing alternative does this count "
+                "become real.")
+        # (leaf_hang alone: the NOT-SETTLED warning above already carries the verdict.)
     elif swing < 0:
         verdict += ("You end down material here — unless this leaf is a forced mate/winning attack "
                     "you can name, this line is bad; backtrack.")
@@ -213,9 +274,14 @@ def main() -> None:
         sys.exit(1)
 
     # Apply all but the last move silently; render the LAST move in full.
+    # While replaying, audit the opponent's moves for FORCEDNESS: an opponent
+    # reply with legal alternatives is a reply the AGENT chose on the
+    # opponent's behalf — the leaf verdict must say so (pure mechanics:
+    # legal-move counting on the agent's own line).
     breadcrumb: list[str] = []
     last_move = None
     board_before_last = None
+    chosen_replies: list[tuple] = []  # (step, san, n_alternatives, alt_sans)
     for i, tok in enumerate(tokens, 1):
         try:
             mv = parse_move(board, tok)
@@ -232,6 +298,14 @@ def main() -> None:
             sys.exit(1)
         side = "W" if board.turn == chess.WHITE else "B"
         san = board.san(mv)
+        if board.turn != agent_color:
+            n_alts = board.legal_moves.count() - 1
+            if n_alts > 0:
+                # record the alternatives (checks/captures first) only for the
+                # first couple of non-forced nodes — those are the ones to test.
+                alts = (_testing_replies(board, exclude=mv, k=3)
+                        if len(chosen_replies) < 2 else [])
+                chosen_replies.append((i, san, n_alts, alts))
         if i == len(tokens):
             board_before_last = board.copy()
             last_move = mv
@@ -244,6 +318,21 @@ def main() -> None:
             board_before_last = board_before_last if last_move else None
             break
 
+    # Leaf quiescence audit: when the line ends on the AGENT's own move and
+    # that piece can be profitably captured where it stands (single-square SEE
+    # from the opponent's side — the same arithmetic as the commit gate), the
+    # end-of-line material count is provisional, and the verdict must say so.
+    leaf_hang = None
+    if (last_move is not None and board_before_last is not None
+            and not board.is_checkmate() and not board.is_stalemate()
+            and board_before_last.turn == agent_color):
+        moved_piece = board.piece_at(last_move.to_square)
+        if moved_piece is not None and moved_piece.color == agent_color:
+            see_cp = static_exchange_eval(board, last_move.to_square, not agent_color)
+            if see_cp >= 100:
+                leaf_hang = (chess.piece_name(moved_piece.piece_type),
+                             chess.square_name(last_move.to_square), see_cp)
+
     out = [
         "# Imagine line  (your own calculation — nothing committed)",
         "",
@@ -253,7 +342,8 @@ def main() -> None:
         # and mate status a human would read off the final position. It is the
         # result of YOUR calculation, not an engine's recommendation; you still
         # choose the move because you now see why the resulting position is good.
-        _leaf_verdict(start_board, board, agent_color),
+        _leaf_verdict(start_board, board, agent_color,
+                      chosen=chosen_replies, leaf_hang=leaf_hang),
         "",
         f"_Showing the full report for the LAST move below. Extend ONE move at a "
         f"time (max {_MAX_PLIES} ahead); change the last move to branch, drop "

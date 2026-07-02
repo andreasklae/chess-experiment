@@ -38,6 +38,12 @@ London genuinely dangerous. From the outpost you build a kingside attack.
    afterthought. Read `openings/london-bxh7-greek-gift`.
 
 ## Watch out for
+- **The h7 sacrifice is the BISHOP's (Bxh7+), never the queen's.** Qxh7+?? while h7
+  is guarded by the king simply loses the queen — Kxh7 and your "follow-up fork" must
+  be PROVEN (every reply forced) before you may even consider it; in practice it
+  almost never is. The queen arrives AFTER the bishop check (…Kxh7, Ng5+, Qh5/Qd3+);
+  it does not lead. If you find yourself calculating Qxh7+, read
+  `principles/calculate-against-best-defense` first.
 - **Don't play Ne5 too early** — if Black can answer ...Ne4 or ...Nd7 hitting it, or
   ...f6 after you can't recapture dxe5 favourably, wait and improve first.
 - **Keep the dark bishop** (f4/g3/h2) — it guards e5 and rakes the kingside; don't let

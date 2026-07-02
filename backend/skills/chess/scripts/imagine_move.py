@@ -677,7 +677,10 @@ def render_imagine(
                 f"back** a move or two later. **Before rejecting it, calculate the WHOLE line with "
                 f"`chess__imagine_line`** (this check → their forced reply → your follow-up → …) and "
                 f"read the verdict at the end of the line. Only reject it if, after calculating to "
-                f"the end, you are still down with no mate."
+                f"the end, you are still down with no mate. And only PLAY it if the leaf verdict "
+                f"says the line is PROVEN — a sacrifice is sound only when it works against EVERY "
+                f"reply to the check; if the verdict says a reply was CHOSEN BY YOU (not forced), "
+                f"test the alternatives it names before you believe the line."
             )
         else:
             out.append(

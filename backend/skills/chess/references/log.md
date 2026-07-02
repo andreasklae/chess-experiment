@@ -350,3 +350,9 @@ New folder `positional/` (assess-the-position layer, previously missing) with `i
   - openings/london-vs-nh5.md — vs ...Nh5 trading the f4-bishop: Bh2 (if h3 in) / Bg5 / allow ...Nxg3 hxg3 for the open h-file.
   - openings/london-bxh7-greek-gift.md — the Bxh7+ sac CHECKLIST (no Black Nf6, Ng5+ ready, queen reaches the h-file, control g5) + the main line; directly targets the agent's recurring premature-Bxh7+ blunder found in the Maia London review. WORK and FAIL example FENs verified.
 - Registered all 5 in openings/index.md with one-line "when it applies" routing. Skill still parses (7 tools); related_pages links resolve.
+
+## [2026-07-02] create | principles/calculate-against-best-defense.md | The "opponent plays THEIR best move" discipline — how to read imagine_line's new PROVEN/UNPROVEN/COUNT-NOT-SETTLED labels; written after 32/40 replayed blunder-overrides were justified by lines whose opponent replies the agent picked itself (Qxh7+ x6 games).
+
+## [2026-07-02] update | openings/london-ne5-attack.md | Watch-out added: the h7 sac is the BISHOP's (Bxh7+), never Qxh7+?? — the attack-plan page kept being corrupted into a queen-first sac (6 games lost to it); points to principles/calculate-against-best-defense.
+
+## [2026-07-02] update | principles/index.md | Registered calculate-against-best-defense.

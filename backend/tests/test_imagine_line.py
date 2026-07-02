@@ -265,3 +265,56 @@ def test_quiet_move_nudge_lists_all_boxing_checks():
     assert {"Qg8+", "Qe8+", "Qc8+"}.issubset(set(sans))
     # quiet position with no boxing check returns None
     assert im._uncalculated_mating_checks(chess.Board()) is None
+
+
+class TestLineProofAudit:
+    """The leaf verdict must not certify a line the tool can mechanically see is
+    unproven. Two audits (2026-07-02, from 40 replayed blunder-overrides): the
+    FORCEDNESS of each opponent reply (32/40 lines contained replies the agent
+    chose for the opponent) and leaf QUIESCENCE (18/40 counted material while
+    the capturing piece was still en prise). Game 35e18d89 move 45 (Qxh7+,
+    eval +250 -> -498) is the canonical case: imagine_line said '+2 WINS
+    material' over Qxh7+ Kxh7 Ng5+ Kg8 Nxf7, where Kg8 was hand-picked (Kg7/Kg6
+    refute) and the leaf knight on f7 hung."""
+
+    QXH7_FEN = "2r2rk1/4nq1p/2p5/p2p4/P7/1P1Q1N1P/5PP1/1R2R1K1 w - - 2 23"
+
+    def test_chosen_opponent_reply_makes_gain_unproven(self):
+        r = _run(["--fen", self.QXH7_FEN, "Qxh7+,Kxh7,Ng5+,Kg8,Nxf7"])
+        assert r.returncode == 0, r.stderr
+        assert "UNPROVEN" in r.stdout
+        assert "PICKED the opponent's replies" in r.stdout
+        # names the step-4 alternatives that actually refute the sacrifice
+        assert "Kg7" in r.stdout or "Kg6" in r.stdout
+        # the old unconditional endorsement must be gone
+        assert "trust the END count, not the scary middle" not in r.stdout
+
+    def test_non_quiescent_leaf_flags_unsettled_count(self):
+        r = _run(["--fen", self.QXH7_FEN, "Qxh7+,Kxh7,Ng5+,Kg8,Nxf7"])
+        assert r.returncode == 0, r.stderr
+        assert "COUNT NOT SETTLED" in r.stdout
+        # reports the settled count after the recapture, not the rosy one
+        assert "~−1" in r.stdout
+
+    def test_forced_quiet_gain_is_proven(self):
+        # Free rook, no opponent replies in the line, quiet leaf -> PROVEN.
+        r = _run(["--fen", "6k1/8/8/8/8/8/r7/R3K3 w - - 0 1", "Rxa2"])
+        assert r.returncode == 0, r.stderr
+        assert "PROVEN" in r.stdout
+        assert "UNPROVEN" not in r.stdout
+        assert "COUNT NOT SETTLED" not in r.stdout
+
+    def test_forced_mate_stays_proven(self):
+        r = _run(["--fen", "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1", "Ra8"])
+        assert r.returncode == 0, r.stderr
+        assert "The mate is PROVEN" in r.stdout
+
+    def test_mate_via_chosen_replies_is_flagged(self):
+        # Scholar's mate from the start position: mate ONLY because we chose
+        # every black reply for them. Must not be called proven.
+        r = _run(["--fen", chess.Board().fen(),
+                  "e4,e5,Qh5,Nc6,Bc4,Nf6,Qxf7"])
+        assert r.returncode == 0, r.stderr
+        assert "CHECKMATE" in r.stdout
+        assert "only if they cooperate" in r.stdout
+        assert "The mate is PROVEN" not in r.stdout

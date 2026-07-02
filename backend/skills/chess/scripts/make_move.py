@@ -543,11 +543,15 @@ def main() -> None:
                 " This hangs a PIECE / throws the game away — it is almost "
                 "certainly a losing blunder, and blundering pieces is the #1 way "
                 "this agent loses won games. The default is to PICK A DIFFERENT, "
-                "SAFE MOVE. You may override with confirm=true ONLY if it is a "
-                "forced checkmate, OR you can state in `reasoning` the exact "
-                "forced line (move by move, with the opponent's replies) that "
-                "WINS THE MATERIAL BACK or mates. If you cannot name that line, "
-                "do NOT override — choose a move that keeps your pieces."
+                "SAFE MOVE. You may override with confirm=true ONLY if "
+                "chess__imagine_line has shown you a PROVEN line for this exact "
+                "move — one whose verdict says every opponent reply was FORCED "
+                "(or that you tested every alternative it named) and that ends "
+                "in mate or winning the material back. A line where the verdict "
+                "said a reply was CHOSEN BY YOU is hope, not calculation — "
+                "overriding on hope is how this agent has thrown away won games "
+                "(Qxh7+, 6 games). If you have no PROVEN line, do NOT override — "
+                "choose a move that keeps your pieces."
             )
         else:
             prefix = (
