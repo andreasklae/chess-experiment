@@ -32,6 +32,7 @@ WIKI = {
     "pawn_strengths": "positional/pawn-strengths.md",
     "piece_activity": "positional/piece-activity.md",
     "king_safety": "positional/king-safety.md",
+    "defending_king": "positional/defending-the-king.md",
     "prophylaxis": "positional/prophylaxis-and-blockade.md",
     "evaluate": "positional/evaluate-position.md",
     "forks": "tactics/forks-and-double-attacks.md",
@@ -926,6 +927,41 @@ _ROOK_DIRS = [8, -8, 1, -1]
 _BISHOP_DIRS = [9, 7, -9, -7]
 
 
+def _front_is_forced(board: chess.Board, front_sq: int, attacker_value: int,
+                     attacker_color: bool) -> bool:
+    """Is the FRONT piece of a pin/skewer actually forced to move — the thing
+    that makes the tactic win the piece behind it?
+
+    A pin/skewer (and by the same logic a fork) only wins material if the target
+    it bears on is one the owner cannot simply leave in place. That is true only
+    when the front piece is either:
+
+      (a) UNDEFENDED (loose) — the attacker just captures it next move, or
+      (b) worth MORE than the attacker — capturing it is favourable even though
+          it is defended (we give a cheaper piece for a dearer one).
+
+    If the front piece is DEFENDED and worth ≤ the attacker, its owner is happy
+    to leave it there: capturing it would LOSE us material (e.g. Q takes a
+    defended R, gets recaptured — 9 for 5). So it is NOT forced to move and the
+    "skewer"/"pin" wins nothing. This is the rule a real game exposed: the agent
+    played Qd3 to "skewer" a rook that was defended and worth less than the queen,
+    winning nothing (Qxc4?? dxc4). A king in front is always forced.
+
+    `attacker_value` is passed explicitly (not read from the board) so this works
+    for a POTENTIAL skewer where the attacker has not yet moved to its square.
+    `attacker_color` is the attacking side (whose defenders of the front DON'T
+    count — we look at the front owner's defenders)."""
+    f = board.piece_at(front_sq)
+    if f is None:
+        return False
+    if f.piece_type == chess.KING:
+        return True
+    defended = bool(board.attackers(not attacker_color, front_sq))
+    if not defended:
+        return True
+    return PIECE_VALUE[f.piece_type] > attacker_value
+
+
 def _ray_squares(frm: int, direction: int) -> list[int]:
     """Squares along `direction` from `frm` (exclusive), staying on-board."""
     out = []
@@ -976,9 +1012,15 @@ def _skewer_from(board: chess.Board, from_sq: int, piece_type: int, color: bool)
                 break
         if front is None or rear is None:
             continue
+        rear_pt = board.piece_at(rear).piece_type
+        # The prize behind must be a real PIECE (knight or better). A skewer that
+        # only wins a PAWN behind is noise — not worth flagging, and never worth
+        # losing the skewering piece over.
+        if rear_pt == chess.PAWN:
+            continue
         # skewer proper: front at least as valuable as rear (front must move,
         # rear is won). King in front = absolute skewer.
-        if PIECE_VALUE[board.piece_at(front).piece_type] >= PIECE_VALUE[board.piece_at(rear).piece_type]:
+        if PIECE_VALUE[board.piece_at(front).piece_type] >= PIECE_VALUE[rear_pt]:
             return front, rear, d
     return None
 
@@ -1088,6 +1130,7 @@ def detect_skewers(board: chess.Board, perspective: bool | None = None) -> list[
     skewer chances and skewers the opponent threatens against it *before* they
     are played.
     """
+    from _eval import static_exchange_eval
     findings: list[Finding] = []
     stm = board.turn if perspective is None else perspective
     for color in (chess.WHITE, chess.BLACK):
@@ -1102,6 +1145,11 @@ def detect_skewers(board: chess.Board, perspective: bool | None = None) -> list[
             if not res:
                 continue
             front, rear, d = res
+            # SOUNDNESS: it is only a real skewer if the front piece is forced to
+            # move (undefended, or worth more than the skewering piece). A defended
+            # front worth ≤ the attacker just sits there — nothing is won.
+            if not _front_is_forced(board, front, PIECE_VALUE[pt], color):
+                continue
             key = (front, rear)
             seen_pairs.add(key)
             fp, rp = board.piece_at(front), board.piece_at(rear)
@@ -1128,6 +1176,28 @@ def detect_skewers(board: chess.Board, perspective: bool | None = None) -> list[
                     res = _skewer_from(board, land, pt, color)
                     if res:
                         front, rear, dd = res
+                        # SOUNDNESS (same as current skewers): only if the front is
+                        # forced to move once the piece lands on `land`.
+                        if not _front_is_forced(board, front, PIECE_VALUE[pt], color):
+                            if occ is not None:
+                                break
+                            continue
+                        # The skewering piece must be SAFE on its landing square —
+                        # a skewer where the piece just hangs (e.g. Rc3 into b2/Nd4)
+                        # wins nothing. Simulate the move and SEE the landing square.
+                        probe = board.copy(stack=False)
+                        if probe.turn != color:
+                            try:
+                                probe.push(chess.Move.null())
+                            except Exception:
+                                pass
+                        mv = chess.Move(from_sq, land)
+                        if mv in probe.legal_moves:
+                            probe.push(mv)
+                            if static_exchange_eval(probe, land, not color) >= 150:
+                                if occ is not None:
+                                    break
+                                continue
                         if (front, rear) in seen_pairs:
                             if occ is not None:
                                 break
@@ -1663,6 +1733,83 @@ def detect_king_safety(board: chess.Board, perspective: bool | None = None) -> l
     return findings
 
 
+def _own_king_escape_squares(board: chess.Board, color: bool) -> int:
+    """How many squares `color`'s king can legally step to right now (flight squares).
+    Few flight squares + enemy heavy pieces = the king is getting boxed — the DEFENSIVE
+    mirror of enemy_king_mobility (which we use offensively to box THEIR king)."""
+    ksq = board.king(color)
+    if ksq is None:
+        return 0
+    flipped = board.copy(stack=False)
+    flipped.turn = color
+    return sum(1 for m in flipped.legal_moves
+               if m.from_square == ksq)
+
+
+def detect_own_king_exposure(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
+    """PROACTIVE king-danger — fires BEFORE a forced mate, when the side-to-move's own
+    king is getting exposed: it is OFF its shelter (advanced off the back rank, or on an
+    open file) AND enemy heavy pieces (Q/R) are near it AND it has few flight squares.
+    This is the defensive twin of the offensive 'boxing the enemy king' signal — the loss
+    data shows the agent WINS on material but gets its own king mated because nothing warns
+    it while the net is still FORMING (games 3e83ce50 Kg2-Kf3-Kg4 mated, 4df3fbf4 king
+    hunted). Pure mechanics (king rank/file, enemy heavy-piece proximity, flight-square
+    count); the agent decides how to shelter. Only for the side to move (defensive)."""
+    findings: list[Finding] = []
+    stm = board.turn if perspective is None else perspective
+    ksq = board.king(stm)
+    if ksq is None:
+        return findings
+    enemy = not stm
+    # only meaningful with enemy heavy pieces on the board
+    enemy_heavy = list(board.pieces(chess.QUEEN, enemy)) + list(board.pieces(chess.ROOK, enemy))
+    if not enemy_heavy:
+        return findings
+    # ENDGAME GUARD: in the endgame an ACTIVE king is correct (K+P/K+R endings — the king
+    # must march to support pawns), and king hunts that LOSE games are a middlegame event
+    # with a full enemy attacking force. So fire only when the enemy still has a QUEEN, or
+    # there is enough material on the board that it is not an endgame (avoids telling the
+    # agent to retreat its king in a won K+P ending — the false positives on the sweep).
+    enemy_has_queen = bool(board.pieces(chess.QUEEN, enemy))
+    total_minor_major = sum(
+        len(board.pieces(pt, c))
+        for c in (chess.WHITE, chess.BLACK)
+        for pt in (chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN))
+    if not enemy_has_queen and total_minor_major <= 4:
+        return findings  # endgame with an active king — do not warn
+    kf, kr = chess.square_file(ksq), chess.square_rank(ksq)
+    back = 0 if stm == chess.WHITE else 7
+    # enemy heavy pieces within a 3-square Chebyshev ring of the king = attackers closing in
+    near = [s for s in enemy_heavy
+            if max(abs(chess.square_file(s) - kf), abs(chess.square_rank(s) - kr)) <= 3]
+    if not near:
+        return findings
+    escapes = _own_king_escape_squares(board, stm)
+    advanced = abs(kr - back) >= 2           # marched off the back rank (rank 3+)
+    off_shelter = abs(kr - back) >= 1        # even one step up, in a hunt, is dangerous
+    in_check = board.is_check()
+    # Fire when the net is FORMING, not only once mate is forced:
+    #  - king boxed to ≤1 flight with a heavy piece near (about to be trapped), OR
+    #  - king already advanced (rank 3+) with a heavy piece near and ≤2 flights, OR
+    #  - king in check off its shelter with heavy pieces around (a live hunt).
+    if not ((escapes <= 1) or (advanced and escapes <= 2) or (in_check and off_shelter)):
+        return findings
+    n = len(near)
+    where = ("has marched off its shelter into the open" if advanced
+             else "is being boxed in" if escapes <= 1
+             else "is exposed")
+    findings.append(Finding(True, "weakness",
+        f"⚠ YOUR KING on {_sq(ksq)} {where} — {n} enemy heavy piece(s) are closing in and "
+        f"it has only {escapes} flight square(s). This is how king hunts and back-rank/"
+        f"open-king mates start: do NOT walk it further forward. Get it back toward your own "
+        f"pawns/pieces, BLOCK the checking lines with a piece, make LUFT, or trade off the "
+        f"attackers. Before ANY king move, check the opponent's checks with "
+        f"`chess__imagine_move` — a 'safe-looking' step can walk into a mating net. "
+        f"Read `positional/defending-the-king.md` for the survival recipe.",
+        wiki="defending_king"))
+    return findings
+
+
 def detect_overloaded_defenders(board: chess.Board, perspective: bool | None = None) -> list[Finding]:
     """A single defender guarding two (or more) of its own attacked pieces is
     OVERLOADED — attack one and the other falls (tactics/removing-the-defender).
@@ -1802,7 +1949,8 @@ def detect_all(board: chess.Board, perspective: bool | None = None) -> list[Find
                detect_knight_forks, detect_piece_forks, detect_loose_pieces, detect_pins_skewers,
                detect_creatable_pins,
                detect_skewers, detect_discovered_attacks, detect_traps,
-               detect_material, detect_king_safety, detect_overloaded_defenders,
+               detect_material, detect_king_safety, detect_own_king_exposure,
+               detect_overloaded_defenders,
                detect_removable_defender, detect_own_back_rank):
         try:
             findings += fn(board, perspective)

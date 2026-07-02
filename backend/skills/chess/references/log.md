@@ -13,6 +13,216 @@ what the agent learned and when — keep it faithful.
 
 ---
 
+## [2026-07-01] create+feature | positional/defending-the-king.md + detect_own_king_exposure | Defensive king-safety: tool + wiki, mirroring the offensive mate stack
+- Data: EVERY recent ranked loss (12/12) is a CHECKMATE, not a material loss — the agent
+  wins on material then gets its king mated (item P, now confirmed at scale). Built the
+  DEFENSIVE twin of the offensive boxing/mate signals: `detect_own_king_exposure` in
+  _features.py fires PROACTIVELY (before a forced mate) when the side-to-move's king is
+  boxed to ≤1-2 flight squares OR marched off its shelter with enemy heavy pieces closing
+  in, OR in check off-shelter — with an ENDGAME GUARD (needs an enemy queen or enough
+  material) so it never tells the agent to retreat an active king in a won K+P/K+R ending.
+  Fires 3.2% of positions; fires on the real loss (game 3e83ce50) the move BEFORE the fatal
+  Kg4; 0 endgame over-fires on a 936-position sweep. Surfaces inline in show_position.
+- New wiki page `positional/defending-the-king.md` — the "what to do when your king is under
+  attack" survival recipe (is the threat real? block don't run; retreat to your army; trade
+  the attackers/queen; make luft; counter only if faster), read-and-note synthesis from
+  chessfox + chess.com defensive guides (SOURCES.md). Extended `positional/king-safety.md`
+  with a survival section pointing to it. Registered in positional/index.md; the radar signal
+  routes to it (WIKI key `defending_king`); search_wiki ranks it #1 for "my king is under
+  attack". Tool→wiki wired exactly like the London pages. 505 tests; skill parses (9 tools).
+
+## [2026-07-01] fix | openings/london-bxh7-greek-gift.md | Root cause found: the wiki's own "…Kg6 → h4 wins" line was WRONG and the agent parroted it
+- The in-game diagnosis traced the agent's false "h4 wins the queen" conclusion straight to
+  a TUTOR-SIDE WIKI ERROR: the page said "…Kg6 → h4 (then h5+ wins the queen)" as if it
+  always works. It does not. Mechanical discriminator (verified): after Bxh7+ Kxh7 Ng5+
+  …Kg6, the sac wins only if the Ng5 is DEFENDED (sound wiki example: c1-bishop guards g5)
+  and a queen check arrives with force; in the batch-3 losses the Ng5 was UNDEFENDED and
+  …Kg6 simply refuted it. Rewrote the …Kg6 line to say it is usually the REFUTATION unless
+  those conditions hold, added a "checklist is necessary NOT sufficient — calculate …Kg6/
+  …Kf8 and TRUST the imagine_line leaf verdict, don't talk past the tool" watch-out citing
+  the 4 real lost games. This is a fair tutor fix (correcting our own bad synthesis). Re-ran
+  the 4 unsound puzzles with the corrected page: still 4/4 declined (no regression). 504 tests.
+- Lesson: an agent over-confidence failure can originate in a WRONG WIKI PAGE, not just the
+  model — the agent faithfully applied bad theory. Auditing our synthesised lines against the
+  board (not just FEN-legality) matters as much as the tools.
+
+## [2026-07-01] diagnose | in-game Bxh7+ reasoning (batch-3 games 11/13/16/20) | The REAL failure: the agent over-calculates and OVERRIDES the correct leaf verdict
+- Read the agent's actual in-game reasoning at the 4 batch-3 checking-Greek-gift failures.
+  It is NOT a perception gap and NOT momentum: the agent called `imagine_line ×4-6` each
+  time and wrote confident, detailed lines — but its CALCULATION IS WRONG. Game 11 misses
+  …Kg6 entirely ("…Qxg5 loses the queen"); games 13/16/20 consider …Kg6 but claim "h4 then
+  h5+ wins" — which is false (the king escapes, White is down a piece).
+- Decisive: `imagine_line` on the agent's OWN claimed line (Bxh7+ Kxh7 Ng5+ Kg6 h4) already
+  says "−2 for you, you end down material, this line is bad; backtrack." The agent READ this
+  and played the sac anyway, writing "h4 wins" — a flat contradiction of the tool. So the
+  info was present and correct; the agent OVERRODE it with its own wrong narrative. This is
+  the hard core of [[chess-perception-action-gap]]: not missing information, but a confident
+  false conclusion overriding an accurate mechanical verdict.
+- Consequence for the fix: "go calculate" nudges (mine) and "more info" CANNOT help here —
+  the agent already calculates and already has the correct leaf verdict. The A/B (identical)
+  is explained. Kept the nudge ON (harmless, fair, right shape) but do NOT claim it fixes
+  this. The genuine lever is the agent-overrides-correct-tools problem itself — a harder,
+  model-facing issue, not a tooling gap. Recorded honestly; no further sac-tooling piled on.
+
+## [2026-07-01] measure | greek_gift benchmark A/B (nudge ON vs OFF) | The nudge is HARMLESS but NOT demonstrably necessary — a perception-action-gap data point
+- Ran the 10-puzzle greek_gift set on the live agent (eX3 Gemma-4-31B) twice: nudge ON and
+  nudge OFF (env toggle CHESS_DISABLE_GREEK_GIFT_NUDGE). Results IDENTICAL: unsound sacs
+  4/4 DECLINED both ways; sound sacs 4/6 played both ways. The agent's reasoning on the
+  unsound ones shows it CALCULATED and rejected the sac on its own ("Bxh7+ fails because
+  …Qxg5", "the line just loses") — WITHOUT needing the nudge.
+- Interpretation (honest): the batch-3 unsound sacs ARE in the benchmark, yet the agent
+  declines them in a single-move PUZZLE while it PLAYED them in the full GAME. This is the
+  [[chess-perception-action-gap]] again at the *context* level: isolated + focused, the
+  agent evaluates correctly; mid-game, momentum/a committed "kingside attack" plan carries
+  it into the unsound sac. So the puzzle can't reproduce the failure, and the nudge's value
+  (if any) is in-game where we can't cheaply A/B it. Kept the nudge ON by default: it is
+  SOFT/confirmable, fires only on the exact pattern, costs nothing on sound play, and is the
+  right *shape* of fix — but we do NOT claim it moves the metric (no evidence at this scope).
+- The 2 "false negatives" on sound sacs were NOT nudge-caused: gg_5149e9 the agent followed
+  a London book move (never considered the sac); gg_0dbb76 it was +8 and chose a safe move
+  (reasonable, not a loss). Benchmark + toggle retained for future in-game measurement.
+
+## [2026-07-01] fix | make_move.py (blunder gate) + puzzles_greek_gift.json | Commit-time Greek-gift nudge — the batch-3 top accuracy-leak
+- Batch-3's dominant "worst move" was Bxh7+ (4×) + Ng5+ (3×): the Greek-gift sacrifice
+  played when UNSOUND. Mined all 370 games → 11 unique Bxh7/Bxh2 sacs, Stockfish-classified
+  (depth 18): the 4 checking ones where the king can recapture ALL threw a won game away
+  (eval ~+1.4 → ~−2.5); the others were sound/non-checking. The failure is a CALCULATION
+  gap: after Bxh7+ Kxh7 Ng5+ the king walks to …Kg6/…Kf8 and White has no knockout — which
+  needs calculating to a leaf (imagine_line already reports it; the agent skips it).
+- Fix: a SOFT commit-time nudge in `_blunder_gate` — when the move is a bishop capturing on
+  h7/h2 that GIVES CHECK and the enemy king can recapture (the Greek-gift shape), it says
+  "calculate the whole king hunt with imagine_line — every reply incl. …Kg6/…Kf8 — only
+  confirm if it wins". Soft/confirmable (a sound sac is legitimate); mechanical pattern +
+  "go calculate", never a verdict → tool-fair (same class as the SEE gate). Fires 4/4 on the
+  unsound benchmark sacs (and on sound checking sacs too — correct: it forces the calc the
+  agent was skipping; the sound ones survive it). 504 tests.
+- Built `experiments/puzzle-benchmark/puzzles_greek_gift.json` (10 puzzles: 6 sound = play
+  the sac / 4 unsound = decline it, graded by acceptable_uci) and registered a `greek_gift`
+  puzzle set in main.py. Measure-first benchmark for whether the nudge changes behavior.
+
+## [2026-07-01] fix | _opening_book.py + opening_guide.py | Generalised the recapture rule to the light bishop (…Bxd3 → Qxd3), surfaced by batch-3
+- Batch-3 improvisation scan showed one remaining recurring recapture the book skipped:
+  …Bxd3 (Black trades the LIGHT bishop), where the agent improvised Qxd3. Generalised the
+  `recapture the traded dark bishop` rule → `recapture a traded minor` (helper renamed to
+  `_traded_minor_recapture_square`, now checks f4/g3/h2 AND d3). Recapture ordering is
+  square-aware: pawn-first on f4/g3 (exf4/hxg3 shape the structure), piece-first on d3
+  (Qxd3 keeps the pawns healthy; cxd3 only for the c-file). opening_guide routes …Bxd3 too.
+  Regression test extended; 504 tests. See work/experiment-chess-opening-batches.md for the
+  full B1/B2/B3 results (accuracy flat within noise; coverage ~100%).
+
+## [2026-07-01] fix | _opening_book.py + opening_guide.py | Book now covers recapturing a TRADED dark bishop (…Bxf4/…Nxg3) + tactic-guard refined
+- Post-batch improvisation scan of all 20 opening games found a THIRD gap in every Maia
+  game (move 7): after …Bxf4 trading the London bishop, the book returned NOTHING and the
+  agent improvised exf4. Root cause: the material tactic-guard misread the exf4 RECAPTURE
+  as a "winning capture ≥ minor" and deferred the whole book. Fix: (a) a `London —
+  recapture the traded dark bishop` rule (exf4 → doubled f-pawns/e5 outpost; hxg3 →
+  open h-file), routed to london-central-break; (b) restructured `_rule_lookup` so the
+  REACTION rules (both recaptures + the pawn-attack-on-bishop) run BEFORE the material
+  tactic-guard — a recapture is the forcing move theory wants, not a bonus tactic to
+  defer for — while a real MATE-in-1 still suppresses the book. opening_guide routes it
+  too. After all three fixes, EVERY White move in the first 8 moves across all 20 games
+  is in book (0 early improvisations, was 10). 504 tests pass; no false firings.
+
+## [2026-07-01] fix | _opening_book.py + opening_guide.py | Tools now detect "dark bishop hit by a pawn" (…e5/…g5) — another improvise case
+- Systematic pass over ALL London wiki + raw content for every "what to do when…"
+  trigger, checking each against opening_book / opening_guide / the show_position radar.
+  Found one uncovered case matching a real game (5166674a: 1.d4 d6 2.Bf4 e5): the …e5
+  pawn attacks the f4-bishop, but the book offered the routine setup move e3 — the agent
+  had to improvise dxe5. Added a `London — dark bishop hit by a pawn` book rule (fires
+  before the setup moves): challenge the pawn with a SOUND capture (dxe5) or a safe bishop
+  retreat (Bg3/Bh2/Bg5, SEE-filtered so it never offers Bxe5-into-…dxe5 or a hanging
+  retreat), routed to `openings/london-vs-kings-indian`. opening_guide also routes this
+  case now. Verified every other wiki "what-to-do-when" trigger (…cxd4, …Qb6, …Nh5, …g6,
+  …Bf5, …Bg4, early …c5, plan-phase) IS detected by at least one tool. Regression test
+  added; 503 pass; no false firings on a clean setup.
+
+## [2026-07-01] fix | _opening_book.py + openings/london-central-break.md | Book now covers the …cxd4 recapture (was an uncovered case the agent had to improvise)
+- Real game 1705bcb5: after 1.d4 Nf6 2.Bf4 c5 3.e3 cxd4, the book returned the routine
+  developing move **Nf3**, so the agent had to IMPROVISE **exd4** (it found the right
+  move, but theory should have supplied it). Recapturing the centre pawn is core London
+  theory. Added a `London — recapture on d4` setup rule (fires FIRST, after the
+  tactic-guard): if Black has a pawn on d4 and White has a SOUND recapture (SEE ≥ 0), the
+  book gives exd4/cxd4 as candidates (exd4 first → Carlsbad), with assumptions
+  (which pawn → which structure) + the "unless a bigger forcing move" exception, routed
+  to `openings/london-central-break`. That page now opens with a "if Black took on d4,
+  RECAPTURE" section. Surfaces inline in show_position. Regression test added; 502 pass.
+
+## [2026-07-01] lint+structure | (whole wiki) + top index + SKILL.md | Full lint pass; routed openings from the top index; made the London instruction permanent
+- **Structure fix (important):** the top-level `index.md` routing table had NO
+  openings row and still said "openings … have no pages yet" — the agent could not
+  reach its own repertoire from the top. Added an OPENING row (route to `openings/`)
+  and corrected the stale note. `openings/index.md` Routing now points at the hub +
+  the two plan pages; fixed its dead `../strategy/pawn-structures/` link → `../positional/`.
+- **Lint:** verified every read_reference path, `[[wikilink]]`, `related_pages` entry,
+  inline `folder/page` ref, and markdown relative link across all 97 md files resolves.
+  Fixed a PRE-EXISTING broken link in `positional/index.md` (`tactics/index.md` →
+  `../tactics/index.md`). All filenames lowercase kebab-case; every `category:` matches
+  its folder; every content page has complete frontmatter; every page registered in
+  its folder index.
+- **New connection:** `london-ne5-attack` ↔ `london-central-break` now cross-link (the
+  two sibling plans) in both related_pages and body, so "pick a plan" navigates both ways.
+- **Repertoire instruction made permanent + clean:** removed the temporary
+  `CHESS_OPENING_INSTRUCTION=london` env toggle from `app/agent_player.py`; the London
+  instruction now lives in `SKILL.md` ("In the opening — play the London System"),
+  enriched with the setup order, the two plans, and the new situations the guide routes.
+
+## [2026-07-01] create+update | 4 new London pages + raw ingest | Broad London curriculum expansion (central break, structures, ...Bf5/...Bg4, early ...c5/Benoni, Jobava) from a wider source read
+- Ingested a wider source set (read-and-note, no verbatim): chessdoctrine, chess-teacher,
+  modern-chess, 365chess, thechessworld London guides + Wikipedia. Notes saved to
+  `raw/london-system-notes.md`; provenance + licensing in `raw/SOURCES.md`.
+- **create** `openings/london-central-break.md` — the London's SECOND main plan (e3–e4
+  with Qe2/Re1; the Bd6-vs-Bg3 point where ...Bxg3 hxg3 opens the h-file) + the pawn
+  structures that decide plan choice (Carlsbad → Nd3; doubled f-pawns → Nb3-d4-f5).
+- **create** `openings/london-vs-bishop-out.md` — Black's early ...Bf5 (mirror) / ...Bg4
+  (pin on f3): how to develop, plus the verified Qa4→Ba6 trap (Bxb7 forks Ra8+Nc6).
+- **create** `openings/london-vs-early-c5.md` — early ...c5 on d4 before c3: support d4,
+  the Nc3–Nb5 gambit vs ...Qxb2, or push d5 into a favourable Benoni.
+- **create** `openings/london-jobava.md` — the sharper Jobava (2.Nc3) sibling, clearly
+  flagged as a DIFFERENT plan so the agent doesn't mix it with the quiet London.
+- **update** `openings/london-system.md` (route to all four + both plans),
+  `openings/london-vs-qb6.md` (CORRECTED the dxc5 gambit line — the earlier "Rb1 Qc3+"
+  was illegal with the b1-knight home; now Nd2 after dxc5, or the Nc3–Nb5 move order).
+- **tools:** `scripts/opening_guide.py` now routes early-...c5, ...Bf5/...Bg4, and (once
+  castled) offers BOTH plans (attack / central break). `scripts/_opening_book.py` ...Qb6
+  exception now points at the early-c5 gambit. All new lines verified in python-chess;
+  501 tests pass; skill parses (9 tools); all related_pages resolve; every page indexed.
+
+## [2026-07-01] update | tactics/pins-and-skewers.md + tactics/forks-and-double-attacks.md | Skewer/fork SOUNDNESS rule (front must be forced) — paired with the _features.py detector fix
+- Real game 57fc05ad: the agent played Qd3 thinking it "skewered" a rook (c4) with a
+  bishop (a6) behind — but the rook was DEFENDED and worth LESS than the queen, so
+  nothing was forced (Qxc4?? dxc4). Added the explicit rule to both pages: a skewer/
+  fork only wins if the front/target piece is FORCED — i.e. undefended, or worth more
+  than the attacking piece (or the king). Also fixed `scripts/_features.py`
+  `detect_skewers` to enforce this (new `_front_is_forced` helper) + drop pawn-only
+  prizes + require the skewering piece to be safe on its landing square. Forks already
+  enforced this (detect_piece_forks / detect_knight_forks); tightened the wiki wording
+  to match. Regression tests added (test_features.py); synthetic sweep = 1.000
+  precision / 1.000 recall over ~1950 skewer geometries; full suite 496 passed.
+
+## [2026-07-01] create+update | london-ne5-attack.md (new) + greek-gift/qb6 deepened | Comprehensive London curriculum: the missing attacking PLAN, and stronger Greek-gift / ...Qb6 pages
+- **create** `openings/london-ne5-attack.md` — the London's core middlegame PLAN that was
+  entirely missing from the wiki: the **Ne5 outpost → f4 → Rf3–h3 lift → h4–h5 storm →
+  Bxh7+** recipe, in order. This is "what to do after the setup" — the page the hub and
+  the show_position radar can route to once developed. Model games Kamsky–Shankland 2014
+  and Blatny–Luchan 2001 (move orders verified in python-chess). Registered in
+  openings/index.md; cross-linked from london-system.md (routing + related_pages).
+- **update** `openings/london-bxh7-greek-gift.md` — reframed "recognise it, THEN calculate
+  it". The Maia review showed the agent now *declines* sound sacs, not just plays unsound
+  ones — so added an explicit "recognise the pattern (all present → CALCULATE the sac now)"
+  section and a "the opposite error: DECLINING a sound sac" watch-out. Added the
+  Kamsky–Shankland 2014 model game (Ne5 → Bxh7+ Kxh7 Qh5+ Kg8 Ne4). Trimmed 77→65 lines.
+- **update** `openings/london-vs-qb6.md` — added the deep-position nuance the redesigned
+  book now carries as an EXCEPTION: **Qb3 is a move-1-of-...Qb6 answer, not forever** —
+  once the queen has sat on b6 for several moves and the position has developed, reflexive
+  Qb3 is often a positional blunder; reason it out instead. Added the concrete traps:
+  Qc2→...Bf5→...Qxb2 pawn loss, the Miles–Minasian 2001 move-order line (7.Qxf5! …Qxb2??
+  8.Qxd5), and the dxc5 gambit (dxc5 Qxb2 Rb1 Qc3+). All FENs verified in python-chess.
+- Sources used (all legally usable — synthesised, not copied verbatim): Wikipedia (London
+  System, Greek gift — CC-BY-SA), Exeter Chess Club notes (Qb3 exchange line, Miles–Minasian
+  trap, Kamsky–Shankland, Blatny–Luchan), modern-chess (Ne5 timing, h4–h5 storm, dxc5 vs
+  ...Qb6). thechessworld.com and 365chess.com returned HTTP 403 (blocked) — did not need them.
+- Registered/updated openings/index.md; all related_pages targets resolve.
+
 ## [2026-06-25] sources+update | lichess-puzzle-themes.md + trigger alignment | Saved Lichess theme curriculum; sharpened motif triggers for the puzzle benchmark
 - Saved `raw/lichess-puzzle-themes.md` (25 official Lichess puzzle-theme definitions, AGPL/free, verbatim) — the same theme tags the agent puzzle benchmark selects on. Recorded in `raw/SOURCES.md`.
 - Aligned wiki triggers to the Lichess motif vocabulary so search_wiki matches: added "capturing the defender" to `tactics/removing-the-defender`, and "quiet move / no forcing move / improving move" to `positional/prophylaxis-and-blockade`. The motifs themselves were already covered by the deep-tactics pass; this is terminology alignment, not new theory.

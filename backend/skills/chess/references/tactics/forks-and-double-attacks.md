@@ -41,7 +41,10 @@ Distinguish two states (your tools flag both):
 1. **capture the forking piece** (is your fork square defended?), or
 2. **move one target with tempo** — a check or a bigger counter-threat that saves
    both, or
-3. the second "target" is defended/not worth winning.
+3. the second "target" is defended AND worth ≤ your forking piece — then it is
+   **not really a target** (taking it just loses you material). A fork only wins a
+   piece that is **undefended, or worth more than the forker** (or the king, which
+   must always move). Check each target's defenders and value.
 A fork that **gives check** is almost always sound: the checked side must answer
 the check and cannot use the move to save the other piece. Verify with
 `chess__imagine_move`.

@@ -148,6 +148,10 @@ _SYSTEM_PROMPT_EXTRA = (
     "irrelevant. Hesitating and changing moves turns a 5-move mate into a 50-move grind."
 )
 
+# The London-System repertoire instruction is NOT here: it lives permanently in the
+# skill (`skills/chess/SKILL.md`, "In the opening — play the London System"), which is
+# the right home for "how to play" guidance and is read once via use_skill('chess').
+
 # ── Gemma 4 thought-channel marker stripping ─────────────────────────────
 #
 # Gemma 4 wraps its chain-of-thought in ``<|channel>thought ... <channel|>``

@@ -89,6 +89,15 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
             "puzzles": _pb / "puzzles_london.json",
             "progress": PuzzleProgress(_pb / "results" / "progress_london.json"),
         },
+        # Greek-gift set: Bxh7+/Bxh2+ sacrifices the agent actually played, Stockfish-
+        # classified sound vs unsound. 'sound' = the sac IS best (accept Bxh7+); 'unsound'
+        # = the sac throws a won game away (accept ANY quiet move that holds the edge, i.e.
+        # NOT the sac). Tests the commit-time Greek-gift nudge: decline unsound sacs while
+        # still playing sound ones. See experiments/puzzle-benchmark/puzzles_greek_gift.json.
+        "greek_gift": {
+            "puzzles": _pb / "puzzles_greek_gift.json",
+            "progress": PuzzleProgress(_pb / "results" / "progress_greek_gift.json"),
+        },
     }
     fastapi_app.state.puzzle_progress = fastapi_app.state.puzzle_sets["offensive"]["progress"]
     logger.info("startup · ready")

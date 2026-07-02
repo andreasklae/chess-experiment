@@ -150,6 +150,55 @@ _SETUP_EXCEPT = ("if a check, a winning capture, a real threat against you, or a
                  "right when the position is genuinely quiet")
 
 SETUP_RULES: list[Rule] = [
+    # --- CENTRE RECAPTURE (most fundamental: take back the d4 pawn) ---
+    Rule("London — recapture on d4",
+         "Black captured your d4-pawn (…cxd4/…exd4); recapture to keep the strong "
+         "London centre. This is core theory, not a free choice to develop instead.",
+         lambda bd: bool(_sound_d4_recaptures(bd)),
+         # candidates are filled dynamically by _rule_lookup from the predicate; we list
+         # the usual two here so the rule is self-describing, but the lookup recomputes
+         # the actually-legal, sound ones for THIS position.
+         ["exd4", "cxd4"],
+         assumes=("Black just took on d4 and you can recapture soundly. Recapturing keeps "
+                  "your centre — the point of the London. If BOTH exd4 and cxd4 are legal, "
+                  "they lead to different structures: exd4 opens the e-file (the Carlsbad "
+                  "setup, knight later to d3); cxd4 keeps the c-file. Pick by the structure "
+                  "you want"),
+         exceptions=("recapture UNLESS a stronger forcing move (a check, or a capture that "
+                     "wins more) is available, or the recapture itself loses material to a "
+                     "tactic — then calculate. Normally, take back the pawn"),
+         wiki="openings/london-central-break"),
+    Rule("London — recapture a traded minor",
+         "Black captured a developed White minor on its key square — the dark bishop on "
+         "f4/g3 (…Bxf4 / …Nxg3) or the light bishop on d3 (…Bxd3). Recapture — it is a "
+         "normal trade and how you recapture shapes the structure.",
+         lambda bd: _traded_minor_recapture_square(bd) is not None
+                    and bool(_sound_recaptures_on(bd, _traded_minor_recapture_square(bd))),
+         ["exf4"],  # recomputed dynamically in _rule_lookup
+         assumes=("Black traded a developed minor and you retake. A PAWN recapture often "
+                  "shapes the game: exf4 gives doubled f-pawns that STRENGTHEN the e5 outpost "
+                  "and hand your knights d4/e5; hxg3 (after …Nxg3) opens the h-file. For …Bxd3, "
+                  "Qxd3 is the natural retake (keeps the pawns healthy); cxd3 only if you want "
+                  "the half-open c-file. Pick by the structure you want"),
+         exceptions=("if a different recapture is clearly better (keeps the pawns healthy, or "
+                     "a zwischenzug/tactic wins more), take that instead — calculate"),
+         wiki="openings/london-central-break"),
+    Rule("London — dark bishop hit by a pawn",
+         "A Black pawn attacks your f4/g3 dark-squared bishop (…e5, …g5). React now — "
+         "challenge the pawn or retreat the bishop; don't play a routine setup move and "
+         "lose it.",
+         lambda bd: _dark_bishop_pawn_attacked_square(bd) is not None
+                    and bool(_dark_bishop_pawn_attack_responses(bd)),
+         ["Bg3"],  # recomputed dynamically in _rule_lookup
+         assumes=("your dark bishop (the London's best minor) is attacked by a pawn. "
+                  "Challenge the attacking pawn with a sound capture (e.g. dxe5), or retreat "
+                  "the bishop to a safe diagonal square (Bg3/Bh2 if h3 is in, or Bg5). Do NOT "
+                  "capture with the bishop into a pawn recapture (e.g. Bxe5 …dxe5 loses it)"),
+         exceptions=("if a check, or a capture/tactic that wins more, is available, take "
+                     "THAT instead. And which reply is best depends on the structure — read "
+                     "the page (vs a ...g6/…d6 King's-Indian setup, Bh2 after h3 is the "
+                     "standard tuck-away)"),
+         wiki="openings/london-vs-kings-indian"),
     # --- EXCEPTION TRIGGERS (specific, checked first) ---
     Rule("London vs ...Qb6 — b2 under fire",
          "Black's queen eyes the loose b2-pawn.",
@@ -163,7 +212,9 @@ SETUP_RULES: list[Rule] = [
                      "on (pieces developed, files opened, a tactic in the air), Qb3 is "
                      "OFTEN NO LONGER RIGHT — it can be a positional blunder. Do not play "
                      "it reflexively: weigh Qb3/Qc1/b3 against a better developing move or "
-                     "a tactic, using the page"),
+                     "a tactic, using the page. If ...c5 came BEFORE your c3, a sharper "
+                     "gambit (Nc3 and if ...Qxb2 then Nb5) or dxc5 is also playable — see "
+                     "openings/london-vs-early-c5"),
          wiki="openings/london-vs-qb6"),
     Rule("London vs ...Nh5 — save the dark bishop",
          "Black's ...Nh5 attacks your f4/g3 dark-squared bishop (a key London piece).",
@@ -256,6 +307,154 @@ def _bishop_developed_dark(board: chess.Board) -> bool:
         board.pieces(chess.BISHOP, W))
 
 
+def _sound_d4_recaptures(board: chess.Board) -> list[str]:
+    """If Black has just captured a White pawn on d4 (…cxd4 / …exd4), return White's
+    SOUND pawn recaptures (exd4 and/or cxd4), best-first. Recapturing to keep the strong
+    London centre is core theory, not improvisation — so this must be BOOK, not left to
+    the agent to find. Sound = a static-exchange recapture that doesn't lose material.
+    Empty list if there's no Black pawn on d4 or no sound recapture."""
+    p = board.piece_at(chess.D4)
+    if not (p and p.piece_type == chess.PAWN and p.color == chess.BLACK):
+        return []
+    try:
+        from _eval import static_exchange_eval
+    except Exception:
+        static_exchange_eval = None
+    outs: list[str] = []
+    for mv in board.legal_moves:
+        if mv.to_square != chess.D4:
+            continue
+        mover = board.piece_at(mv.from_square)
+        if not mover or mover.piece_type != chess.PAWN:
+            continue
+        if static_exchange_eval is not None:
+            try:
+                if static_exchange_eval(board, chess.D4, W) < 0:
+                    continue  # recapture loses material — not sound
+            except Exception:
+                pass
+        try:
+            outs.append(board.san(mv))
+        except Exception:
+            pass
+    # prefer exd4 (opens the e-file, the common Carlsbad recapture) first when both exist
+    outs.sort(key=lambda s: (not s.startswith("exd4"), s))
+    return outs
+
+
+def _traded_minor_recapture_square(board: chess.Board):
+    """If Black has just CAPTURED a developed White MINOR on one of its key London
+    squares — the dark bishop on f4/g3/h2 (…Bxf4, …Nxg3) or the light bishop on d3
+    (…Bxd3) — and a Black piece now sits there attacked by White, return that square;
+    else None. (The square holds the Black capturer; White retakes.)"""
+    for sq in (chess.F4, chess.G3, chess.H2, chess.D3):
+        occ = board.piece_at(sq)
+        if occ is None or occ.color != B:
+            continue
+        if board.attackers(W, sq):
+            return sq
+    return None
+
+
+def _sound_recaptures_on(board: chess.Board, sq: int) -> list[str]:
+    """White's SOUND recaptures of the Black piece on `sq` (SEE ≥ 0), best-first.
+    Ordering is square-aware: on the DARK-bishop squares (f4/g3/h2) a PAWN recapture is
+    the point (exf4/hxg3 shape the structure / open a file), so pawns first; on d3 the
+    QUEEN retake keeps the pawns healthy, so pieces first."""
+    if board.piece_at(sq) is None or board.piece_at(sq).color != B:
+        return []
+    pawns_first = sq in (chess.F4, chess.G3, chess.H2)
+    try:
+        from _eval import static_exchange_eval
+    except Exception:
+        static_exchange_eval = None
+    pawns, pieces = [], []
+    for mv in board.legal_moves:
+        if mv.to_square != sq:
+            continue
+        if static_exchange_eval is not None:
+            try:
+                if static_exchange_eval(board, sq, W) < 0:
+                    continue
+            except Exception:
+                pass
+        mover = board.piece_at(mv.from_square)
+        try:
+            san = board.san(mv)
+        except Exception:
+            continue
+        (pawns if mover and mover.piece_type == chess.PAWN else pieces).append(san)
+    return (pawns + pieces) if pawns_first else (pieces + pawns)
+
+
+def _dark_bishop_pawn_attacked_square(board: chess.Board):
+    """If Black has a PAWN attacking the London dark-squared bishop (on f4/g3/h2) and the
+    bishop is not defended enough to be safe there, return the bishop's square; else None.
+    This is the …e5 / …g5 / …e5-hitting-f4 case — White must react (challenge or retreat),
+    not play a routine setup move."""
+    for sq in (chess.F4, chess.G3, chess.H2):
+        p = board.piece_at(sq)
+        if not (p and p.piece_type == chess.BISHOP and p.color == W):
+            continue
+        pawn_attackers = board.attackers(B, sq) & board.pieces(chess.PAWN, B)
+        if pawn_attackers:
+            return sq
+    return None
+
+
+def _dark_bishop_pawn_attack_responses(board: chess.Board) -> list[str]:
+    """Candidate replies when a Black pawn attacks the London dark bishop: a sound pawn
+    CHALLENGE of the attacker (e.g. dxe5 breaking the pawn that hits f4), then safe bishop
+    RETREATS (Bg3/Bh2/Bg5/Be3/Bd2), best-first. Never a capture that loses the bishop
+    (e.g. Bxe5 answered by …dxe5) — those are filtered by SEE. Empty if not applicable."""
+    bsq = _dark_bishop_pawn_attacked_square(board)
+    if bsq is None:
+        return []
+    try:
+        from _eval import static_exchange_eval
+    except Exception:
+        static_exchange_eval = None
+    challenges, retreats = [], []
+    safe_retreat_sqs = {chess.G3, chess.H2, chess.G5, chess.E3, chess.D2}
+    for mv in board.legal_moves:
+        pc = board.piece_at(mv.from_square)
+        if pc is None:
+            continue
+        # a pawn capture that removes/challenges the attacking pawn structure
+        if pc.piece_type == chess.PAWN and board.is_capture(mv):
+            if static_exchange_eval is not None:
+                try:
+                    if static_exchange_eval(board, mv.to_square, W) < 0:
+                        continue
+                except Exception:
+                    pass
+            try:
+                challenges.append(board.san(mv))
+            except Exception:
+                pass
+        # a safe retreat of the attacked bishop
+        elif mv.from_square == bsq and pc.piece_type == chess.BISHOP \
+                and mv.to_square in safe_retreat_sqs:
+            after = board.copy(stack=False); after.push(mv)
+            # the retreat square must not itself be attacked by a pawn / lose the bishop
+            if static_exchange_eval is not None:
+                try:
+                    if static_exchange_eval(after, mv.to_square, not W) >= 150:
+                        continue
+                except Exception:
+                    pass
+            try:
+                retreats.append(board.san(mv))
+            except Exception:
+                pass
+    # challenges (dxe5…) first, then retreats; de-dup preserving order
+    seen, ordered = set(), []
+    for s in challenges + retreats:
+        if s not in seen:
+            seen.add(s); ordered.append(s)
+    return ordered
+
+
 def _strong_tactic_available(board: chess.Board) -> bool:
     """Is there a DECISIVE forcing tactic a player would always take over their opening
     prep? — a mate-in-1, or a capture/sequence winning at least a MINOR PIECE (>= ~300cp
@@ -292,25 +491,77 @@ def _strong_tactic_available(board: chess.Board) -> bool:
     return False
 
 
+# Rules whose move IS a forced reaction to what Black just did (recapture a piece Black
+# took, or answer a pawn attack on the bishop). These must NOT be suppressed by the
+# tactic-guard: their "winning capture" SEE is just restoring material / the reaction
+# itself — that is exactly the move theory wants, not a bonus tactic to defer for.
+_REACTION_RULES = {
+    "London — recapture on d4",
+    "London — recapture a traded minor",
+    "London — dark bishop hit by a pawn",
+}
+
+
+def _rule_candidates(board: chess.Board, r: "Rule") -> list[str]:
+    """The rule's legal, sound candidates for THIS position (dynamic for the reaction
+    rules that need SAN disambiguation / SEE filtering, static otherwise)."""
+    if r.name == "London — recapture on d4":
+        return _sound_d4_recaptures(board)
+    if r.name == "London — recapture a traded minor":
+        sq = _traded_minor_recapture_square(board)
+        return _sound_recaptures_on(board, sq) if sq is not None else []
+    if r.name == "London — dark bishop hit by a pawn":
+        return _dark_bishop_pawn_attack_responses(board)
+    legal: list[str] = []
+    for san in r.candidates:
+        good = _legal_san(board, san)
+        if good and good not in legal:
+            legal.append(good)
+    return legal
+
+
+def _mate_in_1_available(board: chess.Board) -> bool:
+    """A forced mate-in-1 for the side to move — the one thing that beats even a
+    recapture. (The reaction rules bypass the material tactic-guard, but a mate still
+    wins.)"""
+    for mv in board.legal_moves:
+        if board.gives_check(mv):
+            c = board.copy(stack=False); c.push(mv)
+            if c.is_checkmate():
+                return True
+    return False
+
+
 def _rule_lookup(board: chess.Board) -> BookEntry | None:
-    # A setup move is only the right answer in a QUIET book position. If an obvious
-    # forcing tactic exists, defer — do not tell the agent to play a developing move
-    # when a mate or a winning capture is on the board.
-    if _strong_tactic_available(board):
-        return None
+    # 1) REACTION rules first — a recapture / answer to a pawn attack is the forcing move
+    #    theory wants; it must not be suppressed by the material tactic-guard (that guard
+    #    would misread the recapture itself as a "winning capture"). A MATE-in-1 still wins.
+    mate1 = _mate_in_1_available(board)
     for r in SETUP_RULES:
+        if r.name not in _REACTION_RULES or mate1:
+            continue
         try:
             if not r.predicate(board):
                 continue
         except Exception:
             continue
-        # collect ALL of the rule's legal candidates (best-first) so the agent can
-        # reason among them — a book move comes with its alternatives, not as one answer.
-        legal = []
-        for san in r.candidates:
-            good = _legal_san(board, san)
-            if good and good not in legal:
-                legal.append(good)
+        legal = _rule_candidates(board, r)
+        if legal:
+            return BookEntry(moves=legal, line=r.name, idea=r.idea, source="rule",
+                             assumes=r.assumes, exceptions=r.exceptions, wiki=r.wiki)
+    # 2) Everything else is a QUIET setup/trigger move — only right when nothing forcing
+    #    is on the board. If a real tactic (mate / winning capture) exists, defer.
+    if _strong_tactic_available(board):
+        return None
+    for r in SETUP_RULES:
+        if r.name in _REACTION_RULES:
+            continue
+        try:
+            if not r.predicate(board):
+                continue
+        except Exception:
+            continue
+        legal = _rule_candidates(board, r)
         if legal:
             return BookEntry(moves=legal, line=r.name, idea=r.idea, source="rule",
                              assumes=r.assumes, exceptions=r.exceptions, wiki=r.wiki)

@@ -239,12 +239,88 @@ def test_knight_fork_recall_on_real_puzzles():
     assert flagged / checked >= 0.97, f"knight-fork recall {flagged}/{checked}"
 
 
+def test_own_king_exposure_fires_on_king_hunt():
+    """Proactive king-danger (the defensive twin of the offensive boxing signal). Real
+    loss game 3e83ce50: the king marched into the open under Q+R and was mated. The signal
+    must fire BEFORE the mate, when the king is boxed/advanced with heavy pieces near."""
+    from _features import detect_own_king_exposure
+    # White king on f3, boxed to ~1 flight, black Q+R closing in (the move before Kg4##).
+    b = chess.Board("2b1k1n1/r2p1p2/p3p1p1/1p6/3QPP2/1B3K1r/P6P/8 w - - 0 1")
+    fs = detect_own_king_exposure(b, perspective=chess.WHITE)
+    assert any("KING" in f.text and "EXPOSED" in f.text.upper() or "hunt" in f.text.lower()
+               for f in fs), [f.text for f in fs]
+
+
+def test_own_king_exposure_silent_in_active_king_endgame():
+    """ENDGAME GUARD: an active king near passed pawns in a K+P/K+R ending is CORRECT —
+    the signal must NOT tell the agent to retreat it (the false positives it was tuned out
+    of). No enemy queen + few pieces = endgame → silent."""
+    from _features import detect_own_king_exposure
+    # White Kf5 active vs a lone black rook harassing it — a normal endgame, king should stay.
+    b = chess.Board("8/8/6k1/5PK1/8/8/7r/8 w - - 0 1")
+    fs = detect_own_king_exposure(b, perspective=chess.WHITE)
+    assert fs == [], [f.text for f in fs]
+
+
 def test_skewer_basic():
     from _features import detect_skewers
     # Ba1 skewers Ke5 (front) -> Qg7 (behind) on the a1-h8 diagonal.
     b = chess.Board("8/6q1/8/4k3/8/8/8/B6K w - - 0 1")
     fs = detect_skewers(b)
     assert any("SKEWER" in f.text and "g7" in f.text for f in fs)
+
+
+def test_skewer_defended_front_worth_less_than_attacker_is_not_flagged():
+    """Regression (real game 57fc05ad): the agent played Qd3 believing it
+    'skewered' a rook on c4 with a bishop on a6 behind it. It won nothing: the
+    rook was DEFENDED (by d5, a6, c8) and worth LESS than the queen, so Qxc4?? is
+    met by ...dxc4 losing the queen — the rook is not forced to move. The detector
+    must NOT report this as a skewer, for either side.
+
+    A skewer/pin only wins the piece behind if the FRONT piece is forced to move:
+    it must be undefended, or worth more than the attacking piece.
+    """
+    from _features import detect_skewers
+    # White to move, exactly the position before the mistaken Qd3.
+    b = chess.Board("2q1r1k1/5ppp/bp2p3/p2pP3/2rN4/6QP/PP3PP1/3R1RK1 w - - 4 23")
+    # after Qd3, the queen would "skewer" the defended rook c4 -> bishop a6:
+    b.push_san("Qd3")
+    ours = [f for f in detect_skewers(b, perspective=chess.WHITE)
+            if f.side and "skewer" in f.text.lower()]
+    assert ours == [], f"defended-cheaper-front is not a real skewer: {[f.text for f in ours]}"
+    # and it must not be advertised as a potential skewer one move earlier either.
+    b0 = chess.Board("2q1r1k1/5ppp/bp2p3/p2pP3/2rN4/6QP/PP3PP1/3R1RK1 w - - 4 23")
+    ours0 = [f for f in detect_skewers(b0, perspective=chess.WHITE)
+             if f.side and "skewer" in f.text.lower()]
+    assert ours0 == [], f"no bogus potential skewer for Qd3: {[f.text for f in ours0]}"
+
+
+def test_skewer_still_fires_when_front_is_forced():
+    """The soundness filter must not kill REAL skewers. Three that must still fire:
+    king in front, front worth more than the attacker, and an undefended front."""
+    from _features import detect_skewers
+
+    def mine(fen):
+        return [f for f in detect_skewers(chess.Board(fen))
+                if f.side and "skewer" in f.text.lower()]
+
+    # king-in-front (a3) → rook behind (a8): king must move, rook falls.
+    assert mine("r7/8/8/8/8/k7/8/R6K w - - 0 1")
+    # front is an UNDEFENDED rook, prize is a bishop behind: front forced (loose).
+    assert mine("4b1k1/8/8/4r3/8/8/8/4R1K1 w - - 0 1")
+    # front QUEEN worth more than the skewering ROOK, prize a rook behind.
+    assert mine("4r1k1/8/8/8/4q3/8/8/4R1K1 w - - 0 1")
+
+
+def test_skewer_prize_behind_must_be_a_piece_not_a_pawn():
+    """A 'skewer' whose only prize behind is a pawn is noise and must be dropped
+    (this was a false positive in the same real game: a rook-to-c3 'skewer' of the
+    queen with only a pawn behind — and the rook would hang on c3 anyway)."""
+    from _features import detect_skewers
+    b = chess.Board("2q1r1k1/5ppp/bp2p3/p2pP3/2rN4/6QP/PP3PP1/3R1RK1 w - - 4 23")
+    pawn_prizes = [f for f in detect_skewers(b)
+                   if "skewer" in f.text.lower() and "pawn behind" in f.text.lower()]
+    assert pawn_prizes == [], f"pawn-only skewers are noise: {[f.text for f in pawn_prizes]}"
 
 
 def test_discovered_check_lists_moves():

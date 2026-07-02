@@ -39,6 +39,25 @@ def _gate_full(mm, fen: str, uci: str):
     return mm._blunder_gate(board, move)
 
 
+class TestWalksIntoMate:
+    def test_walking_into_mate_in_1_flagged(self, mm):
+        # Real loss (game 3e83ce50): the king marched Kg2-Kf3-Kg4 and was mated ...Rg3#.
+        # The move Kg4 walks into a forced mate-in-1 — the gate must flag it.
+        w = _gate(mm, "2b1k1n1/r2p1p2/p3p1p1/1p6/3QPP2/1B3K1r/PPP4q/R1B2R2 w - - 2 23", "f3g4")
+        assert w is not None and "WALKS INTO MATE" in w
+
+    def test_normal_move_not_flagged_as_mate(self, mm):
+        # A quiet developing move does not allow any opponent mate.
+        w = _gate(mm, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "e2e4")
+        assert w is None or "WALKS INTO MATE" not in (w or "")
+
+    def test_walk_into_mate_is_soft(self, mm):
+        # It is SOFT (hard=False): sometimes every legal move loses and the agent must
+        # still be able to play the toughest.
+        res = _gate_full(mm, "2b1k1n1/r2p1p2/p3p1p1/1p6/3QPP2/1B3K1r/PPP4q/R1B2R2 w - - 2 23", "f3g4")
+        assert res is not None and "WALKS INTO MATE" in res[0] and res[1] is False
+
+
 class TestFreeCaptures:
     def test_abandoning_rook_defender_flagged(self, mm):
         # Game 62427a9b: 27.Kd6?? left Rb7 to Kxb7 after 54 plies of drill.

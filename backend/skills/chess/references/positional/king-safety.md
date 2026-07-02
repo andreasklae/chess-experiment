@@ -2,10 +2,10 @@
 category: positional
 description: Spotting and handling an exposed king — yours (defend) or theirs (attack). King safety is the single biggest factor; most lost games are lost here, not on material.
 triggers: [king safety, exposed king, uncastled, open file near king, attack the king, king in the center, pawn shield, luft, back rank, getting mated, defend my king]
-related_pages: [principles/luft, principles/opening-principles, strategy/handle-a-threat, mates/index, positional/evaluate-position]
+related_pages: [positional/defending-the-king, principles/luft, principles/opening-principles, strategy/handle-a-threat, mates/index, positional/evaluate-position]
 tags: [positional, king, safety, attack, defense]
 status: draft
-updated: 2026-06-24
+updated: 2026-07-01
 ---
 
 # King safety
@@ -37,6 +37,23 @@ so fight the centre before (and against) a king hunt.
 - **Trade off the enemy's attacking pieces** — the attacker wants to keep them;
   every defender-for-attacker trade helps you.
 - **Don't march your king into the open** and don't open lines next to it.
+
+**Your king is ALREADY being hunted (the radar warns "king exposed in the open"):**
+This is the situation that loses games — most of the agent's losses are here — so it has
+its OWN page: **[[positional/defending-the-king]]** (the full survival recipe). In short,
+when `show_position` flags your king as marched-off-shelter / boxed with heavy pieces
+closing in, STOP attacking and survive:
+1. **Do NOT walk the king further forward.** Each "safe-looking" step can walk into a
+   mating net — before ANY king move, run `chess__imagine_move` and read the opponent's
+   checks; if the move leaves the king with checks that continue the hunt, pick another.
+2. **Head back toward your own army** (your pawns/pieces) — a king is safe next to its
+   own men, deadly alone in the open.
+3. **BLOCK the checking line with a piece** (interpose) rather than running — a blocked
+   check ends the tempo; a king move often just invites the next check.
+4. **Trade off the attackers**, especially the enemy QUEEN — one trade can end the whole
+   attack. Giving back some material to kill the attack is worth it if you were ahead.
+5. **Make LUFT** if the danger is a back-rank mate (a quiet rook-pawn move) — see
+   [[principles/luft]].
 
 **Their king is the unsafe one (attack):**
 - **Open lines** toward it (a pawn break, a sacrifice to rip the shield).

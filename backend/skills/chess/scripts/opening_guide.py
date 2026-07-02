@@ -49,10 +49,49 @@ def routes(board: chess.Board) -> list[tuple[str, str, str]]:
         out.append(("Black's ...Nh5 attacks your dark-squared bishop",
                     "openings/london-vs-nh5",
                     "save the bishop: Bh2 (if h3 in) / Bg5 / allow ...Nxg3 hxg3"))
+    # a Black PAWN attacking the f4/g3 dark bishop (…e5, …g5) — react, don't develop
+    for _bsq in (chess.F4, chess.G3, chess.H2):
+        _bp = board.piece_at(_bsq)
+        if _bp and _bp.piece_type == chess.BISHOP and _bp.color == W \
+                and (board.attackers(B, _bsq) & board.pieces(chess.PAWN, B)):
+            out.append(("a Black pawn attacks your dark-squared bishop (…e5/…g5)",
+                        "openings/london-vs-kings-indian",
+                        "challenge the pawn (e.g. dxe5) or retreat the bishop (Bh2 after h3 / Bg3); "
+                        "don't play a quiet setup move and lose it"))
+            break
+    # Black just CAPTURED a developed White minor on its key square — recapture.
+    # Dark bishop on f4/g3 (…Bxf4/…Nxg3) or light bishop on d3 (…Bxd3).
+    for _rsq in (chess.F4, chess.G3, chess.H2, chess.D3):
+        _rp = board.piece_at(_rsq)
+        if _rp and _rp.color == B and board.attackers(W, _rsq):
+            if _rsq == chess.D3:
+                out.append(("Black traded off your light-squared bishop (…Bxd3)",
+                            "openings/london-central-break",
+                            "recapture — Qxd3 keeps your pawns healthy; cxd3 only for the c-file"))
+            else:
+                out.append(("Black traded off your dark-squared bishop (…Bxf4 / …Nxg3)",
+                            "openings/london-central-break",
+                            "recapture — exf4 gives doubled f-pawns that strengthen e5; hxg3 opens "
+                            "the h-file. Pick by the structure you want"))
+            break
     if _is(board, chess.G6, chess.PAWN, B):
         out.append(("Black is fianchettoing (...g6, King's Indian setup)",
                     "openings/london-vs-kings-indian",
                     "use Be2 not Bd3, and get h3 in"))
+    # Black's light bishop out early (...Bf5 mirror or ...Bg4 pin on f3)
+    if _is(board, chess.F5, chess.BISHOP, B) or (
+            _is(board, chess.G4, chess.BISHOP, B) and _is(board, chess.F3, chess.KNIGHT, W)):
+        which = "...Bf5 (mirroring you)" if _is(board, chess.F5, chess.BISHOP, B) \
+            else "...Bg4 (pinning your Nf3)"
+        out.append((f"Black developed the light bishop early ({which})",
+                    "openings/london-vs-bishop-out",
+                    "solid for Black; develop normally — and note the Qa4→Ba6 trap"))
+    # early ...c5 hitting d4 before your c3 is in (pressure on the centre)
+    if _is(board, chess.C5, chess.PAWN, B) and not _is(board, chess.C3, chess.PAWN, W) \
+            and _is(board, chess.D4, chess.PAWN, W) and board.fullmove_number <= 6:
+        out.append(("Black hit d4 with an early ...c5 (before your c3)",
+                    "openings/london-vs-early-c5",
+                    "support d4, or the Nc3–Nb5 gambit vs ...Qxb2, or push d5 into a Benoni"))
 
     # --- your attacking resource: Bd3 pointing at h7, Black castled, no Nf6 ---
     if _is(board, chess.D3, chess.BISHOP, W) and _is(board, chess.G8, chess.KING, B):
@@ -63,13 +102,21 @@ def routes(board: chess.Board) -> list[tuple[str, str, str]]:
                     "openings/london-bxh7-greek-gift",
                     f"before ANY Bxh7+ sacrifice, {flag}"))
 
-    # --- always-available hub when still in the opening setup ---
+    # --- setup phase vs. plan phase ---
     setup_done = (not _is(board, chess.C1, chess.BISHOP, W)  # dark bishop developed
                   and board.has_castling_rights(W) is False)
     if not setup_done:
         out.append(("you are still building the London setup",
                     "openings/london-system",
                     "the setup order (Bf4 before e3, then e3/Nf3/Bd3/c3/Nbd2/O-O) + the Ne5 plan"))
+    else:
+        # setup complete: offer the two main plans (structure decides which)
+        out.append(("setup done — the kingside attack plan",
+                    "openings/london-ne5-attack",
+                    "Ne5 outpost → f4 → Rf3–h3 → h4–h5 → Bxh7+"))
+        out.append(("setup done — the central break plan",
+                    "openings/london-central-break",
+                    "Qe2, Re1, then e3–e4; the page explains which structure picks which plan"))
     return out
 
 

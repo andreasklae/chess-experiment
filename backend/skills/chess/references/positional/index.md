@@ -18,12 +18,13 @@ means and how to handle it**.
 | there are pawn-structure strengths (passed pawn, connected pawns, majority, chains) | [pawn-strengths](pawn-strengths.md) |
 | it's about where the pieces belong (open files, outposts, good/bad bishop, bishop pair, space) | [piece-activity](piece-activity.md) |
 | you're converting a small edge — stop their plan (prophylaxis), blockade a passed/isolated pawn, seize the 7th rank | [prophylaxis-and-blockade](prophylaxis-and-blockade.md) |
-| a king looks exposed/unsafe — yours or theirs | [king-safety](king-safety.md) |
+| a king looks exposed/unsafe — yours or theirs (the general assessment) | [king-safety](king-safety.md) |
+| **YOUR king is under attack / being hunted** — the survival recipe (trade attackers, block checks, retreat to your army) | [defending-the-king](defending-the-king.md) |
 
 ## Routing
 
 - A specific piece is attacked / there's a threat to answer → [`../strategy/handle-a-threat`](../strategy/handle-a-threat.md).
-- A concrete tactic (fork, pin, loose piece) is in the air → [`../tactics/`](tactics/index.md).
+- A concrete tactic (fork, pin, loose piece) is in the air → [`../tactics/`](../tactics/index.md).
 - You've assessed it and need to commit to a plan → [`../strategy/make-a-plan`](../strategy/make-a-plan.md).
 - You're clearly winning and converting → [`../strategy/convert-advantage`](../strategy/convert-advantage.md).
 - It's the opening and you're developing → [`../principles/opening-principles`](../principles/opening-principles.md).

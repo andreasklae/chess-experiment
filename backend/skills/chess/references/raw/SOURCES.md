@@ -64,6 +64,31 @@ tags the agent puzzle benchmark (`experiments/puzzle-benchmark/`) selects on.
 Used to align/sharpen the wiki tactic-page descriptions and `triggers` so the
 agent's `search_wiki` matches the motif vocabulary. Retrieved 2026-06-25.
 
+## London System curriculum (read-and-note web synthesis, 2026-07-01)
+
+| File | Sources consulted | License / handling |
+|---|---|---|
+| `london-system-notes.md` | chessdoctrine.com, chess-teacher.com, modern-chess.com, 365chess.com, thechessworld.com London guides; Wikipedia *London System* | **Copyrighted web guides — read-and-note only.** No verbatim text stored; only non-copyrightable facts (move orders, plans, which model games exist) restated in our own words. Every concrete line re-verified in python-chess before entering a wiki page. |
+
+Named books consulted for *what exists* but **NOT reproduced** (copyright): GM Nikola
+Sedlak, *The London System: The Adventure Continues*; GM Baadur Jobava's London
+courses. Only the fact of their existence and the plans they teach (uncopyrightable)
+informed the notes; no text was copied. This is the readable-and-notable path the
+[[tool-fairness]] rulebook allows.
+
+**Correction caught during verification (why re-checking matters):** an early draft of
+`openings/london-vs-qb6.md` gave the dxc5 gambit as "dxc5 Qxb2 **Rb1** Qc3+", but Rb1
+is *illegal* while the b1-knight is home. Corrected to the real lines (Nd2 after dxc5;
+or the Nc3→Nb5 gambit in the ...c5-early move order). Sources state plans loosely; the
+board is the authority.
+
+
+## King-safety / defence curriculum (read-and-note web synthesis, 2026-07-01)
+
+| Wiki page | Sources consulted | Handling |
+|---|---|---|
+| `positional/defending-the-king.md` (new), `positional/king-safety.md` (extended) | chessfox.com "Keep the king safe", chess.com forums/lessons on defending king attacks, general defensive-technique guides | **Read-and-note only** — non-copyrightable defensive principles (trade the attackers/queen, block checks, retreat to your army, distinguish real vs spite checks, luft) restated in our own words. Paired with the new `detect_own_king_exposure` radar signal so the tool that flags the danger routes to the page that says how to survive it.
+
 ## Diagram handling (point made explicit)
 
 The `wikipedia-*.md` files store the article text **with every position diagram

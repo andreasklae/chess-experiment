@@ -2,7 +2,7 @@
 category: openings
 description: You are White and want a solid, same-every-game opening. The London System setup (d4, Bf4, e3, Nf3, Bd3, c3, Nbd2, O-O) and the core Ne5 plan — plus where to go for each Black reply.
 triggers: [london system, what opening should I play, first move as white, d4 opening, Bf4, how to develop in the opening, opening plan white, what to do in the opening, london setup, queen's pawn opening]
-related_pages: [openings/london-vs-qb6, openings/london-vs-kings-indian, openings/london-bxh7-greek-gift, openings/london-vs-nh5, principles/opening-principles, positional/king-safety]
+related_pages: [openings/london-ne5-attack, openings/london-central-break, openings/london-vs-qb6, openings/london-vs-bishop-out, openings/london-vs-early-c5, openings/london-vs-kings-indian, openings/london-bxh7-greek-gift, openings/london-vs-nh5, openings/london-jobava, principles/opening-principles, positional/king-safety]
 tags: [opening, london, d4, setup, plan, development]
 status: draft
 updated: 2026-07-01
@@ -37,10 +37,17 @@ kick the f6-knight away.
 - **Black fianchettoes ...g6 and ...Bg7** (King's Indian setup) → read
   `openings/london-vs-kings-indian`.
 - **Black plays ...Nh5 to trade your f4-bishop** → read `openings/london-vs-nh5`.
+- **Black plays an early ...c5 hitting d4** (before your c3) → read
+  `openings/london-vs-early-c5` (support d4, the Nc3–Nb5 gambit, or push d5).
+- **Black develops the light bishop early, ...Bf5 or ...Bg4** → read
+  `openings/london-vs-bishop-out` (solid for Black, but note the Qa4→Ba6 trap).
 - **Your bishop is on d3, Black has castled and has NO knight on f6** → a **Bxh7+**
   sacrifice may be on. Read `openings/london-bxh7-greek-gift` BEFORE playing it.
-- **Otherwise** (a quiet QGD-like setup with ...d5 ...e6) → complete the setup, play
-  Ne5, then expand on the kingside.
+- **Otherwise** (a quiet QGD-like setup with ...d5 ...e6) → complete the setup, then
+  pick a plan: the **kingside attack** (Ne5 → f4 → Rf3–h3 → h4–h5 → Bxh7+, read
+  `openings/london-ne5-attack`) OR the **central e4 break** (Qe2, Re1, e4 — read
+  `openings/london-central-break`, which also explains the pawn structures that decide
+  between the two plans).
 
 ## Watch out for
 - **Don't play e3 before Bf4** — the bishop gets stuck behind the pawn chain (the whole

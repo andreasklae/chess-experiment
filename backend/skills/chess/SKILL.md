@@ -67,16 +67,26 @@ This page tells you what tools exist and how to use them well.
 
 ## In the opening — play the London System
 
-You play the **London System** as White. In the opening (roughly the first ~10
-moves), before anything else, call **`chess__opening_book`**: it returns our
-**prepared, memorised** London move for this position (with the line name and the
-idea) if there is one — this is studied theory, you may play it, but read the idea and
-confirm it fits, then commit. When it says **"out of book"**, you are past prepared
-theory: think for yourself and use the wiki.
+You play the **London System** as White. The setup is **1.d4, 2.Bf4** (dark bishop
+OUTSIDE the pawn chain, BEFORE e3), then **e3, Nf3, Bd3** (or **Be2** vs a ...g6
+fianchetto), **c3, Nbd2, O-O**; then aim a knight at **e5**. Once developed, pick a
+plan: the **kingside attack** (Ne5 → f4 → Rf3–h3 → h4–h5 → Bxh7+) or the **central
+e4 break** (Qe2, Re1, e4). The `openings/` wiki has a page for each plan and for
+every common Black reply — reach them through the two tools below.
+
+In the opening (roughly the first ~10 moves), before anything else, call
+**`chess__opening_book`**: it returns our **prepared, memorised** London move for this
+position (with the line name and the idea) if there is one — this is studied theory,
+you may play it, but read the idea and confirm it fits, then commit. When it says
+**"out of book"**, you are past prepared theory: think for yourself and use the wiki.
+If the book names an **exception** (the position has moved on, a tactic is present),
+reason it out from the page rather than playing the move reflexively.
 
 Call **`chess__opening_guide`** when you are unsure what to do or what the opponent's
 move means — it names the exact `openings/` theory page that fits (e.g. Black's ...Qb6
-hitting b2, ...g6 fianchetto, ...Nh5 hitting your bishop, or your Bd3 aiming at h7).
+hitting b2, an early ...c5 on d4, ...Bf5/...Bg4 out early, ...g6 fianchetto, ...Nh5
+hitting your bishop, or your Bd3 aiming at h7). Once you are developed it also points
+to the two plan pages (kingside attack / central break).
 **Read the page it names before deciding** — especially before any **Bxh7+** sacrifice
 (it works only under strict conditions; a premature sac just loses a piece).
 

@@ -51,6 +51,79 @@ def test_qb6_response_is_move_order_dependent():
     assert e2 and e2.moves[0] == "Qb3"
 
 
+def test_recapture_on_d4_is_book_not_a_developing_move():
+    """Regression (real game 1705bcb5): after 1.d4 Nf6 2.Bf4 c5 3.e3 cxd4 the book told
+    the agent to play the routine developing move Nf3, so it had to IMPROVISE the exd4
+    recapture. Recapturing the centre pawn is core London theory — it must be BOOK.
+    """
+    b = _board("d4", "Nf6", "Bf4", "c5", "e3", "cxd4")
+    e = ob.lookup(b)
+    assert e is not None and e.moves == ["exd4"], f"expected exd4 as book, got {e and e.moves}"
+    assert e.source == "rule" and "recapture" in e.line.lower()
+    assert e.wiki == "openings/london-central-break"
+    # with c3 already in, BOTH recaptures are book candidates (exd4 first — Carlsbad)
+    b2 = _board("d4", "d5", "Bf4", "Nf6", "e3", "c5", "c3", "Nc6", "Nf3", "cxd4")
+    e2 = ob.lookup(b2)
+    assert e2 is not None and e2.moves[0] == "exd4" and "cxd4" in e2.moves
+    # the recapture rule carries assumptions + exceptions (agent still reasons)
+    assert e.assumes and e.exceptions
+    # a plain quiet position (no pawn on d4) does NOT trigger the recapture rule
+    quiet = _board("d4", "d5", "Bf4", "Nf6")  # White to move, needs e3 — not a recapture
+    eq = ob.lookup(quiet)
+    assert eq is not None and "recapture" not in eq.line.lower()
+
+
+def test_dark_bishop_attacked_by_pawn_is_book_not_a_setup_move():
+    """Regression (real game 5166674a): after 1.d4 d6 2.Bf4 e5, the …e5 pawn attacks the
+    f4-bishop, but the book offered the routine setup move e3 — the agent had to improvise
+    dxe5. Reacting to a pawn attack on the London bishop is theory, so it must be BOOK.
+    """
+    b = _board("d4", "d6", "Bf4", "e5")
+    e = ob.lookup(b)
+    assert e is not None and "dark bishop" in e.line.lower()
+    # dxe5 (challenge the attacker) is offered first, then safe retreats — NOT plain e3
+    assert e.moves[0] == "dxe5" and "e3" not in e.moves
+    # never a bishop capture that loses the piece (Bxe5 answered by …dxe5)
+    assert "Bxe5" not in e.moves
+    # every offered move is legal
+    for san in e.moves:
+        assert b.parse_san(san) in b.legal_moves
+    assert e.wiki == "openings/london-vs-kings-indian" and e.assumes and e.exceptions
+    # …g5 hitting f4 → a safe retreat is book
+    b2 = _board("d4", "d5", "Bf4", "h6", "e3", "g5")
+    e2 = ob.lookup(b2)
+    assert e2 is not None and "dark bishop" in e2.line.lower() and e2.moves
+    # control: quiet position (bishop not attacked) still gives the normal setup move
+    quiet = _board("d4", "d5", "Bf4", "Nf6")
+    eq = ob.lookup(quiet)
+    assert eq is not None and "dark bishop" not in eq.line.lower()
+
+
+def test_recapture_a_traded_minor_is_book():
+    """Regression (10 Maia games, move 7): after …Bxf4 trading the London dark bishop,
+    the book returned NOTHING (the material tactic-guard misread the exf4 recapture as a
+    'winning capture' and deferred), so the agent improvised exf4 every game. Recapturing
+    a traded piece is theory — and the recapture must never be suppressed by the guard.
+    Generalised to the light bishop on d3 (…Bxd3, seen in batch-3 game 8).
+    """
+    b = _board("d4", "d5", "Bf4", "Nc6", "e3", "Nf6", "Nf3", "e6", "Bd3", "Bd6", "c3", "Bxf4")
+    e = ob.lookup(b)
+    assert e is not None and e.moves[0] == "exf4" and "traded minor" in e.line.lower()
+    assert e.wiki == "openings/london-central-break" and e.assumes and e.exceptions
+    # …Nxg3 (bishop on g3) → hxg3 opens the h-file, also book (pawn recapture first)
+    b2 = _board("d4", "d5", "Bf4", "Nf6", "e3", "c5", "c3", "Nc6", "Nf3", "Nh5", "Bg3", "Nxg3")
+    e2 = ob.lookup(b2)
+    assert e2 is not None and "hxg3" in e2.moves and "traded minor" in e2.line.lower()
+    # …Bxd3 (light bishop) → Qxd3 first (keeps pawns healthy), cxd3 also offered
+    b3 = _board("d4", "d6", "Bf4", "Be6", "e3", "Qd7", "Nf3", "Bf5", "Bd3", "Bxd3")
+    e3 = ob.lookup(b3)
+    assert e3 is not None and e3.moves[0] == "Qxd3" and "traded minor" in e3.line.lower()
+    # a real MATE-in-1 still beats a recapture (reaction rules bypass the *material* guard
+    # but not mate): pure back-rank mate position → book stays silent.
+    mate = chess.Board("6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1")
+    assert ob.lookup(mate) is None
+
+
 def test_setup_rules_fill_transpositions():
     """A London position reached by a different move order still gets a book move via
     the setup-rule layer (exact-only would miss it)."""

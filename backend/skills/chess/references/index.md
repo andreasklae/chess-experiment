@@ -23,6 +23,7 @@ exactly what each folder holds so you can route in one hop.
 
 | If the position is… | open this folder |
 |---|---|
+| **you're in the OPENING (roughly moves 1–10)** — you play the London System; the setup, the two plans (Ne5 attack / e4 break), and how to meet each Black reply (…Qb6, …g6, …c5, …Bf5, …Nh5, Bxh7+) | [`openings/`](openings/index.md) |
 | **you're not sure where to start** — the every-move checklist + what to aim for in this phase (opening/middlegame/endgame) | [`fundamentals/`](fundamentals/index.md) |
 | **the enemy king is matable** — you can force or are hunting checkmate (basic K+Q / K+R / K+2R drills AND named mating nets like back-rank, smothered) | [`mates/`](mates/index.md) |
 | **a tactic is in the air** — a fork (K+Q, K+R), a pin/skewer, a discovered attack, a loose piece, an overworked defender | [`tactics/`](tactics/index.md) |
@@ -31,8 +32,8 @@ exactly what each folder holds so you can route in one hop.
 | **you need a rule-of-thumb / sanity check** on a move — opening rules, when to trade, stalemate, luft | [`principles/`](principles/index.md) |
 | **you need a PLAN** — quiet position, "what am I trying to do here?", answering a threat, converting an advantage | [`strategy/`](strategy/index.md) |
 
-*(Folders for openings and per-game analyses exist but have no pages yet —
-they are added by ingestion and post-game review.)*
+*(The per-game-analyses folder is populated by post-game review; open it when you
+want a worked example from a real game.)*
 
 ## When NOT to look anything up
 

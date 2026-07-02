@@ -94,6 +94,33 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | No
             "draw. If you are winning, this throws away the win.", True
         )
 
+    # Walks INTO a forced mate-in-1: after this move the opponent has a move that
+    # checkmates us. This is the king-safety loss pattern (12/12 recent ranked losses
+    # were checkmates) — the defensive twin of the SEE hang-gate. Pure mechanics (scan
+    # the opponent's replies for mate); no judgement. SOFT so a forced/only-move can
+    # still be played (sometimes every move loses), but loud — the agent must not
+    # reflexively walk into a one-move mate. Skip if we are already delivering mate
+    # (handled above) or the opponent has no mating material anyway.
+    opp_mates = []
+    for reply in after.legal_moves:
+        a2 = after.copy(stack=False)
+        a2.push(reply)
+        if a2.is_checkmate():
+            try:
+                opp_mates.append(after.san(reply))
+            except Exception:
+                opp_mates.append(after.uci(reply))
+            if len(opp_mates) >= 3:
+                break
+    if opp_mates:
+        return (
+            f"⚠ this move WALKS INTO MATE: after it the opponent plays "
+            f"{opp_mates[0].rstrip('#+')}# and it is CHECKMATE. Unless every legal move loses and this "
+            f"is the toughest, pick another — check your king's safety with "
+            f"chess__imagine_move first (read positional/defending-the-king.md).",
+            False,
+        )
+
     # Is the opponent reduced to a bare (or pawns-only) king? Then any free
     # gift of a rook-or-better is never a real sacrifice — it is a basic-mate
     # blunder, and confirm must not wave it through.
@@ -149,6 +176,41 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | No
                 "its move). Pick a move that makes progress — shrink the enemy "
                 "king's box or mobility, drive it toward the edge/corner.",
                 True,
+            )
+
+    # Greek-gift bishop sacrifice (Bxh7+/Bxh2+): a piece sac that gives CHECK,
+    # so SEE on the square reads it as a "trade" (bishop for the h-pawn + check)
+    # and the material-loss check below never fires — yet it LOSES outright when
+    # the king can escape the follow-up (…Kg6/…Kf8) and White has no knockout
+    # (the batch-3 top accuracy-leak: 4 of 11 such sacs threw a won game away).
+    # Whether it WORKS needs calculating the king hunt to a leaf, which is exactly
+    # what imagine_line is for — so this is a SOFT nudge to go verify, never a
+    # verdict on the sacrifice. Fires only when it is a REAL sac (the piece is not
+    # recovered on its square by SEE) into a castled king that can recapture.
+    if (os.environ.get("CHESS_DISABLE_GREEK_GIFT_NUDGE") != "1"
+            and board.piece_at(move.from_square)
+            and board.piece_at(move.from_square).piece_type == chess.BISHOP
+            and move.to_square in (chess.H7, chess.H2)
+            and board.is_capture(move)
+            and after.is_check()):
+        target = move.to_square
+        # the enemy king must be able to recapture (the sac's whole premise)
+        enemy_king = after.king(not mover)
+        king_can_take = enemy_king is not None and target in after.attacks(enemy_king)
+        # a REAL sacrifice: after the forced recapture we are down material on that
+        # square (SEE from our seat < 0 means taking back doesn't recover the piece)
+        real_sac = static_exchange_eval(after, target, mover) < 0 or king_can_take
+        if king_can_take and real_sac:
+            return (
+                "GREEK-GIFT SACRIFICE CHECK: this is a bishop sacrifice on "
+                f"{chess.square_name(target)} — it WINS only if you calculate the whole "
+                "king hunt to a forced mate or decisive attack. Before committing, play "
+                "it out with chess__imagine_line: the sac, "
+                f"…K x{chess.square_name(target)}, your Ng5+ (or Ng4+), and EVERY king "
+                "reply — especially …Kg6 and …Kf8 (the king walking OUT). If the king "
+                "escapes and you have no follow-up check/mate, the sac just loses a piece; "
+                "play a quiet move instead. Only confirm this if imagine_line shows it wins.",
+                False,  # SOFT: a sound Greek gift is legitimate and must be confirmable
             )
 
     # Losing trades, via static exchange evaluation on the moved piece's

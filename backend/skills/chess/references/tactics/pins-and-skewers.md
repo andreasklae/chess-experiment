@@ -44,6 +44,16 @@ the line, capture the lesser piece behind it.
   defending. Add a *different* defender instead ([[tactics/removing-the-defender]]).
 
 ## Soundness check
+- **A skewer only wins if the FRONT piece is actually FORCED to move.** It is
+  forced only when leaving it there costs its owner material — i.e. the front piece
+  is **undefended (loose)**, or **worth MORE than your attacking piece**. If the
+  front piece is **defended AND worth ≤ your attacker, it is NOT forced**: your
+  "skewer" wins nothing, because capturing it would just lose you material. Example
+  of the trap: your **queen** "skewers" a **defended rook** with a bishop behind it
+  — but Q(9)-takes-R(5) is met by a recapture, so the rook is happy to sit; the
+  bishop behind is never exposed. The same rule applies to **forks** and any
+  attack: hitting a defended piece worth less than the attacker is not a real
+  threat. Check the front piece's defenders and value BEFORE playing the "skewer".
 - A **relative** pin can break: the pinned piece may legally move *with a
   counter-threat or check* that saves it. Before counting a relative pin as a win,
   confirm the pinned piece can't wriggle out with tempo (`chess__imagine_move`).
