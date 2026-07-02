@@ -865,3 +865,41 @@ def test_situation_respond_to_check():
     from _features import assess_situation
     s = assess_situation(chess.Board("6k1/5ppp/8/8/8/8/5PPP/4q1K1 w - - 0 1"))
     assert s["in_check"] and "CHECK" in s["priority"]
+
+
+class TestPromotePriority:
+    """PROMOTE must outrank CONSOLIDATE when the opponent has no pieces and we
+    have a passer — game 9eddc039 shuffled a knight for 15 moves in K+N+P vs K
+    while the header said 'trade PIECES to simplify' (has_pieces counted OUR
+    knight) and the push-the-pawn advice sat buried mid-page."""
+
+    def test_bare_king_with_passer_says_promote(self):
+        from _features import assess_situation
+        b = chess.Board("4k3/8/8/4K3/5N2/4P3/8/8 w - - 9 67")
+        sit = assess_situation(b)
+        assert sit["priority"].startswith("PROMOTE")
+        text = "\n".join(sit["lines"])
+        assert "e3" in text            # names the passer
+        assert "wasted tempi" in text  # the anti-check line
+        assert "50-move" in text
+
+    def test_progress_moves_listed(self):
+        from _features import assess_situation
+        b = chess.Board("4k3/8/8/4K3/5N2/4P3/8/8 w - - 9 67")
+        text = "\n".join(assess_situation(b)["lines"])
+        assert "e4" in text  # the pawn push is named as a progress move
+
+    def test_consolidate_when_enemy_has_pieces(self):
+        from _features import assess_situation
+        # Same material edge but the opponent still has a rook -> CONSOLIDATE.
+        b = chess.Board("4k2r/8/8/4K3/5N2/4P3/8/6R1 w - - 0 40")
+        sit = assess_situation(b)
+        assert sit["priority"].startswith("CONSOLIDATE")
+        assert "trade PIECES" in "\n".join(sit["lines"])
+
+    def test_no_promote_without_passer(self):
+        from _features import assess_situation
+        # Bare enemy king, no pawn at all: K+N+B vs K must not say PROMOTE.
+        b = chess.Board("4k3/8/8/4K3/5N2/3B4/8/8 w - - 0 40")
+        sit = assess_situation(b)
+        assert not sit["priority"].startswith("PROMOTE")

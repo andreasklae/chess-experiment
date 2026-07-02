@@ -348,3 +348,9 @@ def test_threat_priority_names_imagine_trade_target():
         sit = fn[0](board)
     text = "\n".join(sit["lines"]) if isinstance(sit, dict) else str(sit)
     assert 'imagine_trade(target="d2")' in text
+
+
+def test_opening_radar_silent_in_endgame(sp):
+    import chess as _c
+    assert sp._opening_radar(_c.Board("4k3/8/8/4K3/5N2/4P3/8/8 w - - 9 67")) == []
+    assert sp._opening_radar(_c.Board()) != []

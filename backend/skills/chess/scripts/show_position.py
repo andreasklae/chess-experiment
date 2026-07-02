@@ -310,6 +310,11 @@ def _opening_radar(board: chess.Board) -> list[str]:
     forces a move."""
     if board.turn != chess.WHITE:
         return []
+    # No opening guidance in the endgame: the London plan pointers were still
+    # rendering at move 67 of a K+N+P-vs-K ending (game 9eddc039), pure noise
+    # competing with the PROMOTE priority for the agent's attention.
+    if "endgame" in detect_phase(board)[0]:
+        return []
     lines: list[str] = []
     # book move (memorised theory)
     try:

@@ -356,3 +356,11 @@ New folder `positional/` (assess-the-position layer, previously missing) with `i
 ## [2026-07-02] update | openings/london-ne5-attack.md | Watch-out added: the h7 sac is the BISHOP's (Bxh7+), never Qxh7+?? — the attack-plan page kept being corrupted into a queen-first sac (6 games lost to it); points to principles/calculate-against-best-defense.
 
 ## [2026-07-02] update | principles/index.md | Registered calculate-against-best-defense.
+
+## [2026-07-02] create | endgames/passed-pawns.md | Passed-pawn technique (when to push, king escort, Tarrasch rule, blockade, outside passer, promotion blunders) — read-and-note from Wikipedia Passed pawn / Wrong rook pawn; motivated by game 9eddc039 (15 knight shuffles in K+N+P vs K) and 22 mined shuffle positions.
+
+## [2026-07-02] create | endgames/rook-endings.md | Rook endings (Tarrasch rule, Lucena bridge, Philidor defense, cutting off the king, rook-pawn exception) — read-and-note from Wikipedia R+P vs R.
+
+## [2026-07-02] create | raw/passed-pawn-sources.md | Source notes for the two endgame pages (the read-and-note trail).
+
+## [2026-07-02] update | endgames/index.md | Registered passed-pawns + rook-endings.

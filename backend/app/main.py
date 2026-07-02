@@ -94,6 +94,16 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
         # = the sac throws a won game away (accept ANY quiet move that holds the edge, i.e.
         # NOT the sac). Tests the commit-time Greek-gift nudge: decline unsound sacs while
         # still playing sound ones. See experiments/puzzle-benchmark/puzzles_greek_gift.json.
+        # Promotion-technique set: 22 real positions (141 own games mined) where
+        # the agent had a Stockfish-winning (>= +250) endgame with a passed pawn
+        # on ranks 2-6 and neither pushed it nor brought the king closer for 3+
+        # moves (the knight-shuffle pattern, game 9eddc039). acceptable_uci =
+        # engine moves within 30cp of best; at least one is always a passer
+        # push / king-approach / rook-to-file (a technique drill, not a tactic).
+        "promotion": {
+            "puzzles": _pb / "puzzles_promotion.json",
+            "progress": PuzzleProgress(_pb / "results" / "progress_promotion.json"),
+        },
         "greek_gift": {
             "puzzles": _pb / "puzzles_greek_gift.json",
             "progress": PuzzleProgress(_pb / "results" / "progress_greek_gift.json"),

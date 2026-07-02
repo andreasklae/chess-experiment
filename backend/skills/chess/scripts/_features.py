@@ -1610,11 +1610,45 @@ def assess_situation(board: chess.Board, perspective: bool | None = None) -> dic
                 f"**Before you reason about that exchange in words, run `chess__imagine_trade(target=\"{tsq}\")` "
                 f"— it plays out the exact capture order. Do NOT assert 'it's only a trade' from counting "
                 f"attackers; the capture ORDER decides who wins it.**")
+    elif diff >= 3 and phase != "opening" and not any(
+            board.pieces(pt, not stm)
+            for pt in (chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN)) and [
+            sq for sq in board.pieces(chess.PAWN, stm) if _is_passed(board, sq, stm)]:
+        # The opponent has NO pieces and we have a passed pawn: the plan is not
+        # "consolidate", it is PROMOTE. Observed (game 9eddc039, K+N+P vs bare
+        # K): 15 knight checks/shuffles while the e-pawn stood still — the old
+        # header said "trade PIECES to simplify" (nothing to trade) and the
+        # push-the-passer advice was buried mid-page. Name the passers, the
+        # concrete progress moves, and the 50-move clock. Pure mechanics:
+        # passed-pawn geometry, legal-move filtering, halfmove counter.
+        passers = [sq for sq in board.pieces(chess.PAWN, stm) if _is_passed(board, sq, stm)]
+        front = max(passers, key=lambda s: chess.square_rank(s) if stm == chess.WHITE
+                    else 7 - chess.square_rank(s))
+        prog: list[str] = []
+        for mv in board.legal_moves:
+            pt = board.piece_type_at(mv.from_square)
+            if pt == chess.PAWN and mv.from_square in passers:
+                prog.append(board.san(mv))
+            elif pt == chess.KING and chess.square_distance(mv.to_square, front) < \
+                    chess.square_distance(mv.from_square, front):
+                prog.append(board.san(mv))
+        clk = board.halfmove_clock
+        prio = ("PROMOTE — march your passed pawn",
+                f"the opponent has NO pieces: nothing can stop an escorted passer, and a new queen "
+                f"mates quickly. Your passed pawn(s): {', '.join(_sq(s) for s in passers)}. EVERY move "
+                f"must make promotion progress — push the passer or step your king toward its path"
+                + (f" (progress moves now: {', '.join(prog[:6])})" if prog else "") +
+                f". A minor piece's only job is guarding the square in front of the pawn. CHECKS THAT "
+                f"ARE NOT MATE ACHIEVE NOTHING against a bare king — they are wasted tempi, and the "
+                f"50-move draw clock is at {clk}/100 half-moves. King one step ahead of the pawn, then "
+                f"push. Read `endgames/passed-pawns`.")
     elif diff >= 3 and phase != "opening":
-        # 'Consolidate' means different things with vs without pieces on the board.
-        has_pieces = any(board.pieces(pt, c)
-                         for pt in (chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN)
-                         for c in (chess.WHITE, chess.BLACK))
+        # 'Consolidate' means different things with vs without ENEMY pieces on
+        # the board — "trade pieces" is only meaningful when the OPPONENT still
+        # has pieces to trade (counting our own pieces here told a K+N+P-vs-K
+        # position to "trade PIECES", which reads as shuffle-the-knight).
+        has_pieces = any(board.pieces(pt, not stm)
+                         for pt in (chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN))
         if has_pieces:
             body = ("you are materially ahead and your king is not under immediate threat. The win is "
                     "CONVERSION, not winning more: trade PIECES (not pawns) to simplify toward a won "
