@@ -238,3 +238,34 @@ class TestSEELosingTrades:
             "f3e5",
         )
         assert res is not None and "LOSE MATERIAL" in res[0]
+
+
+class TestDangerousCheckGate:
+    """Soft gate on committing a move that allows a SEE-safe opponent check
+    which captures material or forks a winnable piece — the class that decided
+    2 of 4 iteration-2 losses (d02026 Rd1?? -> Ne3+ forking the rook; 7f8176
+    Nxb3?? -> Bxf3+ zwischenzug)."""
+
+    def _gate(self, mm, fen, uci):
+        import chess as _c
+        b = _c.Board(fen)
+        return mm._blunder_gate(b, _c.Move.from_uci(uci))
+
+    def test_rd1_flags_ne3_fork_check(self, mm):
+        import json, glob, chess as _c
+        sf = [f for f in glob.glob('games/line-proof-audit/*.json')
+              if 'd02026' in f and not f.endswith('_agent.json')]
+        if not sf:
+            import pytest; pytest.skip('game record not present')
+        sd = json.load(open(sf[0]))
+        b = _c.Board()
+        for u in sd['uci_moves'][:84]: b.push_uci(u)
+        gate = mm._blunder_gate(b, _c.Move.from_uci('b1d1'))
+        assert gate is not None
+        warning, severe = gate
+        assert "DANGEROUS CHECK" in warning
+        assert severe is False
+
+    def test_quiet_opening_move_silent(self, mm):
+        gate = self._gate(mm, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "e2e4")
+        assert gate is None

@@ -460,3 +460,25 @@ class TestStillHangingOwnPieces:
     def test_safe_pieces_never_flag(self, im):
         out = self._render(im, chess.STARTING_FEN, "e4")
         assert "Still hanging" not in out
+
+
+class TestDangerousOpponentChecks:
+    def test_bxf3_zwischenzug_flagged(self, im):
+        # 7f8176 mv55: Nxb3?? allows Bxf3+ (capture-with-check the agent never
+        # calculated). The imagined-move report must name it.
+        import json, glob
+        sf = [f for f in glob.glob('games/line-proof-audit/*.json')
+              if '7f8176' in f and not f.endswith('_agent.json')]
+        if not sf:
+            import pytest; pytest.skip('game record not present')
+        sd = json.load(open(sf[0]))
+        b = chess.Board()
+        for u in sd['uci_moves'][:54]: b.push_uci(u)
+        out = im.render_imagine(b, chess.Move.from_uci('d2b3'))
+        assert "Dangerous opponent checks" in out
+        assert "Bxf3+" in out
+
+    def test_start_position_silent(self, im):
+        b = chess.Board()
+        out = im.render_imagine(b, b.parse_san("e4"))
+        assert "Dangerous opponent checks" not in out

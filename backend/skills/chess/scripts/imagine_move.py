@@ -341,6 +341,49 @@ def _newly_hanging_own_pieces(board_before: chess.Board, board_after: chess.Boar
     return new_hanging
 
 
+def _dangerous_opponent_checks(board_after: chess.Board) -> list[str]:
+    """Opponent checking replies (after our imagined move) that are BOTH safe
+    for them (we cannot win the checking piece where it lands — single-square
+    SEE) AND materially threatening: the check captures a piece, or from its
+    new square the checker attacks one of our winnable non-pawn pieces (a
+    fork). This is the class that decided 2 of 4 iteration-2 batch losses:
+    Rd1?? allowed Ne3+ forking the rook (game d02026, +375 → −556) and Nxb3??
+    allowed the Bxf3+ zwischenzug (game 7f8176, +263 → −324) — quiet-looking
+    moves whose refutation begins with a CHECK, which the one-ply hang scans
+    cannot see. Same design class as the WALKS-INTO-MATE gate: scan the
+    opponent's legal replies, report mechanical facts (check flag, capture
+    value, attack geometry, SEE), never a verdict — the agent is told to
+    CALCULATE each. Fires on ~1–2%% of fine moves (measured on two batches)."""
+    me = not board_after.turn
+    found: list[str] = []
+    for mv in board_after.legal_moves:
+        if not board_after.gives_check(mv):
+            continue
+        b2 = board_after.copy()
+        b2.push(mv)
+        if static_exchange_eval(b2, mv.to_square, me) >= 100:
+            continue  # we win the checker back where it lands — not dangerous
+        victim = board_after.piece_at(mv.to_square)
+        gain = MATERIAL.get(victim.piece_type, 0) if victim else 0
+        forked = []
+        for sq in b2.attacks(mv.to_square):
+            p = b2.piece_at(sq)
+            if (p and p.color == me and p.piece_type not in (chess.PAWN, chess.KING)
+                    and static_exchange_eval(b2, sq, not me) >= 100):
+                forked.append(f"your {PIECE_NAMES[p.piece_type]} on {chess.square_name(sq)}")
+        if gain >= 300 or forked:
+            what = []
+            if gain >= 300:
+                what.append(f"captures ~{gain // 100} pawn(s) of material")
+            if forked:
+                what.append("then wins " + ", ".join(forked) +
+                            " (you must answer the check first)")
+            found.append(f"**{board_after.san(mv)}** — " + " and ".join(what))
+        if len(found) >= 3:
+            break
+    return found
+
+
 def _still_hanging_own_pieces(board_before: chess.Board, board_after: chess.Board,
                               move: chess.Move) -> list[str]:
     """Own pieces that were ALREADY losing the exchange before this move and
@@ -1064,6 +1107,22 @@ def render_imagine(
             out.append("")
             for h in still_hanging:
                 out.append(f"- {h}")
+            out.append("")
+        # Dangerous opponent CHECKS this move allows: the refutation of a
+        # quiet-looking move often BEGINS with a check (zwischenzug, check-then-
+        # fork), which no same-square hang scan can see.
+        danger = _dangerous_opponent_checks(board_after)
+        if danger:
+            out.append("## ⚠ Dangerous opponent checks after this move")
+            out.append("")
+            for h in danger:
+                out.append(f"- {h}")
+            out.append("")
+            out.append(
+                "_A check is FORCING — you cannot ignore it to execute your own "
+                "plan. Play EACH of these out with `chess__imagine_line` (their "
+                "check → your best evasion → their follow-up) before committing "
+                "this move. If one of them wins material, pick a different move._")
             out.append("")
 
     if ep_text:

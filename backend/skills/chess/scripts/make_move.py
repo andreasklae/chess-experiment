@@ -427,6 +427,30 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | No
                     f"for the exact capture order.",
                     severe,
                 )
+
+    # Dangerous opponent CHECKS this move allows (SOFT): the refutation of a
+    # quiet-looking move often BEGINS with a check the hang-scans cannot see
+    # (check-then-fork, zwischenzug). Same design class as WALKS-INTO-MATE:
+    # scan the opponent's replies, state mechanical facts, tell the agent to
+    # calculate. Decided 2 of 4 iteration-2 batch losses (Rd1?? → Ne3+ forking
+    # the rook, d02026; Nxb3?? → Bxf3+ zwischenzug, 7f8176); fires on ~1–2% of
+    # fine moves. Soft: a dangerous check may be answerable — the agent must
+    # play it out with imagine_line, not be blocked.
+    try:
+        from imagine_move import _dangerous_opponent_checks
+        danger = _dangerous_opponent_checks(after)
+    except Exception:
+        danger = []
+    if danger:
+        return (
+            "after this move the opponent has a DANGEROUS CHECK you may not "
+            "have calculated: " + "; ".join(danger) + ". A check is forcing — "
+            "you must answer it before executing your own plan. Play each out "
+            "with chess__imagine_line (their check → your best evasion → their "
+            "follow-up). If your move survives them, re-commit with "
+            "confirm=true; otherwise pick a different move.",
+            False,
+        )
     return None
 
 
