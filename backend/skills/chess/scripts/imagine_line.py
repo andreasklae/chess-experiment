@@ -76,6 +76,52 @@ def _testing_replies(board: chess.Board, exclude: chess.Move | None = None,
     return [board.san(m) for m in moves[:k]]
 
 
+_PIECE_NAMES = {chess.PAWN: "pawn", chess.KNIGHT: "knight", chess.BISHOP: "bishop",
+                chess.ROOK: "rook", chess.QUEEN: "queen", chess.KING: "king"}
+
+
+def _forcing_replies_annotated(board: chess.Board, exclude: chess.Move | None = None,
+                               cap: int = 10) -> list[str]:
+    """The COMPLETE set of the side-to-move's forcing replies — every check and
+    every capture — as annotated SAN, checks first. This is a visualization
+    service, not an evaluation: it enumerates legal moves and states arithmetic
+    facts a human reads off the board (what is captured, its value, whether the
+    checker can be taken for profit). It ranks nothing beyond the check/capture
+    grouping and never says which reply is best — the AGENT picks which to
+    calculate. (Fairness ruling 2026-07-03: tools may serve what the agent
+    wants to visualize — enumeration + counting; they may not check all lines
+    and return the best.)"""
+    out: list[tuple[int, str]] = []
+    for m in board.legal_moves:
+        if m == exclude:
+            continue
+        is_chk = board.gives_check(m)
+        is_cap = board.is_capture(m)
+        if not (is_chk or is_cap):
+            continue
+        notes = []
+        if is_cap:
+            victim = board.piece_at(m.to_square)
+            if victim is None and board.is_en_passant(m):
+                notes.append("captures a pawn (en passant)")
+            elif victim is not None:
+                notes.append(f"captures your {_PIECE_NAMES[victim.piece_type]}"
+                             f" (~{_MAT_VAL[victim.piece_type]})")
+        if is_chk:
+            b2 = board.copy(stack=False)
+            b2.push(m)
+            see = static_exchange_eval(b2, m.to_square, not board.turn)
+            if see >= 100:
+                notes.append("but you win the checker back")
+        san = board.san(m)
+        out.append((0 if is_chk else 1, f"{san}" + (f" ({'; '.join(notes)})" if notes else "")))
+    out.sort(key=lambda t: t[0])
+    lines = [s for _, s in out[:cap]]
+    if len(out) > cap:
+        lines.append(f"…and {len(out) - cap} more")
+    return lines
+
+
 _MAT_VAL = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9}
 
 
@@ -360,19 +406,30 @@ def main() -> None:
         if not (board.is_checkmate() or board.is_stalemate()):
             last_was_agent = board_before_last.turn == agent_color
             if last_was_agent:
-                # Opponent is to move now — branch over THEIR replies.
-                opts = _testing_replies(board, k=3)
-                if len(opts) >= 2:
+                # Opponent is to move now — branch over THEIR replies. Show the
+                # COMPLETE forcing set (every check, every capture, annotated),
+                # not a top-3: a human checks every check and capture against
+                # them before trusting a move; the agent picks which to run.
+                forcing = _forcing_replies_annotated(board)
+                quiet = [s for s in _testing_replies(board, k=3)
+                         if s not in {f.split(" (")[0] for f in forcing}]
+                if forcing or quiet:
+                    parts = []
+                    if forcing:
+                        parts.append(
+                            f"ALL their forcing replies (every check and capture): "
+                            f"**{'; '.join(forcing)}**")
+                    if quiet:
+                        parts.append(f"most testing quiet replies: {', '.join(quiet[:2])}")
                     out += [
                         "",
                         "---",
                         "",
                         "**⮕ Branch over the opponent's replies — don't assume one.** "
-                        "It is the opponent's move now; their most testing replies "
-                        f"are **{', '.join(opts)}** (checks/captures first). Re-run "
-                        "`chess__imagine_line` continuing this line with EACH of them "
-                        "and confirm your move holds against all — a move that only "
-                        "works against one reply is not calculated.",
+                        "It is the opponent's move now. " + ". ".join(parts) + ". "
+                        "Your move is only calculated when it survives every FORCING "
+                        "reply — re-run `chess__imagine_line` continuing this line "
+                        "with each one YOU judge dangerous (checks first).",
                     ]
             else:
                 # It is YOUR move now at the leaf — show YOUR forcing continuations
@@ -393,18 +450,27 @@ def main() -> None:
                     ]
                 # fall through to the assumed-opponent-reply alternatives below
             if not last_was_agent:
-                # You supplied ONE opponent reply — name the alternatives.
-                alts = _testing_replies(board_before_last, exclude=last_move, k=3)
-                if alts:
+                # You supplied ONE opponent reply — name ALL their forcing
+                # alternatives (annotated), plus the top quiet ones.
+                alts_f = _forcing_replies_annotated(board_before_last, exclude=last_move)
+                alts_q = [s for s in _testing_replies(board_before_last, exclude=last_move, k=3)
+                          if s not in {f.split(" (")[0] for f in alts_f}][:2]
+                if alts_f or alts_q:
                     played = board_before_last.san(last_move)
+                    detail = []
+                    if alts_f:
+                        detail.append(f"their other FORCING options (all checks/captures): "
+                                      f"**{'; '.join(alts_f)}**")
+                    if alts_q:
+                        detail.append(f"testing quiet replies: {', '.join(alts_q)}")
                     out += [
                         "",
                         "---",
                         "",
-                        f"**⮕ You assumed the opponent plays {played}.** Their other "
-                        f"testing replies are **{', '.join(alts)}**. Re-run "
-                        "`chess__imagine_line` with each instead of "
-                        f"{played} — your move is only good if it holds against all.",
+                        f"**⮕ You assumed the opponent plays {played}.** " + ". ".join(detail) +
+                        ". Re-run `chess__imagine_line` with each one you judge dangerous "
+                        f"instead of {played} — your line is only proven if it holds "
+                        "against their best.",
                     ]
     else:
         out.append("_(no move rendered)_")

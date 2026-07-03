@@ -913,3 +913,41 @@ class TestPromotePriority:
         # K+N+P vs bare K still says PROMOTE.
         b2 = chess.Board("4k3/8/8/4K3/5N2/4P3/8/8 w - - 9 67")
         assert assess_situation(b2)["priority"].startswith("PROMOTE")
+
+
+class TestDriftAlert:
+    """NO-PROGRESS alert: winning + last 4 own moves quiet (no capture/pawn) +
+    clock climbing or oscillation → the Situation must call out the drift and
+    point back at the standing plan (games 9eddc039/cf272d shuffled winning
+    endgames for 10+ moves; the plan was in the prompt but nothing tied the
+    MOVES to it)."""
+
+    def _shuffle_board(self):
+        # K+R+N vs bare K; white knight oscillates f3-d4, black king g8-h8.
+        b = chess.Board("6k1/8/8/8/8/5N2/8/R3K3 w - - 0 40")
+        for san in ("Nd4", "Kh8", "Nf3", "Kg8", "Nd4", "Kh8", "Nf3", "Kg8"):
+            b.push_san(san)
+        return b
+
+    def test_quiet_shuffle_fires(self):
+        from _features import assess_situation
+        sit = assess_situation(self._shuffle_board())
+        text = "\n".join(sit["lines"])
+        assert sit["drift"] and "NO PROGRESS" in text
+        assert "standing plan" in text
+
+    def test_recent_capture_silences(self):
+        from _features import assess_situation
+        b = self._shuffle_board()
+        b.push_san("Ra8+"); b.push_san("Kh7"); b.push_san("Ra7+"); b.push_san("Kh8")
+        # last own moves include rook checks but still no capture/pawn... make one:
+        b2 = chess.Board("6k1/8/8/8/8/5N2/8/R3K3 w - - 0 40")
+        for san in ("Nd4", "Kh8", "Nf3", "Kg8"):
+            b2.push_san(san)
+        sit = assess_situation(b2)   # only 2 own quiet moves — below threshold
+        assert not sit.get("drift")
+
+    def test_no_history_is_silent(self):
+        from _features import assess_situation
+        sit = assess_situation(chess.Board("6k1/8/8/8/8/5N2/8/R3K3 w - - 30 40"))
+        assert not sit.get("drift")

@@ -269,3 +269,24 @@ class TestDangerousCheckGate:
     def test_quiet_opening_move_silent(self, mm):
         gate = self._gate(mm, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "e2e4")
         assert gate is None
+
+
+class TestUndoShuffleGate:
+    def _board(self):
+        import chess as _c
+        b = _c.Board("6k1/8/8/8/8/5N2/8/R3K3 w - - 0 40")
+        b.push_san("Nd4"); b.push_san("Kh8")
+        return b
+
+    def test_undoing_own_move_warns_soft(self, mm):
+        import chess as _c
+        b = self._board()
+        gate = mm._blunder_gate(b, b.parse_san("Nf3"))  # exactly un-does Nd4
+        assert gate is not None
+        warning, severe = gate
+        assert "UN-DOES" in warning and severe is False
+        assert "standing plan" in warning
+
+    def test_progress_move_silent(self, mm):
+        b = self._board()
+        assert mm._blunder_gate(b, b.parse_san("Ra8+")) is None

@@ -1703,9 +1703,56 @@ def assess_situation(board: chess.Board, perspective: bool | None = None) -> dic
             f"'irrelevant to the king' — if it is on this list, it provably stops the mate "
             f"(it may cost material and STILL be correct)."
         )
+    drift = _detect_drift(board, stm, diff)
+    if drift:
+        lines.append(drift)
     return dict(material=mat, material_diff=diff, phase=phase, in_check=in_check,
                 threat=threat, have_forcing=have_forcing, priority=head,
-                mate_savers=savers, lines=lines)
+                mate_savers=savers, drift=bool(drift), lines=lines)
+
+
+def _detect_drift(board: chess.Board, stm: bool, diff: int) -> str | None:
+    """NO-PROGRESS alert: while WINNING, the agent's last 4 own moves made no
+    capture and pushed no pawn, and either the 50-move clock is climbing or a
+    piece is oscillating (returned to a square it just left). This is the
+    plan-drift pattern (drills pass, games drift — thrice-replicated): the
+    standing plan is re-stated in every turn prompt, but nothing tied the
+    MOVES back to it. Pure bookkeeping on the game's own move history: piece
+    type, capture flag, from/to squares, halfmove clock — no chess judgement,
+    no search. Requires the board to carry its move history
+    (board_with_history), else stays silent."""
+    if diff < 2 or len(board.move_stack) < 8:
+        return None
+    # Replay to annotate our last 4 moves (move_stack alone has no piece info).
+    replay = board.copy()
+    ours: list[tuple[chess.Move, int, bool]] = []  # (move, piece_type, was_capture)
+    while replay.move_stack and len(ours) < 4:
+        mv = replay.pop()
+        if replay.turn == stm:
+            ours.append((mv, replay.piece_type_at(mv.from_square) or 0,
+                         replay.is_capture(mv)))
+    if len(ours) < 4:
+        return None
+    if any(cap or pt == chess.PAWN for _, pt, cap in ours):
+        return None  # progress was made recently
+    oscillating = any(
+        m1.to_square == m2.from_square and m1.from_square == m2.to_square
+        for i, (m1, _, _) in enumerate(ours)
+        for (m2, _, _) in ours[i + 1:]
+    )
+    if board.halfmove_clock < 8 and not oscillating:
+        return None
+    osc_txt = ""
+    if oscillating:
+        osc_txt = " and a piece is moving back and forth"
+    return (
+        f"- **⏱ NO PROGRESS — you are winning but your last 4 moves made no capture "
+        f"and pushed no pawn{osc_txt} (draw clock: {board.halfmove_clock}/100 half-moves).** "
+        f"Winning positions drain into 50-move/repetition draws exactly this way. Your "
+        f"standing plan is shown at the start of this turn: this move must EXECUTE it "
+        f"(or REPLACE it via the `plan` argument if the position has moved on). "
+        f"Progress = a pawn push, a favourable capture, or your king marching forward."
+    )
 
 
 def detect_material(board: chess.Board, perspective: bool | None = None) -> list[Finding]:

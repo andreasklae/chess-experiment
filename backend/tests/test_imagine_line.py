@@ -318,3 +318,25 @@ class TestLineProofAudit:
         assert "CHECKMATE" in r.stdout
         assert "only if they cooperate" in r.stdout
         assert "The mate is PROVEN" not in r.stdout
+
+
+class TestForcingRepliesEnumeration:
+    """Branch footers list the COMPLETE forcing set (every check and capture,
+    annotated with what it captures), not a top-3 — visualization service per
+    the 2026-07-03 fairness ruling: enumeration + arithmetic on demand is fair;
+    evaluate-and-rank is not. The agent picks which lines to run."""
+
+    F = "r1bqkbnr/1ppp1ppp/p1n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4"
+
+    def test_footer_lists_all_forcing_with_annotations(self):
+        r = _run(["--fen", self.F, "Bxc6"])
+        assert r.returncode == 0, r.stderr
+        assert "ALL their forcing replies" in r.stdout
+        assert "dxc6 (captures your bishop" in r.stdout
+        assert "bxc6 (captures your bishop" in r.stdout
+
+    def test_assumed_reply_footer_annotates_alternatives(self):
+        r = _run(["--fen", self.F, "Bxc6,bxc6"])
+        assert r.returncode == 0, r.stderr
+        assert "You assumed the opponent plays bxc6" in r.stdout
+        assert "dxc6 (captures your bishop" in r.stdout

@@ -451,6 +451,41 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | No
             "confirm=true; otherwise pick a different move.",
             False,
         )
+
+    # Undo-shuffle (SOFT, any winning position — the general sibling of the
+    # bare-king repetition gate above): a quiet move that exactly REVERSES one
+    # of our last two moves while we are clearly ahead. This is the drift
+    # pattern that drains wins toward 50-move/repetition draws (game 9eddc039:
+    # Nf5-d4-f5…; game cf272d: Rc4-c7-c6-c5-c4…). Pure bookkeeping on the move
+    # history; soft because a retreat-and-return is occasionally correct (e.g.
+    # after the opponent's threat has passed) — the agent may confirm.
+    if board.move_stack and not board.is_check() and not after.is_check() \
+            and not board.is_capture(move) \
+            and board.piece_type_at(move.from_square) != chess.PAWN:
+        my_mat2 = sum(MATERIAL[p.piece_type] for p in board.piece_map().values()
+                      if p.color == mover and p.piece_type != chess.KING)
+        their_mat2 = sum(MATERIAL[p.piece_type] for p in board.piece_map().values()
+                         if p.color != mover and p.piece_type != chess.KING)
+        if my_mat2 - their_mat2 >= 300:
+            replay = board.copy()
+            recent_own: list[chess.Move] = []
+            while replay.move_stack and len(recent_own) < 2:
+                mv2 = replay.pop()
+                if replay.turn == mover:
+                    recent_own.append(mv2)
+            if any(mv2.from_square == move.to_square and mv2.to_square == move.from_square
+                   for mv2 in recent_own):
+                return (
+                    "this move exactly UN-DOES a move you just played (shuffling) "
+                    "while you are clearly winning. Shuffling makes no progress and "
+                    "feeds the 50-move/repetition draw. Re-read your standing plan "
+                    "(top of this turn) and play a move that EXECUTES it — a pawn "
+                    "push, a favourable capture, or your king marching in. If the "
+                    "shuffle is genuinely forced/correct, re-commit with "
+                    "confirm=true and say why in `reasoning`.",
+                    False,
+                )
+
     return None
 
 
