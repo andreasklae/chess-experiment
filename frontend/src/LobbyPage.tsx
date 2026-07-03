@@ -169,6 +169,7 @@ export function LobbyPage() {
         <h1>Chess Experiment</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <Link to="/batch" className="back-link" style={{ alignSelf: 'center' }}>Batches →</Link>
+          <Link to="/puzzles" className="back-link" style={{ alignSelf: 'center' }}>Puzzles →</Link>
           <button type="button" onClick={() => setShowForm((v) => !v)}>
             {showForm ? 'Cancel' : '+ New Game'}
           </button>

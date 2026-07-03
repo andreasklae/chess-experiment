@@ -289,3 +289,5 @@ def test_create_game_rejects_finished_fen(tmp_path) -> None:
             "initial_fen": mated,
         })
         assert resp.status_code == 422
+
+

@@ -1,0 +1,7572 @@
+{
+ "game_id": "eb5e0bd49f494dfa808f7a23f2ed597f",
+ "headers": {
+  "White": "agent",
+  "Black": "chesscom-850",
+  "Result": "1-0"
+ },
+ "start_fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+ "engine": {
+  "name": "stockfish",
+  "depth": 16,
+  "multipv": 3
+ },
+ "schema_version": 1,
+ "moves": [
+  {
+   "ply": 0,
+   "move_number": 1,
+   "mover": "white",
+   "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+   "played": {
+    "san": "e4",
+    "uci": "e2e4"
+   },
+   "eval_best_cp_mover": 50,
+   "eval_played_cp_mover": 50,
+   "win_before_pct": 54.6,
+   "win_after_pct": 54.6,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "e4",
+    "uci": "e2e4",
+    "pv": [
+     "e4",
+     "c6",
+     "d4",
+     "d5",
+     "Nc3",
+     "dxe4",
+     "Nxe4",
+     "Nf6"
+    ]
+   },
+   "situation": {
+    "priority": "PLAY POSITIONALLY",
+    "material": "roughly equal",
+    "material_diff_pawns": 0,
+    "phase": "opening",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 1,
+   "move_number": 1,
+   "mover": "black",
+   "fen_before": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+   "played": {
+    "san": "e6",
+    "uci": "e7e6"
+   },
+   "eval_best_cp_mover": -34,
+   "eval_played_cp_mover": -34,
+   "win_before_pct": 46.9,
+   "win_after_pct": 46.9,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "e6",
+    "uci": "e7e6",
+    "pv": [
+     "e6",
+     "d4",
+     "d5",
+     "e5",
+     "c5",
+     "c3",
+     "Nc6",
+     "Nf3"
+    ]
+   },
+   "situation": {
+    "priority": "PLAY POSITIONALLY",
+    "material": "roughly equal",
+    "material_diff_pawns": 0,
+    "phase": "opening",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 2,
+   "move_number": 2,
+   "mover": "white",
+   "fen_before": "rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+   "played": {
+    "san": "d4",
+    "uci": "d2d4"
+   },
+   "eval_best_cp_mover": 46,
+   "eval_played_cp_mover": 46,
+   "win_before_pct": 54.2,
+   "win_after_pct": 54.2,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "d4",
+    "uci": "d2d4",
+    "pv": [
+     "d4",
+     "d5",
+     "Nc3",
+     "Nf6",
+     "e5",
+     "Nfd7",
+     "f4",
+     "c5"
+    ]
+   },
+   "situation": {
+    "priority": "PLAY POSITIONALLY",
+    "material": "roughly equal",
+    "material_diff_pawns": 0,
+    "phase": "opening",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 3,
+   "move_number": 2,
+   "mover": "black",
+   "fen_before": "rnbqkbnr/pppp1ppp/4p3/8/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 2",
+   "played": {
+    "san": "d5",
+    "uci": "d7d5"
+   },
+   "eval_best_cp_mover": -43,
+   "eval_played_cp_mover": -43,
+   "win_before_pct": 46.1,
+   "win_after_pct": 46.1,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "d5",
+    "uci": "d7d5",
+    "pv": [
+     "d5",
+     "Nc3",
+     "Nf6",
+     "e5",
+     "Nfd7",
+     "f4",
+     "c5",
+     "Nf3"
+    ]
+   },
+   "situation": {
+    "priority": "CALCULATE FORCING MOVES FIRST",
+    "material": "roughly equal",
+    "material_diff_pawns": 0,
+    "phase": "opening",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 4,
+   "move_number": 3,
+   "mover": "white",
+   "fen_before": "rnbqkbnr/ppp2ppp/4p3/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3",
+   "played": {
+    "san": "Nc3",
+    "uci": "b1c3"
+   },
+   "eval_best_cp_mover": 51,
+   "eval_played_cp_mover": 51,
+   "win_before_pct": 54.7,
+   "win_after_pct": 54.7,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Nc3",
+    "uci": "b1c3",
+    "pv": [
+     "Nc3",
+     "Nf6",
+     "e5",
+     "Nfd7",
+     "f4",
+     "c5",
+     "Nf3",
+     "cxd4"
+    ]
+   },
+   "situation": {
+    "priority": "CALCULATE FORCING MOVES FIRST",
+    "material": "roughly equal",
+    "material_diff_pawns": 0,
+    "phase": "opening",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 5,
+   "move_number": 3,
+   "mover": "black",
+   "fen_before": "rnbqkbnr/ppp2ppp/4p3/3p4/3PP3/2N5/PPP2PPP/R1BQKBNR b KQkq - 1 3",
+   "played": {
+    "san": "Bb4",
+    "uci": "f8b4"
+   },
+   "eval_best_cp_mover": -45,
+   "eval_played_cp_mover": -75,
+   "win_before_pct": 45.9,
+   "win_after_pct": 43.1,
+   "centipawn_loss": 30,
+   "win_pct_lost": 2.7,
+   "accuracy_pct": 88.4,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Nf6",
+    "uci": "g8f6",
+    "pv": [
+     "Nf6",
+     "e5",
+     "Nfd7",
+     "f4",
+     "c5",
+     "Nf3",
+     "cxd4",
+     "Nxd4"
+    ]
+   },
+   "situation": {
+    "priority": "PLAY POSITIONALLY",
+    "material": "roughly equal",
+    "material_diff_pawns": 0,
+    "phase": "opening",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 6,
+   "move_number": 4,
+   "mover": "white",
+   "fen_before": "rnbqk1nr/ppp2ppp/4p3/3p4/1b1PP3/2N5/PPP2PPP/R1BQKBNR w KQkq - 2 4",
+   "played": {
+    "san": "Nf3",
+    "uci": "g1f3"
+   },
+   "eval_best_cp_mover": 76,
+   "eval_played_cp_mover": -115,
+   "win_before_pct": 57.0,
+   "win_after_pct": 39.6,
+   "centipawn_loss": 191,
+   "win_pct_lost": 17.4,
+   "accuracy_pct": 45.2,
+   "classification": "mistake",
+   "is_best_move": false,
+   "best_move": {
+    "san": "e5",
+    "uci": "e4e5",
+    "pv": [
+     "e5",
+     "c5",
+     "a3",
+     "Bxc3+",
+     "bxc3",
+     "Ne7",
+     "Qg4",
+     "cxd4"
+    ]
+   },
+   "situation": {
+    "priority": "CALCULATE FORCING MOVES FIRST",
+    "material": "roughly equal",
+    "material_diff_pawns": 0,
+    "phase": "opening",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   },
+   "why_suboptimal": {
+    "better_move": "e5",
+    "better_line": [
+     "e5",
+     "c5",
+     "a3",
+     "Bxc3+",
+     "bxc3",
+     "Ne7",
+     "Qg4",
+     "cxd4"
+    ],
+    "allowed_opponent": [],
+    "key_features_before": [
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your knight on c3 is PINNED \u2014 it can't move freely and doesn't truly defend; break the pin or don't rely on it",
+      "moves": [],
+      "wiki": "pins"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your KING on e1 is exposed (broken pawn shield) with enemy heavy pieces on \u2014 get it safe (castle if you can), keep the pawn shield, trade off the enemy's attackers",
+      "moves": [],
+      "wiki": "king_safety"
+     },
+     {
+      "kind": "strength",
+      "side": "mover",
+      "text": "you control the centre (your central influence 9 vs their 5) \u2014 you have more space and faster piece access; use it to switch play between wings, but support the centre so it isn't undermined by a c/f-pawn break",
+      "moves": [],
+      "wiki": "center"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent's bishop on b4 is undefended \u2014 a loose piece; look for a fork/double-attack hitting it",
+      "moves": [],
+      "wiki": "forks"
+     },
+     {
+      "kind": "potential",
+      "side": "mover",
+      "text": "your bishop could move to c4 to SKEWER enemy pawn on d5 \u2192 pawn on e6 behind it (front piece forced to move, you win the one behind) \u2014 calculate it",
+      "moves": [
+       "Bc4"
+      ],
+      "wiki": "pins"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent could move their bishop to c5 to SKEWER your pawn on d4 and pawn behind it \u2014 move one off the diagonal now, or guard c5",
+      "moves": [],
+      "wiki": "pins"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent could move their queen to h4 to SKEWER your pawn on e4 and pawn behind it \u2014 move one off the rank now, or guard h4",
+      "moves": [],
+      "wiki": "pins"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent's KING on e8 is exposed (broken shield) \u2014 open lines toward it, bring a rook to that file, DON'T trade your attackers",
+      "moves": [],
+      "wiki": "king_safety"
+     }
+    ]
+   }
+  },
+  {
+   "ply": 7,
+   "move_number": 4,
+   "mover": "black",
+   "fen_before": "rnbqk1nr/ppp2ppp/4p3/3p4/1b1PP3/2N2N2/PPP2PPP/R1BQKB1R b KQkq - 3 4",
+   "played": {
+    "san": "Bxc3+",
+    "uci": "b4c3"
+   },
+   "eval_best_cp_mover": 105,
+   "eval_played_cp_mover": -20,
+   "win_before_pct": 59.5,
+   "win_after_pct": 48.2,
+   "centipawn_loss": 125,
+   "win_pct_lost": 11.4,
+   "accuracy_pct": 59.7,
+   "classification": "mistake",
+   "is_best_move": false,
+   "best_move": {
+    "san": "dxe4",
+    "uci": "d5e4",
+    "pv": [
+     "dxe4",
+     "Ne5",
+     "Ne7",
+     "Bb5+",
+     "c6",
+     "Be2",
+     "Nd7",
+     "Bd2"
+    ]
+   },
+   "situation": {
+    "priority": "CALCULATE FORCING MOVES FIRST",
+    "material": "roughly equal",
+    "material_diff_pawns": 0,
+    "phase": "opening",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   },
+   "why_suboptimal": {
+    "better_move": "dxe4",
+    "better_line": [
+     "dxe4",
+     "Ne5",
+     "Ne7",
+     "Bb5+",
+     "c6",
+     "Be2",
+     "Nd7",
+     "Bd2"
+    ],
+    "allowed_opponent": [
+     {
+      "kind": "win",
+      "text": "FREE MATERIAL: opponent's bishop on c3 is UNDEFENDED and you attack it \u2014 capturing it wins a piece (this is NOT a trade; it costs you nothing). Take it unless imagine_move shows it is a trap (you lose more material right after).",
+      "moves": [
+       "bxc3"
+      ]
+     }
+    ],
+    "key_features_before": [
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "the OPPONENT controls the centre (their central influence 11 vs your 5) \u2014 you are cramped. Fight back: put a pawn on d4/e4/d5/e5, aim a knight at the centre (Nf3/Nc3/Nf6/Nc6), or strike with c/f pawns; don't let them keep a free centre",
+      "moves": [],
+      "wiki": "center"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your KING on e8 is exposed (broken pawn shield) with enemy heavy pieces on \u2014 get it safe (castle if you can), keep the pawn shield, trade off the enemy's attackers",
+      "moves": [],
+      "wiki": "king_safety"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent's knight on c3 is PINNED to its king \u2014 it literally cannot move, so pile attackers on it (a pawn is ideal) to win it, and treat anything it 'defends' as undefended",
+      "moves": [],
+      "wiki": "pins"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent could move their bishop to c4 to SKEWER your pawn on d5 and pawn behind it \u2014 move one off the diagonal now, or guard c4",
+      "moves": [],
+      "wiki": "pins"
+     },
+     {
+      "kind": "potential",
+      "side": "mover",
+      "text": "your bishop could move to c5 to SKEWER enemy pawn on d4 \u2192 pawn on f2 behind it (front piece forced to move, you win the one behind) \u2014 calculate it",
+      "moves": [
+       "Bc5"
+      ],
+      "wiki": "pins"
+     },
+     {
+      "kind": "potential",
+      "side": "mover",
+      "text": "your queen could move to f6 to SKEWER enemy knight on f3 \u2192 pawn on f2 behind it (front piece forced to move, you win the one behind) \u2014 calculate it",
+      "moves": [
+       "Qf6"
+      ],
+      "wiki": "pins"
+     },
+     {
+      "kind": "potential",
+      "side": "mover",
+      "text": "your queen could move to h4 to SKEWER enemy pawn on e4 \u2192 pawn on d4 behind it (front piece forced to move, you win the one behind) \u2014 calculate it",
+      "moves": [
+       "Qh4"
+      ],
+      "wiki": "pins"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent's KING on e1 is exposed (broken shield) \u2014 open lines toward it, bring a rook to that file, DON'T trade your attackers",
+      "moves": [],
+      "wiki": "king_safety"
+     }
+    ]
+   }
+  },
+  {
+   "ply": 8,
+   "move_number": 5,
+   "mover": "white",
+   "fen_before": "rnbqk1nr/ppp2ppp/4p3/3p4/3PP3/2b2N2/PPP2PPP/R1BQKB1R w KQkq - 0 5",
+   "played": {
+    "san": "bxc3",
+    "uci": "b2c3"
+   },
+   "eval_best_cp_mover": 14,
+   "eval_played_cp_mover": 14,
+   "win_before_pct": 51.3,
+   "win_after_pct": 51.3,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "great",
+   "is_best_move": true,
+   "best_move": {
+    "san": "bxc3",
+    "uci": "b2c3",
+    "pv": [
+     "bxc3",
+     "dxe4",
+     "Ne5",
+     "Nd7",
+     "Qg4",
+     "Nxe5",
+     "dxe5",
+     "Ne7"
+    ]
+   },
+   "situation": {
+    "priority": "RESPOND TO THE CHECK",
+    "material": "behind",
+    "material_diff_pawns": -3,
+    "phase": "opening",
+    "in_check": true,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 9,
+   "move_number": 5,
+   "mover": "black",
+   "fen_before": "rnbqk1nr/ppp2ppp/4p3/3p4/3PP3/2P2N2/P1P2PPP/R1BQKB1R b KQkq - 0 5",
+   "played": {
+    "san": "b6",
+    "uci": "b7b6"
+   },
+   "eval_best_cp_mover": -26,
+   "eval_played_cp_mover": -102,
+   "win_before_pct": 47.6,
+   "win_after_pct": 40.7,
+   "centipawn_loss": 76,
+   "win_pct_lost": 6.9,
+   "accuracy_pct": 73.3,
+   "classification": "inaccuracy",
+   "is_best_move": false,
+   "best_move": {
+    "san": "dxe4",
+    "uci": "d5e4",
+    "pv": [
+     "dxe4",
+     "Ne5",
+     "Nd7",
+     "Qg4",
+     "Nxe5",
+     "dxe5",
+     "Ne7",
+     "Bc4"
+    ]
+   },
+   "situation": {
+    "priority": "PLAY POSITIONALLY",
+    "material": "roughly equal",
+    "material_diff_pawns": 0,
+    "phase": "opening",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   },
+   "why_suboptimal": {
+    "better_move": "dxe4",
+    "better_line": [
+     "dxe4",
+     "Ne5",
+     "Nd7",
+     "Qg4",
+     "Nxe5",
+     "dxe5",
+     "Ne7",
+     "Bc4"
+    ],
+    "allowed_opponent": [],
+    "key_features_before": [
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "the OPPONENT controls the centre (their central influence 10 vs your 5) \u2014 you are cramped. Fight back: put a pawn on d4/e4/d5/e5, aim a knight at the centre (Nf3/Nc3/Nf6/Nc6), or strike with c/f pawns; don't let them keep a free centre",
+      "moves": [],
+      "wiki": "center"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent has doubled pawns on the c-file \u2014 a target you can attack (use the c-file / pile pieces on them)",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent's pawn on a2 is ISOLATED \u2014 blockade the square in front, then attack it",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent has the bishop pair \u2014 keep the position closed, seek a knight outpost",
+      "moves": [],
+      "wiki": "piece_activity"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your KING on e8 is exposed (broken pawn shield) with enemy heavy pieces on \u2014 get it safe (castle if you can), keep the pawn shield, trade off the enemy's attackers",
+      "moves": [],
+      "wiki": "king_safety"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent could move their bishop to c4 to SKEWER your pawn on d5 and pawn behind it \u2014 move one off the diagonal now, or guard c4",
+      "moves": [],
+      "wiki": "pins"
+     },
+     {
+      "kind": "potential",
+      "side": "mover",
+      "text": "your queen could move to f6 to SKEWER enemy knight on f3 \u2192 pawn on f2 behind it (front piece forced to move, you win the one behind) \u2014 calculate it",
+      "moves": [
+       "Qf6"
+      ],
+      "wiki": "pins"
+     },
+     {
+      "kind": "potential",
+      "side": "mover",
+      "text": "your queen could move to h4 to SKEWER enemy pawn on e4 \u2192 pawn on d4 behind it (front piece forced to move, you win the one behind) \u2014 calculate it",
+      "moves": [
+       "Qh4"
+      ],
+      "wiki": "pins"
+     }
+    ]
+   }
+  },
+  {
+   "ply": 10,
+   "move_number": 6,
+   "mover": "white",
+   "fen_before": "rnbqk1nr/p1p2ppp/1p2p3/3p4/3PP3/2P2N2/P1P2PPP/R1BQKB1R w KQkq - 0 6",
+   "played": {
+    "san": "e5",
+    "uci": "e4e5"
+   },
+   "eval_best_cp_mover": 99,
+   "eval_played_cp_mover": 54,
+   "win_before_pct": 59.0,
+   "win_after_pct": 55.0,
+   "centipawn_loss": 45,
+   "win_pct_lost": 4.1,
+   "accuracy_pct": 83.3,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Bd3",
+    "uci": "f1d3",
+    "pv": [
+     "Bd3",
+     "Ba6",
+     "Ne5",
+     "Ne7",
+     "Qg4",
+     "O-O",
+     "Bxa6",
+     "Nxa6"
+    ]
+   },
+   "situation": {
+    "priority": "CALCULATE FORCING MOVES FIRST",
+    "material": "roughly equal",
+    "material_diff_pawns": 0,
+    "phase": "opening",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 11,
+   "move_number": 6,
+   "mover": "black",
+   "fen_before": "rnbqk1nr/p1p2ppp/1p2p3/3pP3/3P4/2P2N2/P1P2PPP/R1BQKB1R b KQkq - 0 6",
+   "played": {
+    "san": "Ne7",
+    "uci": "g8e7"
+   },
+   "eval_best_cp_mover": -49,
+   "eval_played_cp_mover": -49,
+   "win_before_pct": 45.5,
+   "win_after_pct": 45.5,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Ne7",
+    "uci": "g8e7",
+    "pv": [
+     "Ne7",
+     "Bb5+",
+     "c6",
+     "Bd3",
+     "Ba6",
+     "h4",
+     "Bxd3",
+     "Qxd3"
+    ]
+   },
+   "situation": {
+    "priority": "PLAY POSITIONALLY",
+    "material": "roughly equal",
+    "material_diff_pawns": 0,
+    "phase": "opening",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 12,
+   "move_number": 7,
+   "mover": "white",
+   "fen_before": "rnbqk2r/p1p1nppp/1p2p3/3pP3/3P4/2P2N2/P1P2PPP/R1BQKB1R w KQkq - 1 7",
+   "played": {
+    "san": "Bd3",
+    "uci": "f1d3"
+   },
+   "eval_best_cp_mover": 52,
+   "eval_played_cp_mover": 35,
+   "win_before_pct": 54.8,
+   "win_after_pct": 53.2,
+   "centipawn_loss": 17,
+   "win_pct_lost": 1.6,
+   "accuracy_pct": 93.2,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Ng5",
+    "uci": "f3g5",
+    "pv": [
+     "Ng5",
+     "h6",
+     "Nh3",
+     "Qd7",
+     "a4",
+     "Ba6",
+     "Bxa6",
+     "Nxa6"
+    ]
+   },
+   "situation": {
+    "priority": "CALCULATE FORCING MOVES FIRST",
+    "material": "roughly equal",
+    "material_diff_pawns": 0,
+    "phase": "opening",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 13,
+   "move_number": 7,
+   "mover": "black",
+   "fen_before": "rnbqk2r/p1p1nppp/1p2p3/3pP3/3P4/2PB1N2/P1P2PPP/R1BQK2R b KQkq - 2 7",
+   "played": {
+    "san": "Kf8",
+    "uci": "e8f8"
+   },
+   "eval_best_cp_mover": -30,
+   "eval_played_cp_mover": -115,
+   "win_before_pct": 47.2,
+   "win_after_pct": 39.6,
+   "centipawn_loss": 85,
+   "win_pct_lost": 7.7,
+   "accuracy_pct": 70.7,
+   "classification": "inaccuracy",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Ba6",
+    "uci": "c8a6",
+    "pv": [
+     "Ba6",
+     "h4",
+     "c5",
+     "h5",
+     "h6",
+     "Rb1",
+     "Bxd3",
+     "cxd3"
+    ]
+   },
+   "situation": {
+    "priority": "PLAY POSITIONALLY",
+    "material": "roughly equal",
+    "material_diff_pawns": 0,
+    "phase": "opening",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   },
+   "why_suboptimal": {
+    "better_move": "Ba6",
+    "better_line": [
+     "Ba6",
+     "h4",
+     "c5",
+     "h5",
+     "h6",
+     "Rb1",
+     "Bxd3",
+     "cxd3"
+    ],
+    "allowed_opponent": [
+     {
+      "kind": "threat",
+      "text": "TRAP / bait \u2014 a 'free' capture that actually loses material; verify with imagine_move before grabbing material: Bxh7 (looks like it wins the pawn, but loses ~3 pawn(s) after recapture)",
+      "moves": []
+     }
+    ],
+    "key_features_before": [
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "the OPPONENT controls the centre (their central influence 9 vs your 6) \u2014 you are cramped. Fight back: put a pawn on d4/e4/d5/e5, aim a knight at the centre (Nf3/Nc3/Nf6/Nc6), or strike with c/f pawns; don't let them keep a free centre",
+      "moves": [],
+      "wiki": "center"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent has doubled pawns on the c-file \u2014 a target you can attack (use the c-file / pile pieces on them)",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent's pawn on a2 is ISOLATED \u2014 blockade the square in front, then attack it",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent has the bishop pair \u2014 keep the position closed, seek a knight outpost",
+      "moves": [],
+      "wiki": "piece_activity"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your KING on e8 is exposed (broken pawn shield) with enemy heavy pieces on \u2014 get it safe (castle if you can), keep the pawn shield, trade off the enemy's attackers",
+      "moves": [],
+      "wiki": "king_safety"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent could move their bishop to g6 to PIN your pawn on f7 against your KING on e8 \u2014 pre-empt it (move a piece off the line or guard g6)",
+      "moves": [],
+      "wiki": "pins"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent could move their bishop to c4 to SKEWER your pawn on d5 and pawn behind it \u2014 move one off the diagonal now, or guard c4",
+      "moves": [],
+      "wiki": "pins"
+     },
+     {
+      "kind": "potential",
+      "side": "mover",
+      "text": "your queen could move to d6 to SKEWER enemy pawn on e5 \u2192 pawn on h2 behind it (front piece forced to move, you win the one behind) \u2014 calculate it",
+      "moves": [
+       "Qd6"
+      ],
+      "wiki": "pins"
+     }
+    ]
+   }
+  },
+  {
+   "ply": 14,
+   "move_number": 8,
+   "mover": "white",
+   "fen_before": "rnbq1k1r/p1p1nppp/1p2p3/3pP3/3P4/2PB1N2/P1P2PPP/R1BQK2R w KQ - 3 8",
+   "played": {
+    "san": "O-O",
+    "uci": "e1g1"
+   },
+   "eval_best_cp_mover": 126,
+   "eval_played_cp_mover": 111,
+   "win_before_pct": 61.4,
+   "win_after_pct": 60.1,
+   "centipawn_loss": 15,
+   "win_pct_lost": 1.3,
+   "accuracy_pct": 94.3,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "h4",
+    "uci": "h2h4",
+    "pv": [
+     "h4",
+     "Ba6",
+     "Bxa6",
+     "Nxa6",
+     "h5",
+     "h6",
+     "Nh4",
+     "Qd7"
+    ]
+   },
+   "situation": {
+    "priority": "PLAY POSITIONALLY",
+    "material": "roughly equal",
+    "material_diff_pawns": 0,
+    "phase": "opening",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 15,
+   "move_number": 8,
+   "mover": "black",
+   "fen_before": "rnbq1k1r/p1p1nppp/1p2p3/3pP3/3P4/2PB1N2/P1P2PPP/R1BQ1RK1 b - - 4 8",
+   "played": {
+    "san": "Rg8",
+    "uci": "h8g8"
+   },
+   "eval_best_cp_mover": -109,
+   "eval_played_cp_mover": -280,
+   "win_before_pct": 40.1,
+   "win_after_pct": 26.3,
+   "centipawn_loss": 171,
+   "win_pct_lost": 13.8,
+   "accuracy_pct": 53.4,
+   "classification": "mistake",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Ba6",
+    "uci": "c8a6",
+    "pv": [
+     "Ba6",
+     "Bxa6",
+     "Nxa6",
+     "Qe2",
+     "Nb8",
+     "c4",
+     "Nbc6",
+     "Bb2"
+    ]
+   },
+   "situation": {
+    "priority": "PLAY POSITIONALLY",
+    "material": "roughly equal",
+    "material_diff_pawns": 0,
+    "phase": "opening",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   },
+   "why_suboptimal": {
+    "better_move": "Ba6",
+    "better_line": [
+     "Ba6",
+     "Bxa6",
+     "Nxa6",
+     "Qe2",
+     "Nb8",
+     "c4",
+     "Nbc6",
+     "Bb2"
+    ],
+    "allowed_opponent": [],
+    "key_features_before": [
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "the OPPONENT controls the centre (their central influence 9 vs your 6) \u2014 you are cramped. Fight back: put a pawn on d4/e4/d5/e5, aim a knight at the centre (Nf3/Nc3/Nf6/Nc6), or strike with c/f pawns; don't let them keep a free centre",
+      "moves": [],
+      "wiki": "center"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent has doubled pawns on the c-file \u2014 a target you can attack (use the c-file / pile pieces on them)",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent's pawn on a2 is ISOLATED \u2014 blockade the square in front, then attack it",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent has the bishop pair \u2014 keep the position closed, seek a knight outpost",
+      "moves": [],
+      "wiki": "piece_activity"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent could move their bishop to h6 to PIN your pawn on g7 against your KING on f8 \u2014 pre-empt it (move a piece off the line or guard h6)",
+      "moves": [],
+      "wiki": "pins"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent could move their bishop to a3 to PIN your knight on e7 against your KING on f8 \u2014 pre-empt it (move a piece off the line or guard a3)",
+      "moves": [],
+      "wiki": "pins"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent could move their bishop to c4 to SKEWER your pawn on d5 and pawn behind it \u2014 move one off the diagonal now, or guard c4",
+      "moves": [],
+      "wiki": "pins"
+     },
+     {
+      "kind": "potential",
+      "side": "mover",
+      "text": "your queen could move to d6 to SKEWER enemy pawn on e5 \u2192 pawn on h2 behind it (front piece forced to move, you win the one behind) \u2014 calculate it",
+      "moves": [
+       "Qd6"
+      ],
+      "wiki": "pins"
+     }
+    ]
+   }
+  },
+  {
+   "ply": 16,
+   "move_number": 9,
+   "mover": "white",
+   "fen_before": "rnbq1kr1/p1p1nppp/1p2p3/3pP3/3P4/2PB1N2/P1P2PPP/R1BQ1RK1 w - - 5 9",
+   "played": {
+    "san": "Bxh7",
+    "uci": "d3h7"
+   },
+   "eval_best_cp_mover": 283,
+   "eval_played_cp_mover": 283,
+   "win_before_pct": 73.9,
+   "win_after_pct": 73.9,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Bxh7",
+    "uci": "d3h7",
+    "pv": [
+     "Bxh7",
+     "Rh8",
+     "Ng5",
+     "Ke8",
+     "Bd3",
+     "Qd7",
+     "Qf3",
+     "Nec6"
+    ]
+   },
+   "situation": {
+    "priority": "PLAY POSITIONALLY",
+    "material": "roughly equal",
+    "material_diff_pawns": 0,
+    "phase": "opening",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 17,
+   "move_number": 9,
+   "mover": "black",
+   "fen_before": "rnbq1kr1/p1p1nppB/1p2p3/3pP3/3P4/2P2N2/P1P2PPP/R1BQ1RK1 b - - 0 9",
+   "played": {
+    "san": "f6",
+    "uci": "f7f6"
+   },
+   "eval_best_cp_mover": -289,
+   "eval_played_cp_mover": -420,
+   "win_before_pct": 25.7,
+   "win_after_pct": 17.6,
+   "centipawn_loss": 131,
+   "win_pct_lost": 8.1,
+   "accuracy_pct": 69.4,
+   "classification": "inaccuracy",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Rh8",
+    "uci": "g8h8",
+    "pv": [
+     "Rh8",
+     "Ng5",
+     "Ke8",
+     "Qf3",
+     "Rf8",
+     "Bd3",
+     "Ba6",
+     "Bxa6"
+    ]
+   },
+   "situation": {
+    "priority": "PLAY POSITIONALLY",
+    "material": "roughly equal",
+    "material_diff_pawns": -1,
+    "phase": "opening",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   },
+   "why_suboptimal": {
+    "better_move": "Rh8",
+    "better_line": [
+     "Rh8",
+     "Ng5",
+     "Ke8",
+     "Qf3",
+     "Rf8",
+     "Bd3",
+     "Ba6",
+     "Bxa6"
+    ],
+    "allowed_opponent": [
+     {
+      "kind": "threat",
+      "text": "TRAP / bait \u2014 a 'free' capture that actually loses material; verify with imagine_move before grabbing material: Bxg8 (looks like it wins the rook, but loses ~3 pawn(s) after recapture)",
+      "moves": []
+     }
+    ],
+    "key_features_before": [
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "the OPPONENT controls the centre (their central influence 10 vs your 6) \u2014 you are cramped. Fight back: put a pawn on d4/e4/d5/e5, aim a knight at the centre (Nf3/Nc3/Nf6/Nc6), or strike with c/f pawns; don't let them keep a free centre",
+      "moves": [],
+      "wiki": "center"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent has doubled pawns on the c-file \u2014 a target you can attack (use the c-file / pile pieces on them)",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent's pawn on a2 is ISOLATED \u2014 blockade the square in front, then attack it",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent has the bishop pair \u2014 keep the position closed, seek a knight outpost",
+      "moves": [],
+      "wiki": "piece_activity"
+     },
+     {
+      "kind": "potential",
+      "side": "mover",
+      "text": "the h-file is half-open \u2014 consider putting a rook there",
+      "moves": [
+       "Rh8"
+      ],
+      "wiki": "piece_activity"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent's bishop on h7 is undefended \u2014 a loose piece; look for a fork/double-attack hitting it",
+      "moves": [],
+      "wiki": "forks"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent could move their bishop to h6 to PIN your pawn on g7 against your KING on f8 \u2014 pre-empt it (move a piece off the line or guard h6)",
+      "moves": [],
+      "wiki": "pins"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent could move their bishop to a3 to PIN your knight on e7 against your KING on f8 \u2014 pre-empt it (move a piece off the line or guard a3)",
+      "moves": [],
+      "wiki": "pins"
+     }
+    ]
+   }
+  },
+  {
+   "ply": 18,
+   "move_number": 10,
+   "mover": "white",
+   "fen_before": "rnbq1kr1/p1p1n1pB/1p2pp2/3pP3/3P4/2P2N2/P1P2PPP/R1BQ1RK1 w - - 0 10",
+   "played": {
+    "san": "exf6",
+    "uci": "e5f6"
+   },
+   "eval_best_cp_mover": 453,
+   "eval_played_cp_mover": 453,
+   "win_before_pct": 84.1,
+   "win_after_pct": 84.1,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "exf6",
+    "uci": "e5f6",
+    "pv": [
+     "exf6",
+     "gxf6",
+     "Nh4",
+     "Kg7",
+     "Qh5",
+     "Qe8",
+     "Qh6+",
+     "Kf7"
+    ]
+   },
+   "situation": {
+    "priority": "CALCULATE FORCING MOVES FIRST",
+    "material": "roughly equal",
+    "material_diff_pawns": 1,
+    "phase": "opening",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 19,
+   "move_number": 10,
+   "mover": "black",
+   "fen_before": "rnbq1kr1/p1p1n1pB/1p2pP2/3p4/3P4/2P2N2/P1P2PPP/R1BQ1RK1 b - - 0 10",
+   "played": {
+    "san": "gxf6",
+    "uci": "g7f6"
+   },
+   "eval_best_cp_mover": -481,
+   "eval_played_cp_mover": -481,
+   "win_before_pct": 14.5,
+   "win_after_pct": 14.5,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "gxf6",
+    "uci": "g7f6",
+    "pv": [
+     "gxf6",
+     "Nh4",
+     "Ke8",
+     "Bxg8",
+     "Nxg8",
+     "Re1",
+     "Kd7",
+     "c4"
+    ]
+   },
+   "situation": {
+    "priority": "MEET THE THREAT",
+    "material": "behind",
+    "material_diff_pawns": -2,
+    "phase": "opening",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "material",
+     "move": "fxe7+"
+    },
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 20,
+   "move_number": 11,
+   "mover": "white",
+   "fen_before": "rnbq1kr1/p1p1n2B/1p2pp2/3p4/3P4/2P2N2/P1P2PPP/R1BQ1RK1 w - - 0 11",
+   "played": {
+    "san": "Bxg8",
+    "uci": "h7g8"
+   },
+   "eval_best_cp_mover": 487,
+   "eval_played_cp_mover": 414,
+   "win_before_pct": 85.7,
+   "win_after_pct": 82.1,
+   "centipawn_loss": 73,
+   "win_pct_lost": 3.6,
+   "accuracy_pct": 85.0,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Nh4",
+    "uci": "f3h4",
+    "pv": [
+     "Nh4",
+     "Ke8",
+     "Bxg8",
+     "Nxg8",
+     "Re1",
+     "Kd7",
+     "c4",
+     "Kc6"
+    ]
+   },
+   "situation": {
+    "priority": "CALCULATE FORCING MOVES FIRST",
+    "material": "roughly equal",
+    "material_diff_pawns": 1,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 21,
+   "move_number": 11,
+   "mover": "black",
+   "fen_before": "rnbq1kB1/p1p1n3/1p2pp2/3p4/3P4/2P2N2/P1P2PPP/R1BQ1RK1 b - - 0 11",
+   "played": {
+    "san": "Nxg8",
+    "uci": "e7g8"
+   },
+   "eval_best_cp_mover": -422,
+   "eval_played_cp_mover": -446,
+   "win_before_pct": 17.5,
+   "win_after_pct": 16.2,
+   "centipawn_loss": 24,
+   "win_pct_lost": 1.2,
+   "accuracy_pct": 94.6,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Kxg8",
+    "uci": "f8g8",
+    "pv": [
+     "Kxg8",
+     "Re1",
+     "Qe8",
+     "Nh4",
+     "Qf7",
+     "Qg4+",
+     "Qg7",
+     "Qh5"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -6,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 22,
+   "move_number": 12,
+   "mover": "white",
+   "fen_before": "rnbq1kn1/p1p5/1p2pp2/3p4/3P4/2P2N2/P1P2PPP/R1BQ1RK1 w - - 0 12",
+   "played": {
+    "san": "Qd3",
+    "uci": "d1d3"
+   },
+   "eval_best_cp_mover": 474,
+   "eval_played_cp_mover": 382,
+   "win_before_pct": 85.1,
+   "win_after_pct": 80.3,
+   "centipawn_loss": 92,
+   "win_pct_lost": 4.8,
+   "accuracy_pct": 80.5,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Nh4",
+    "uci": "f3h4",
+    "pv": [
+     "Nh4",
+     "Qd7",
+     "Ng6+",
+     "Ke8",
+     "Nf4",
+     "Nc6",
+     "Re1",
+     "Qf7"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "ahead",
+    "material_diff_pawns": 3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 23,
+   "move_number": 12,
+   "mover": "black",
+   "fen_before": "rnbq1kn1/p1p5/1p2pp2/3p4/3P4/2PQ1N2/P1P2PPP/R1B2RK1 b - - 1 12",
+   "played": {
+    "san": "Bd7",
+    "uci": "c8d7"
+   },
+   "eval_best_cp_mover": -401,
+   "eval_played_cp_mover": -489,
+   "win_before_pct": 18.6,
+   "win_after_pct": 14.2,
+   "centipawn_loss": 88,
+   "win_pct_lost": 4.4,
+   "accuracy_pct": 82.0,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Ba6",
+    "uci": "c8a6",
+    "pv": [
+     "Ba6",
+     "Qh7",
+     "Qe7",
+     "Bh6+",
+     "Nxh6",
+     "Qxh6+",
+     "Qg7",
+     "Qh3"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "behind",
+    "material_diff_pawns": -3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 24,
+   "move_number": 13,
+   "mover": "white",
+   "fen_before": "rn1q1kn1/p1pb4/1p2pp2/3p4/3P4/2PQ1N2/P1P2PPP/R1B2RK1 w - - 2 13",
+   "played": {
+    "san": "Bf4",
+    "uci": "c1f4"
+   },
+   "eval_best_cp_mover": 500,
+   "eval_played_cp_mover": 410,
+   "win_before_pct": 86.3,
+   "win_after_pct": 81.9,
+   "centipawn_loss": 90,
+   "win_pct_lost": 4.4,
+   "accuracy_pct": 82.0,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Ba3+",
+    "uci": "c1a3",
+    "pv": [
+     "Ba3+",
+     "Kg7",
+     "Nh4",
+     "Qe8",
+     "Qg3+",
+     "Kh7",
+     "Rae1",
+     "Qh5"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "ahead",
+    "material_diff_pawns": 3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 25,
+   "move_number": 13,
+   "mover": "black",
+   "fen_before": "rn1q1kn1/p1pb4/1p2pp2/3p4/3P1B2/2PQ1N2/P1P2PPP/R4RK1 b - - 3 13",
+   "played": {
+    "san": "a5",
+    "uci": "a7a5"
+   },
+   "eval_best_cp_mover": -401,
+   "eval_played_cp_mover": -473,
+   "win_before_pct": 18.6,
+   "win_after_pct": 14.9,
+   "centipawn_loss": 72,
+   "win_pct_lost": 3.7,
+   "accuracy_pct": 84.7,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Nc6",
+    "uci": "b8c6",
+    "pv": [
+     "Nc6",
+     "c4",
+     "dxc4",
+     "Qxc4",
+     "Nge7",
+     "Qe2",
+     "Qe8",
+     "c4"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "behind",
+    "material_diff_pawns": -3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 26,
+   "move_number": 14,
+   "mover": "white",
+   "fen_before": "rn1q1kn1/2pb4/1p2pp2/p2p4/3P1B2/2PQ1N2/P1P2PPP/R4RK1 w - - 0 14",
+   "played": {
+    "san": "Rfb1",
+    "uci": "f1b1"
+   },
+   "eval_best_cp_mover": 462,
+   "eval_played_cp_mover": 421,
+   "win_before_pct": 84.6,
+   "win_after_pct": 82.5,
+   "centipawn_loss": 41,
+   "win_pct_lost": 2.1,
+   "accuracy_pct": 91.1,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Rfe1",
+    "uci": "f1e1",
+    "pv": [
+     "Rfe1",
+     "Na6",
+     "Nh4",
+     "Qe8",
+     "g4",
+     "Qf7",
+     "Re3",
+     "Ne7"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "ahead",
+    "material_diff_pawns": 3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 27,
+   "move_number": 14,
+   "mover": "black",
+   "fen_before": "rn1q1kn1/2pb4/1p2pp2/p2p4/3P1B2/2PQ1N2/P1P2PPP/RR4K1 b - - 1 14",
+   "played": {
+    "san": "Nc6",
+    "uci": "b8c6"
+   },
+   "eval_best_cp_mover": -426,
+   "eval_played_cp_mover": -426,
+   "win_before_pct": 17.2,
+   "win_after_pct": 17.2,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Nc6",
+    "uci": "b8c6",
+    "pv": [
+     "Nc6",
+     "Qh7",
+     "Qe7",
+     "Qxe7+",
+     "Ngxe7",
+     "Bxc7",
+     "Kf7",
+     "Bxb6"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "behind",
+    "material_diff_pawns": -3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 28,
+   "move_number": 15,
+   "mover": "white",
+   "fen_before": "r2q1kn1/2pb4/1pn1pp2/p2p4/3P1B2/2PQ1N2/P1P2PPP/RR4K1 w - - 2 15",
+   "played": {
+    "san": "h4",
+    "uci": "h2h4"
+   },
+   "eval_best_cp_mover": 448,
+   "eval_played_cp_mover": 380,
+   "win_before_pct": 83.9,
+   "win_after_pct": 80.2,
+   "centipawn_loss": 68,
+   "win_pct_lost": 3.7,
+   "accuracy_pct": 84.7,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Nh4",
+    "uci": "f3h4",
+    "pv": [
+     "Nh4",
+     "Qe8",
+     "Bxc7",
+     "Qh5",
+     "Bg3",
+     "Nge7",
+     "Rxb6",
+     "Ke8"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "ahead",
+    "material_diff_pawns": 3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 29,
+   "move_number": 15,
+   "mover": "black",
+   "fen_before": "r2q1kn1/2pb4/1pn1pp2/p2p4/3P1B1P/2PQ1N2/P1P2PP1/RR4K1 b - - 0 15",
+   "played": {
+    "san": "e5",
+    "uci": "e6e5"
+   },
+   "eval_best_cp_mover": -368,
+   "eval_played_cp_mover": -557,
+   "win_before_pct": 20.5,
+   "win_after_pct": 11.4,
+   "centipawn_loss": 189,
+   "win_pct_lost": 9.1,
+   "accuracy_pct": 66.2,
+   "classification": "inaccuracy",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Kg7",
+    "uci": "f8g7",
+    "pv": [
+     "Kg7",
+     "Re1",
+     "Nge7",
+     "Rab1",
+     "Rc8",
+     "Nh2",
+     "Nf5",
+     "h5"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "behind",
+    "material_diff_pawns": -3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   },
+   "why_suboptimal": {
+    "better_move": "Kg7",
+    "better_line": [
+     "Kg7",
+     "Re1",
+     "Nge7",
+     "Rab1",
+     "Rc8",
+     "Nh2",
+     "Nf5",
+     "h5"
+    ],
+    "allowed_opponent": [
+     {
+      "kind": "threat",
+      "text": "TRAP / bait \u2014 a 'free' capture that actually loses material; verify with imagine_move before grabbing material: Bxe5 (looks like it wins the pawn, but loses ~2 pawn(s) after recapture); Nxe5 (looks like it wins the pawn, but loses ~2 pawn(s) after recapture); Rxb6 (looks like it wins the pawn, but loses ~5 pawn(s) after recapture)",
+      "moves": []
+     }
+    ],
+    "key_features_before": [
+     {
+      "kind": "threat",
+      "side": "opponent",
+      "text": "opponent has a PASSED pawn on h4 \u2014 blockade the square in front (a knight is ideal), or get a rook behind it",
+      "moves": [],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "threat",
+      "side": "mover",
+      "text": "TRAP / bait \u2014 a 'free' capture that actually loses material; verify with imagine_move before grabbing material: Nxd4 (looks like it wins the pawn, but loses ~3 pawn(s) after recapture)",
+      "moves": [],
+      "wiki": "traps"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent has doubled pawns on the c-file \u2014 a target you can attack (use the c-file / pile pieces on them)",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent's pawn on a2 is ISOLATED \u2014 blockade the square in front, then attack it",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "you are DOWN ~3 points of material \u2014 when given the choice, avoid INITIATING even piece trades (keep pieces on for chances) and seek complications/counterplay. This does NOT mean refuse free material: ALWAYS capture an undefended enemy piece or win a favourable exchange \u2014 that is how you climb back, not a trade to avoid.",
+      "moves": [],
+      "wiki": "material"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your KING on f8 is exposed (broken pawn shield) with enemy heavy pieces on \u2014 get it safe (castle if you can), keep the pawn shield, trade off the enemy's attackers",
+      "moves": [],
+      "wiki": "king_safety"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent's bishop on f4 is undefended \u2014 a loose piece; look for a fork/double-attack hitting it",
+      "moves": [],
+      "wiki": "forks"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent could move their queen to f5 to PIN your pawn on f6 against your KING on f8 \u2014 pre-empt it (move a piece off the line or guard f5)",
+      "moves": [],
+      "wiki": "pins"
+     }
+    ]
+   }
+  },
+  {
+   "ply": 30,
+   "move_number": 16,
+   "mover": "white",
+   "fen_before": "r2q1kn1/2pb4/1pn2p2/p2pp3/3P1B1P/2PQ1N2/P1P2PP1/RR4K1 w - - 0 16",
+   "played": {
+    "san": "Bg3",
+    "uci": "f4g3"
+   },
+   "eval_best_cp_mover": 578,
+   "eval_played_cp_mover": 133,
+   "win_before_pct": 89.4,
+   "win_after_pct": 62.0,
+   "centipawn_loss": 445,
+   "win_pct_lost": 27.4,
+   "accuracy_pct": 28.2,
+   "classification": "blunder",
+   "is_best_move": false,
+   "best_move": {
+    "san": "dxe5",
+    "uci": "d4e5",
+    "pv": [
+     "dxe5",
+     "Bg4",
+     "Re1",
+     "Qd7",
+     "exf6",
+     "Bf5",
+     "Qd2",
+     "Nxf6"
+    ]
+   },
+   "situation": {
+    "priority": "MEET THE THREAT",
+    "material": "ahead",
+    "material_diff_pawns": 3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "material",
+     "move": "exf4"
+    },
+    "has_forcing_move": true,
+    "mate_savers": []
+   },
+   "why_suboptimal": {
+    "better_move": "dxe5",
+    "better_line": [
+     "dxe5",
+     "Bg4",
+     "Re1",
+     "Qd7",
+     "exf6",
+     "Bf5",
+     "Qd2",
+     "Nxf6"
+    ],
+    "allowed_opponent": [
+     {
+      "kind": "threat",
+      "text": "TRAP / bait \u2014 a 'free' capture that actually loses material; verify with imagine_move before grabbing material: Nxd4 (looks like it wins the pawn, but loses ~3 pawn(s) after recapture)",
+      "moves": []
+     }
+    ],
+    "key_features_before": [
+     {
+      "kind": "lose",
+      "side": "mover",
+      "text": "your bishop on f4 is attacked and UNDEFENDED \u2014 the opponent can take it for free. SAVE IT: move it to safety, defend it, or answer with a bigger threat (a check or a capture of equal/greater value).",
+      "moves": [
+       "Bxe5 (captures attacker)",
+       "Nxe5 (captures attacker)",
+       "dxe5 (captures attacker)",
+       "Bg5 (moves to safety)"
+      ],
+      "wiki": "handle_threat"
+     },
+     {
+      "kind": "threat",
+      "side": "opponent",
+      "text": "opponent's pawn could move to e4 and FORK your queen on d3, knight on f3 \u2014 a double attack you would not meet in one move; prevent it (guard e4, move a target, or defend both).",
+      "moves": [],
+      "wiki": "forks"
+     },
+     {
+      "kind": "threat",
+      "side": "mover",
+      "text": "TRAP / bait \u2014 a 'free' capture that actually loses material; verify with imagine_move before grabbing material: Bxe5 (looks like it wins the pawn, but loses ~2 pawn(s) after recapture); Nxe5 (looks like it wins the pawn, but loses ~2 pawn(s) after recapture); Rxb6 (looks like it wins the pawn, but loses ~5 pawn(s) after recapture)",
+      "moves": [],
+      "wiki": "traps"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "you have doubled pawns on the c-file (c2, c3) \u2014 they can't defend each other; the c-file is a target",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your pawn on a2 is ISOLATED (no friendly pawn on adjacent files) \u2014 a fixed target; support it with pieces and seek activity",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "strength",
+      "side": "mover",
+      "text": "you have a PASSED pawn on h4 \u2014 push it, support it from behind with a rook; it grows stronger as it advances",
+      "moves": [
+       "h5"
+      ],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "strength",
+      "side": "mover",
+      "text": "your rook on b1 controls the half-open b-file",
+      "moves": [],
+      "wiki": "piece_activity"
+     },
+     {
+      "kind": "strength",
+      "side": "mover",
+      "text": "your bishop on f4 SKEWERS pawn on e5 \u2192 pawn on c7 behind it; the front piece is forced to move, so you win the one behind",
+      "moves": [],
+      "wiki": "pins"
+     }
+    ]
+   }
+  },
+  {
+   "ply": 31,
+   "move_number": 16,
+   "mover": "black",
+   "fen_before": "r2q1kn1/2pb4/1pn2p2/p2pp3/3P3P/2PQ1NB1/P1P2PP1/RR4K1 b - - 1 16",
+   "played": {
+    "san": "e4",
+    "uci": "e5e4"
+   },
+   "eval_best_cp_mover": -135,
+   "eval_played_cp_mover": -135,
+   "win_before_pct": 37.8,
+   "win_after_pct": 37.8,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "great",
+   "is_best_move": true,
+   "best_move": {
+    "san": "e4",
+    "uci": "e5e4",
+    "pv": [
+     "e4",
+     "Qd1",
+     "exf3",
+     "Qxf3",
+     "Nce7",
+     "Bf4",
+     "Qc8",
+     "Qg3"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "behind",
+    "material_diff_pawns": -3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 32,
+   "move_number": 17,
+   "mover": "white",
+   "fen_before": "r2q1kn1/2pb4/1pn2p2/p2p4/3Pp2P/2PQ1NB1/P1P2PP1/RR4K1 w - - 0 17",
+   "played": {
+    "san": "Qe2",
+    "uci": "d3e2"
+   },
+   "eval_best_cp_mover": 150,
+   "eval_played_cp_mover": 106,
+   "win_before_pct": 63.5,
+   "win_after_pct": 59.6,
+   "centipawn_loss": 44,
+   "win_pct_lost": 3.8,
+   "accuracy_pct": 84.1,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Qe3",
+    "uci": "d3e3",
+    "pv": [
+     "Qe3",
+     "exf3",
+     "Qxf3",
+     "Nce7",
+     "Bf4",
+     "Rc8",
+     "Re1",
+     "Qe8"
+    ]
+   },
+   "situation": {
+    "priority": "MEET THE THREAT",
+    "material": "ahead",
+    "material_diff_pawns": 3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "material",
+     "move": "exd3"
+    },
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 33,
+   "move_number": 17,
+   "mover": "black",
+   "fen_before": "r2q1kn1/2pb4/1pn2p2/p2p4/3Pp2P/2P2NB1/P1P1QPP1/RR4K1 b - - 1 17",
+   "played": {
+    "san": "Bf5",
+    "uci": "d7f5"
+   },
+   "eval_best_cp_mover": -96,
+   "eval_played_cp_mover": -360,
+   "win_before_pct": 41.3,
+   "win_after_pct": 21.0,
+   "centipawn_loss": 264,
+   "win_pct_lost": 20.3,
+   "accuracy_pct": 39.5,
+   "classification": "blunder",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Bg4",
+    "uci": "d7g4",
+    "pv": [
+     "Bg4",
+     "Qe3",
+     "exf3",
+     "Qf4",
+     "Qc8",
+     "gxf3",
+     "Bh5",
+     "Qxc7"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "behind",
+    "material_diff_pawns": -3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   },
+   "why_suboptimal": {
+    "better_move": "Bg4",
+    "better_line": [
+     "Bg4",
+     "Qe3",
+     "exf3",
+     "Qf4",
+     "Qc8",
+     "gxf3",
+     "Bh5",
+     "Qxc7"
+    ],
+    "allowed_opponent": [
+     {
+      "kind": "threat",
+      "text": "TRAP / bait \u2014 a 'free' capture that actually loses material; verify with imagine_move before grabbing material: Bxc7 (looks like it wins the pawn, but loses ~3 pawn(s) after recapture); Qxe4 (looks like it wins the pawn, but loses ~9 pawn(s) after recapture); Rxb6 (looks like it wins the pawn, but loses ~5 pawn(s) after recapture)",
+      "moves": []
+     }
+    ],
+    "key_features_before": [
+     {
+      "kind": "threat",
+      "side": "opponent",
+      "text": "opponent has a PASSED pawn on h4 \u2014 blockade the square in front (a knight is ideal), or get a rook behind it",
+      "moves": [],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "threat",
+      "side": "mover",
+      "text": "TRAP / bait \u2014 a 'free' capture that actually loses material; verify with imagine_move before grabbing material: Nxd4 (looks like it wins the pawn, but loses ~3 pawn(s) after recapture)",
+      "moves": [],
+      "wiki": "traps"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent has doubled pawns on the c-file \u2014 a target you can attack (use the c-file / pile pieces on them)",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent's pawn on a2 is ISOLATED \u2014 blockade the square in front, then attack it",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "you are DOWN ~3 points of material \u2014 when given the choice, avoid INITIATING even piece trades (keep pieces on for chances) and seek complications/counterplay. This does NOT mean refuse free material: ALWAYS capture an undefended enemy piece or win a favourable exchange \u2014 that is how you climb back, not a trade to avoid.",
+      "moves": [],
+      "wiki": "material"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your KING on f8 is exposed (broken pawn shield) with enemy heavy pieces on \u2014 get it safe (castle if you can), keep the pawn shield, trade off the enemy's attackers",
+      "moves": [],
+      "wiki": "king_safety"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent's queen on e2 is undefended \u2014 a loose piece; look for a fork/double-attack hitting it",
+      "moves": [],
+      "wiki": "forks"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent could move their rook to b6 to SKEWER your knight on c6 and pawn behind it \u2014 move one off the rank now, or guard b6",
+      "moves": [],
+      "wiki": "pins"
+     }
+    ]
+   }
+  },
+  {
+   "ply": 34,
+   "move_number": 18,
+   "mover": "white",
+   "fen_before": "r2q1kn1/2p5/1pn2p2/p2p1b2/3Pp2P/2P2NB1/P1P1QPP1/RR4K1 w - - 2 18",
+   "played": {
+    "san": "Nd2",
+    "uci": "f3d2"
+   },
+   "eval_best_cp_mover": 376,
+   "eval_played_cp_mover": 376,
+   "win_before_pct": 80.0,
+   "win_after_pct": 80.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Nd2",
+    "uci": "f3d2",
+    "pv": [
+     "Nd2",
+     "Qd7",
+     "f3",
+     "Re8",
+     "Re1",
+     "Kg7",
+     "Qe3",
+     "Nh6"
+    ]
+   },
+   "situation": {
+    "priority": "MEET THE THREAT",
+    "material": "ahead",
+    "material_diff_pawns": 3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "material",
+     "move": "exf3"
+    },
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 35,
+   "move_number": 18,
+   "mover": "black",
+   "fen_before": "r2q1kn1/2p5/1pn2p2/p2p1b2/3Pp2P/2P3B1/P1PNQPP1/RR4K1 b - - 3 18",
+   "played": {
+    "san": "Na7",
+    "uci": "c6a7"
+   },
+   "eval_best_cp_mover": -366,
+   "eval_played_cp_mover": -428,
+   "win_before_pct": 20.6,
+   "win_after_pct": 17.1,
+   "centipawn_loss": 62,
+   "win_pct_lost": 3.5,
+   "accuracy_pct": 85.5,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Qd7",
+    "uci": "d8d7",
+    "pv": [
+     "Qd7",
+     "f3",
+     "Re8",
+     "Re1",
+     "Qg7",
+     "Bf4",
+     "Nce7",
+     "h5"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "behind",
+    "material_diff_pawns": -3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 36,
+   "move_number": 19,
+   "mover": "white",
+   "fen_before": "r2q1kn1/n1p5/1p3p2/p2p1b2/3Pp2P/2P3B1/P1PNQPP1/RR4K1 w - - 4 19",
+   "played": {
+    "san": "a4",
+    "uci": "a2a4"
+   },
+   "eval_best_cp_mover": 431,
+   "eval_played_cp_mover": 381,
+   "win_before_pct": 83.0,
+   "win_after_pct": 80.3,
+   "centipawn_loss": 50,
+   "win_pct_lost": 2.8,
+   "accuracy_pct": 88.3,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "c4",
+    "uci": "c3c4",
+    "pv": [
+     "c4",
+     "Nc6",
+     "c3",
+     "Nge7",
+     "Re1",
+     "Qd7",
+     "cxd5",
+     "Nxd5"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "ahead",
+    "material_diff_pawns": 3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 37,
+   "move_number": 19,
+   "mover": "black",
+   "fen_before": "r2q1kn1/n1p5/1p3p2/p2p1b2/P2Pp2P/2P3B1/2PNQPP1/RR4K1 b - - 0 19",
+   "played": {
+    "san": "Nh6",
+    "uci": "g8h6"
+   },
+   "eval_best_cp_mover": -393,
+   "eval_played_cp_mover": -518,
+   "win_before_pct": 19.0,
+   "win_after_pct": 12.9,
+   "centipawn_loss": 125,
+   "win_pct_lost": 6.1,
+   "accuracy_pct": 75.9,
+   "classification": "inaccuracy",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Nc6",
+    "uci": "a7c6",
+    "pv": [
+     "Nc6",
+     "Nf1",
+     "Qd7",
+     "Ne3",
+     "Bg6",
+     "Qb5",
+     "Nge7",
+     "c4"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "behind",
+    "material_diff_pawns": -3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   },
+   "why_suboptimal": {
+    "better_move": "Nc6",
+    "better_line": [
+     "Nc6",
+     "Nf1",
+     "Qd7",
+     "Ne3",
+     "Bg6",
+     "Qb5",
+     "Nge7",
+     "c4"
+    ],
+    "allowed_opponent": [
+     {
+      "kind": "threat",
+      "text": "TRAP / bait \u2014 a 'free' capture that actually loses material; verify with imagine_move before grabbing material: Bxc7 (looks like it wins the pawn, but loses ~3 pawn(s) after recapture); Qxe4 (looks like it wins the pawn, but loses ~9 pawn(s) after recapture); Nxe4 (looks like it wins the pawn, but loses ~3 pawn(s) after recapture); Rxb6 (looks like it wins the pawn, but loses ~5 pawn(s) after recapture)",
+      "moves": []
+     }
+    ],
+    "key_features_before": [
+     {
+      "kind": "threat",
+      "side": "opponent",
+      "text": "opponent has a PASSED pawn on h4 \u2014 blockade the square in front (a knight is ideal), or get a rook behind it",
+      "moves": [],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent has doubled pawns on the c-file \u2014 a target you can attack (use the c-file / pile pieces on them)",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent's pawn on a4 is ISOLATED \u2014 blockade the square in front, then attack it",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "you are DOWN ~3 points of material \u2014 when given the choice, avoid INITIATING even piece trades (keep pieces on for chances) and seek complications/counterplay. This does NOT mean refuse free material: ALWAYS capture an undefended enemy piece or win a favourable exchange \u2014 that is how you climb back, not a trade to avoid.",
+      "moves": [],
+      "wiki": "material"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your KING on f8 is exposed (broken pawn shield) with enemy heavy pieces on \u2014 get it safe (castle if you can), keep the pawn shield, trade off the enemy's attackers",
+      "moves": [],
+      "wiki": "king_safety"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent's queen on e2 is undefended \u2014 a loose piece; look for a fork/double-attack hitting it",
+      "moves": [],
+      "wiki": "forks"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent could move their queen to f3 to SKEWER your bishop on f5 and pawn behind it \u2014 move one off the file now, or guard f3",
+      "moves": [],
+      "wiki": "pins"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent could move their queen to h5 to SKEWER your bishop on f5 and pawn behind it \u2014 move one off the rank now, or guard h5",
+      "moves": [],
+      "wiki": "pins"
+     }
+    ]
+   }
+  },
+  {
+   "ply": 38,
+   "move_number": 20,
+   "mover": "white",
+   "fen_before": "r2q1k2/n1p5/1p3p1n/p2p1b2/P2Pp2P/2P3B1/2PNQPP1/RR4K1 w - - 1 20",
+   "played": {
+    "san": "f3",
+    "uci": "f2f3"
+   },
+   "eval_best_cp_mover": 534,
+   "eval_played_cp_mover": 379,
+   "win_before_pct": 87.7,
+   "win_after_pct": 80.1,
+   "centipawn_loss": 155,
+   "win_pct_lost": 7.6,
+   "accuracy_pct": 71.0,
+   "classification": "inaccuracy",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Qh5",
+    "uci": "e2h5",
+    "pv": [
+     "Qh5",
+     "Kg7",
+     "Bf4",
+     "Qh8",
+     "Bxh6+",
+     "Qxh6",
+     "Qxf5",
+     "Qxd2"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "ahead",
+    "material_diff_pawns": 3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   },
+   "why_suboptimal": {
+    "better_move": "Qh5",
+    "better_line": [
+     "Qh5",
+     "Kg7",
+     "Bf4",
+     "Qh8",
+     "Bxh6+",
+     "Qxh6",
+     "Qxf5",
+     "Qxd2"
+    ],
+    "allowed_opponent": [],
+    "key_features_before": [
+     {
+      "kind": "threat",
+      "side": "mover",
+      "text": "TRAP / bait \u2014 a 'free' capture that actually loses material; verify with imagine_move before grabbing material: Bxc7 (looks like it wins the pawn, but loses ~3 pawn(s) after recapture); Qxe4 (looks like it wins the pawn, but loses ~9 pawn(s) after recapture); Nxe4 (looks like it wins the pawn, but loses ~3 pawn(s) after recapture); Rxb6 (looks like it wins the pawn, but loses ~5 pawn(s) after recapture)",
+      "moves": [],
+      "wiki": "traps"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "you have doubled pawns on the c-file (c2, c3) \u2014 they can't defend each other; the c-file is a target",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your pawn on a4 is ISOLATED (no friendly pawn on adjacent files) \u2014 a fixed target; support it with pieces and seek activity",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "strength",
+      "side": "mover",
+      "text": "you have a PASSED pawn on h4 \u2014 push it, support it from behind with a rook; it grows stronger as it advances",
+      "moves": [
+       "h5"
+      ],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "strength",
+      "side": "mover",
+      "text": "your rook on b1 controls the half-open b-file",
+      "moves": [],
+      "wiki": "piece_activity"
+     },
+     {
+      "kind": "strength",
+      "side": "mover",
+      "text": "you are UP ~3 points of material \u2014 prefer trading PIECES (not pawns) to simplify toward a won endgame; keep at least one rook or the queen for mating",
+      "moves": [],
+      "wiki": "material"
+     },
+     {
+      "kind": "potential",
+      "side": "mover",
+      "text": "the e-file is half-open \u2014 consider putting a rook there",
+      "moves": [
+       "Re1"
+      ],
+      "wiki": "piece_activity"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent's knight on h6 is undefended \u2014 a loose piece; look for a fork/double-attack hitting it",
+      "moves": [],
+      "wiki": "forks"
+     }
+    ]
+   }
+  },
+  {
+   "ply": 39,
+   "move_number": 20,
+   "mover": "black",
+   "fen_before": "r2q1k2/n1p5/1p3p1n/p2p1b2/P2Pp2P/2P2PB1/2PNQ1P1/RR4K1 b - - 0 20",
+   "played": {
+    "san": "Kf7",
+    "uci": "f8f7"
+   },
+   "eval_best_cp_mover": -393,
+   "eval_played_cp_mover": -542,
+   "win_before_pct": 19.0,
+   "win_after_pct": 12.0,
+   "centipawn_loss": 149,
+   "win_pct_lost": 7.1,
+   "accuracy_pct": 72.6,
+   "classification": "inaccuracy",
+   "is_best_move": false,
+   "best_move": {
+    "san": "exf3",
+    "uci": "e4f3",
+    "pv": [
+     "exf3",
+     "Qxf3",
+     "Kg7",
+     "Qf4",
+     "Bxc2",
+     "Rb2",
+     "Bd3",
+     "Re1"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "behind",
+    "material_diff_pawns": -3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   },
+   "why_suboptimal": {
+    "better_move": "exf3",
+    "better_line": [
+     "exf3",
+     "Qxf3",
+     "Kg7",
+     "Qf4",
+     "Bxc2",
+     "Rb2",
+     "Bd3",
+     "Re1"
+    ],
+    "allowed_opponent": [
+     {
+      "kind": "threat",
+      "text": "TRAP / bait \u2014 a 'free' capture that actually loses material; verify with imagine_move before grabbing material: Bxc7 (looks like it wins the pawn, but loses ~3 pawn(s) after recapture); Qxe4 (looks like it wins the pawn, but loses ~8 pawn(s) after recapture); Nxe4 (looks like it wins the pawn, but loses ~2 pawn(s) after recapture); Rxb6 (looks like it wins the pawn, but loses ~5 pawn(s) after recapture)",
+      "moves": []
+     }
+    ],
+    "key_features_before": [
+     {
+      "kind": "threat",
+      "side": "opponent",
+      "text": "opponent has a PASSED pawn on h4 \u2014 blockade the square in front (a knight is ideal), or get a rook behind it",
+      "moves": [],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent has doubled pawns on the c-file \u2014 a target you can attack (use the c-file / pile pieces on them)",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent's pawn on a4 is ISOLATED \u2014 blockade the square in front, then attack it",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "you are DOWN ~3 points of material \u2014 when given the choice, avoid INITIATING even piece trades (keep pieces on for chances) and seek complications/counterplay. This does NOT mean refuse free material: ALWAYS capture an undefended enemy piece or win a favourable exchange \u2014 that is how you climb back, not a trade to avoid.",
+      "moves": [],
+      "wiki": "material"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your KING on f8 is exposed (broken pawn shield) with enemy heavy pieces on \u2014 get it safe (castle if you can), keep the pawn shield, trade off the enemy's attackers",
+      "moves": [],
+      "wiki": "king_safety"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent's queen on e2 is undefended \u2014 a loose piece; look for a fork/double-attack hitting it",
+      "moves": [],
+      "wiki": "forks"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent's bishop on g3 is undefended \u2014 a loose piece; look for a fork/double-attack hitting it",
+      "moves": [],
+      "wiki": "forks"
+     },
+     {
+      "kind": "potential",
+      "side": "opponent",
+      "text": "opponent could move their queen to a6 to SKEWER your pawn on b6 and pawn behind it \u2014 move one off the rank now, or guard a6",
+      "moves": [],
+      "wiki": "pins"
+     }
+    ]
+   }
+  },
+  {
+   "ply": 40,
+   "move_number": 21,
+   "mover": "white",
+   "fen_before": "r2q4/n1p2k2/1p3p1n/p2p1b2/P2Pp2P/2P2PB1/2PNQ1P1/RR4K1 w - - 1 21",
+   "played": {
+    "san": "fxe4",
+    "uci": "f3e4"
+   },
+   "eval_best_cp_mover": 522,
+   "eval_played_cp_mover": 522,
+   "win_before_pct": 87.2,
+   "win_after_pct": 87.2,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "fxe4",
+    "uci": "f3e4",
+    "pv": [
+     "fxe4",
+     "dxe4",
+     "Qh5+",
+     "Kg7",
+     "Bf4",
+     "Qh8",
+     "Bxh6+",
+     "Qxh6"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "ahead",
+    "material_diff_pawns": 3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 41,
+   "move_number": 21,
+   "mover": "black",
+   "fen_before": "r2q4/n1p2k2/1p3p1n/p2p1b2/P2PP2P/2P3B1/2PNQ1P1/RR4K1 b - - 0 21",
+   "played": {
+    "san": "Bg4",
+    "uci": "f5g4"
+   },
+   "eval_best_cp_mover": -513,
+   "eval_played_cp_mover": -513,
+   "win_before_pct": 13.1,
+   "win_after_pct": 13.1,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Bg4",
+    "uci": "f5g4",
+    "pv": [
+     "Bg4",
+     "Qe3",
+     "Qh8",
+     "Bf4",
+     "Ng8",
+     "Qg3",
+     "Qh5",
+     "Rf1"
+    ]
+   },
+   "situation": {
+    "priority": "MEET THE THREAT",
+    "material": "behind",
+    "material_diff_pawns": -4,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "material",
+     "move": "exf5"
+    },
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 42,
+   "move_number": 22,
+   "mover": "white",
+   "fen_before": "r2q4/n1p2k2/1p3p1n/p2p4/P2PP1bP/2P3B1/2PNQ1P1/RR4K1 w - - 1 22",
+   "played": {
+    "san": "Qf2",
+    "uci": "e2f2"
+   },
+   "eval_best_cp_mover": 527,
+   "eval_played_cp_mover": 517,
+   "win_before_pct": 87.4,
+   "win_after_pct": 87.0,
+   "centipawn_loss": 10,
+   "win_pct_lost": 0.4,
+   "accuracy_pct": 98.2,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Qe3",
+    "uci": "e2e3",
+    "pv": [
+     "Qe3",
+     "Qh8",
+     "Rf1",
+     "Re8",
+     "Rf4",
+     "f5",
+     "Qf2",
+     "Qg7"
+    ]
+   },
+   "situation": {
+    "priority": "MEET THE THREAT",
+    "material": "ahead",
+    "material_diff_pawns": 4,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "material",
+     "move": "Bxe2"
+    },
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 43,
+   "move_number": 22,
+   "mover": "black",
+   "fen_before": "r2q4/n1p2k2/1p3p1n/p2p4/P2PP1bP/2P3B1/2PN1QP1/RR4K1 b - - 2 22",
+   "played": {
+    "san": "Be6",
+    "uci": "g4e6"
+   },
+   "eval_best_cp_mover": -529,
+   "eval_played_cp_mover": -559,
+   "win_before_pct": 12.5,
+   "win_after_pct": 11.3,
+   "centipawn_loss": 30,
+   "win_pct_lost": 1.2,
+   "accuracy_pct": 94.9,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Nc8",
+    "uci": "a7c8",
+    "pv": [
+     "Nc8",
+     "Rf1",
+     "Nd6",
+     "Bxd6",
+     "cxd6",
+     "Qf4",
+     "Kg6",
+     "Rae1"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "behind",
+    "material_diff_pawns": -4,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 44,
+   "move_number": 23,
+   "mover": "white",
+   "fen_before": "r2q4/n1p2k2/1p2bp1n/p2p4/P2PP2P/2P3B1/2PN1QP1/RR4K1 w - - 3 23",
+   "played": {
+    "san": "e5",
+    "uci": "e4e5"
+   },
+   "eval_best_cp_mover": 561,
+   "eval_played_cp_mover": 495,
+   "win_before_pct": 88.8,
+   "win_after_pct": 86.1,
+   "centipawn_loss": 66,
+   "win_pct_lost": 2.7,
+   "accuracy_pct": 88.7,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Qf4",
+    "uci": "f2f4",
+    "pv": [
+     "Qf4",
+     "Kg6",
+     "Rf1",
+     "c6",
+     "Rae1",
+     "b5",
+     "exd5",
+     "Bxd5"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "ahead",
+    "material_diff_pawns": 4,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 45,
+   "move_number": 23,
+   "mover": "black",
+   "fen_before": "r2q4/n1p2k2/1p2bp1n/p2pP3/P2P3P/2P3B1/2PN1QP1/RR4K1 b - - 0 23",
+   "played": {
+    "san": "Bg4",
+    "uci": "e6g4"
+   },
+   "eval_best_cp_mover": -497,
+   "eval_played_cp_mover": -608,
+   "win_before_pct": 13.8,
+   "win_after_pct": 9.6,
+   "centipawn_loss": 111,
+   "win_pct_lost": 4.2,
+   "accuracy_pct": 82.8,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Ng4",
+    "uci": "h6g4",
+    "pv": [
+     "Ng4",
+     "Qf4",
+     "f5",
+     "Rf1",
+     "Kg8",
+     "Nf3",
+     "Qd7",
+     "Ng5"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "behind",
+    "material_diff_pawns": -4,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 46,
+   "move_number": 24,
+   "mover": "white",
+   "fen_before": "r2q4/n1p2k2/1p3p1n/p2pP3/P2P2bP/2P3B1/2PN1QP1/RR4K1 w - - 1 24",
+   "played": {
+    "san": "Qxf6+",
+    "uci": "f2f6"
+   },
+   "eval_best_cp_mover": 608,
+   "eval_played_cp_mover": 515,
+   "win_before_pct": 90.4,
+   "win_after_pct": 86.9,
+   "centipawn_loss": 93,
+   "win_pct_lost": 3.4,
+   "accuracy_pct": 85.7,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Rf1",
+    "uci": "b1f1",
+    "pv": [
+     "Rf1",
+     "f5",
+     "e6+",
+     "Kg6",
+     "Rae1",
+     "Nc8",
+     "Qe3",
+     "Ne7"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "ahead",
+    "material_diff_pawns": 4,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 47,
+   "move_number": 24,
+   "mover": "black",
+   "fen_before": "r2q4/n1p2k2/1p3Q1n/p2pP3/P2P2bP/2P3B1/2PN2P1/RR4K1 b - - 0 24",
+   "played": {
+    "san": "Qxf6",
+    "uci": "d8f6"
+   },
+   "eval_best_cp_mover": -494,
+   "eval_played_cp_mover": -494,
+   "win_before_pct": 14.0,
+   "win_after_pct": 14.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "brilliant",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Qxf6",
+    "uci": "d8f6",
+    "pv": [
+     "Qxf6",
+     "exf6",
+     "Nf5",
+     "Bxc7",
+     "Rc8",
+     "Be5",
+     "Rxc3",
+     "Rxb6"
+    ]
+   },
+   "situation": {
+    "priority": "RESPOND TO THE CHECK",
+    "material": "losing big",
+    "material_diff_pawns": -5,
+    "phase": "middlegame",
+    "in_check": true,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 48,
+   "move_number": 25,
+   "mover": "white",
+   "fen_before": "r7/n1p2k2/1p3q1n/p2pP3/P2P2bP/2P3B1/2PN2P1/RR4K1 w - - 0 25",
+   "played": {
+    "san": "exf6",
+    "uci": "e5f6"
+   },
+   "eval_best_cp_mover": 537,
+   "eval_played_cp_mover": 537,
+   "win_before_pct": 87.8,
+   "win_after_pct": 87.8,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "great",
+   "is_best_move": true,
+   "best_move": {
+    "san": "exf6",
+    "uci": "e5f6",
+    "pv": [
+     "exf6",
+     "Nf5",
+     "Bxc7",
+     "Rc8",
+     "Be5",
+     "Rxc3",
+     "Rxb6",
+     "Nc6"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "behind",
+    "material_diff_pawns": -4,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 49,
+   "move_number": 25,
+   "mover": "black",
+   "fen_before": "r7/n1p2k2/1p3P1n/p2p4/P2P2bP/2P3B1/2PN2P1/RR4K1 b - - 0 25",
+   "played": {
+    "san": "Bh5",
+    "uci": "g4h5"
+   },
+   "eval_best_cp_mover": -520,
+   "eval_played_cp_mover": -632,
+   "win_before_pct": 12.8,
+   "win_after_pct": 8.9,
+   "centipawn_loss": 112,
+   "win_pct_lost": 4.0,
+   "accuracy_pct": 83.7,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Nf5",
+    "uci": "h6f5",
+    "pv": [
+     "Nf5",
+     "Bxc7",
+     "Rc8",
+     "Bxb6",
+     "Nc6",
+     "Bc5",
+     "Ng3",
+     "Rb6"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -5,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 50,
+   "move_number": 26,
+   "mover": "white",
+   "fen_before": "r7/n1p2k2/1p3P1n/p2p3b/P2P3P/2P3B1/2PN2P1/RR4K1 w - - 1 26",
+   "played": {
+    "san": "Bxc7",
+    "uci": "g3c7"
+   },
+   "eval_best_cp_mover": 612,
+   "eval_played_cp_mover": 612,
+   "win_before_pct": 90.5,
+   "win_after_pct": 90.5,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Bxc7",
+    "uci": "g3c7",
+    "pv": [
+     "Bxc7",
+     "Rc8",
+     "Bf4",
+     "Nf5",
+     "Rxb6",
+     "Rxc3",
+     "Rb7+",
+     "Kxf6"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 5,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 51,
+   "move_number": 26,
+   "mover": "black",
+   "fen_before": "r7/n1B2k2/1p3P1n/p2p3b/P2P3P/2P5/2PN2P1/RR4K1 b - - 0 26",
+   "played": {
+    "san": "Rg8",
+    "uci": "a8g8"
+   },
+   "eval_best_cp_mover": -631,
+   "eval_played_cp_mover": -675,
+   "win_before_pct": 8.9,
+   "win_after_pct": 7.7,
+   "centipawn_loss": 44,
+   "win_pct_lost": 1.2,
+   "accuracy_pct": 94.6,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Rc8",
+    "uci": "a8c8",
+    "pv": [
+     "Rc8",
+     "Bf4",
+     "Nf5",
+     "Rxb6",
+     "Rxc3",
+     "Rb7+",
+     "Kxf6",
+     "Re1"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -6,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 52,
+   "move_number": 27,
+   "mover": "white",
+   "fen_before": "6r1/n1B2k2/1p3P1n/p2p3b/P2P3P/2P5/2PN2P1/RR4K1 w - - 1 27",
+   "played": {
+    "san": "Bxb6",
+    "uci": "c7b6"
+   },
+   "eval_best_cp_mover": 682,
+   "eval_played_cp_mover": 592,
+   "win_before_pct": 92.5,
+   "win_after_pct": 89.8,
+   "centipawn_loss": 90,
+   "win_pct_lost": 2.7,
+   "accuracy_pct": 88.8,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Rxb6",
+    "uci": "b1b6",
+    "pv": [
+     "Rxb6",
+     "Nc8",
+     "Rb7",
+     "Kg6",
+     "Rf1",
+     "Be2",
+     "Rf4",
+     "Ba6"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 6,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 53,
+   "move_number": 27,
+   "mover": "black",
+   "fen_before": "6r1/n4k2/1B3P1n/p2p3b/P2P3P/2P5/2PN2P1/RR4K1 b - - 0 27",
+   "played": {
+    "san": "Nc6",
+    "uci": "a7c6"
+   },
+   "eval_best_cp_mover": -600,
+   "eval_played_cp_mover": -600,
+   "win_before_pct": 9.9,
+   "win_after_pct": 9.9,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Nc6",
+    "uci": "a7c6",
+    "pv": [
+     "Nc6",
+     "Rf1",
+     "Bg4",
+     "Nf3",
+     "Nf5",
+     "Ng5+",
+     "Kxf6",
+     "Rf4"
+    ]
+   },
+   "situation": {
+    "priority": "MEET THE THREAT",
+    "material": "losing big",
+    "material_diff_pawns": -7,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "material",
+     "move": "Bxa7"
+    },
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 54,
+   "move_number": 28,
+   "mover": "white",
+   "fen_before": "6r1/5k2/1Bn2P1n/p2p3b/P2P3P/2P5/2PN2P1/RR4K1 w - - 1 28",
+   "played": {
+    "san": "Rb5",
+    "uci": "b1b5"
+   },
+   "eval_best_cp_mover": 616,
+   "eval_played_cp_mover": 539,
+   "win_before_pct": 90.6,
+   "win_after_pct": 87.9,
+   "centipawn_loss": 77,
+   "win_pct_lost": 2.7,
+   "accuracy_pct": 88.5,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Bc5",
+    "uci": "b6c5",
+    "pv": [
+     "Bc5",
+     "Nf5",
+     "Rb7+",
+     "Kxf6",
+     "Rf1",
+     "Rg4",
+     "Rb6",
+     "Be8"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 7,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 55,
+   "move_number": 28,
+   "mover": "black",
+   "fen_before": "6r1/5k2/1Bn2P1n/pR1p3b/P2P3P/2P5/2PN2P1/R5K1 b - - 2 28",
+   "played": {
+    "san": "Rg6",
+    "uci": "g8g6"
+   },
+   "eval_best_cp_mover": -545,
+   "eval_played_cp_mover": -745,
+   "win_before_pct": 11.8,
+   "win_after_pct": 6.0,
+   "centipawn_loss": 200,
+   "win_pct_lost": 5.8,
+   "accuracy_pct": 77.0,
+   "classification": "inaccuracy",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Nf5",
+    "uci": "h6f5",
+    "pv": [
+     "Nf5",
+     "Rxd5",
+     "Rxg2+",
+     "Kxg2",
+     "Ne3+",
+     "Kf2",
+     "Nxd5",
+     "Nc4"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -7,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   },
+   "why_suboptimal": {
+    "better_move": "Nf5",
+    "better_line": [
+     "Nf5",
+     "Rxd5",
+     "Rxg2+",
+     "Kxg2",
+     "Ne3+",
+     "Kf2",
+     "Nxd5",
+     "Nc4"
+    ],
+    "allowed_opponent": [
+     {
+      "kind": "threat",
+      "text": "TRAP / bait \u2014 a 'free' capture that actually loses material; verify with imagine_move before grabbing material: Rxa5 (looks like it wins the pawn, but loses ~1 pawn(s) after recapture)",
+      "moves": []
+     }
+    ],
+    "key_features_before": [
+     {
+      "kind": "threat",
+      "side": "opponent",
+      "text": "opponent has a PASSED pawn on g2 \u2014 blockade the square in front (a knight is ideal), or get a rook behind it",
+      "moves": [],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "threat",
+      "side": "opponent",
+      "text": "opponent has a PASSED pawn on h4 \u2014 blockade the square in front (a knight is ideal), or get a rook behind it",
+      "moves": [],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "threat",
+      "side": "opponent",
+      "text": "opponent has a PASSED pawn on f6 \u2014 blockade the square in front (a knight is ideal), or get a rook behind it",
+      "moves": [],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "threat",
+      "side": "mover",
+      "text": "TRAP / bait \u2014 a 'free' capture that actually loses material; verify with imagine_move before grabbing material: Nxd4 (looks like it wins the pawn, but loses ~3 pawn(s) after recapture)",
+      "moves": [],
+      "wiki": "traps"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent has doubled pawns on the c-file \u2014 a target you can attack (use the c-file / pile pieces on them)",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent's pawn on a4 is ISOLATED \u2014 blockade the square in front, then attack it",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your pawn on a5 is ISOLATED (no friendly pawn on adjacent files) \u2014 a fixed target; support it with pieces and seek activity",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your pawn on d5 is ISOLATED (no friendly pawn on adjacent files) \u2014 a fixed target; support it with pieces and seek activity",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     }
+    ]
+   }
+  },
+  {
+   "ply": 56,
+   "move_number": 29,
+   "mover": "white",
+   "fen_before": "8/5k2/1Bn2Prn/pR1p3b/P2P3P/2P5/2PN2P1/R5K1 w - - 3 29",
+   "played": {
+    "san": "Rxa5",
+    "uci": "b5a5"
+   },
+   "eval_best_cp_mover": 745,
+   "eval_played_cp_mover": 460,
+   "win_before_pct": 94.0,
+   "win_after_pct": 84.5,
+   "centipawn_loss": 285,
+   "win_pct_lost": 9.5,
+   "accuracy_pct": 65.1,
+   "classification": "inaccuracy",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Rxd5",
+    "uci": "b5d5",
+    "pv": [
+     "Rxd5",
+     "Bg4",
+     "Re1",
+     "Bf5",
+     "Rd6",
+     "Rxf6",
+     "Rxf6+",
+     "Kxf6"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 7,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   },
+   "why_suboptimal": {
+    "better_move": "Rxd5",
+    "better_line": [
+     "Rxd5",
+     "Bg4",
+     "Re1",
+     "Bf5",
+     "Rd6",
+     "Rxf6",
+     "Rxf6+",
+     "Kxf6"
+    ],
+    "allowed_opponent": [
+     {
+      "kind": "threat",
+      "text": "TRAP / bait \u2014 a 'free' capture that actually loses material; verify with imagine_move before grabbing material: Nxa5 (looks like it wins the rook, but loses ~3 pawn(s) after recapture); Nxd4 (looks like it wins the pawn, but loses ~3 pawn(s) after recapture)",
+      "moves": []
+     }
+    ],
+    "key_features_before": [
+     {
+      "kind": "threat",
+      "side": "mover",
+      "text": "TRAP / bait \u2014 a 'free' capture that actually loses material; verify with imagine_move before grabbing material: Rxa5 (looks like it wins the pawn, but loses ~1 pawn(s) after recapture)",
+      "moves": [],
+      "wiki": "traps"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "you have doubled pawns on the c-file (c2, c3) \u2014 they can't defend each other; the c-file is a target",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your pawn on a4 is ISOLATED (no friendly pawn on adjacent files) \u2014 a fixed target; support it with pieces and seek activity",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent's pawn on a5 is ISOLATED \u2014 blockade the square in front, then attack it",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent's pawn on d5 is ISOLATED \u2014 blockade the square in front, then attack it",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your pawn on g2 is PINNED \u2014 it can't move freely and doesn't truly defend; break the pin or don't rely on it",
+      "moves": [],
+      "wiki": "pins"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your KING on g1 is exposed (broken pawn shield) with enemy heavy pieces on \u2014 get it safe (castle if you can), keep the pawn shield, trade off the enemy's attackers",
+      "moves": [],
+      "wiki": "king_safety"
+     },
+     {
+      "kind": "strength",
+      "side": "mover",
+      "text": "you have a PASSED pawn on g2 \u2014 push it, support it from behind with a rook; it grows stronger as it advances",
+      "moves": [
+       "g3",
+       "g4"
+      ],
+      "wiki": "pawn_strengths"
+     }
+    ]
+   }
+  },
+  {
+   "ply": 57,
+   "move_number": 29,
+   "mover": "black",
+   "fen_before": "8/5k2/1Bn2Prn/R2p3b/P2P3P/2P5/2PN2P1/R5K1 b - - 0 29",
+   "played": {
+    "san": "Nxa5",
+    "uci": "c6a5"
+   },
+   "eval_best_cp_mover": -454,
+   "eval_played_cp_mover": -454,
+   "win_before_pct": 15.8,
+   "win_after_pct": 15.8,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "brilliant",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Nxa5",
+    "uci": "c6a5",
+    "pv": [
+     "Nxa5",
+     "Bxa5",
+     "Nf5",
+     "Bc7",
+     "Nxh4",
+     "g3",
+     "Nf5",
+     "Kf2"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 58,
+   "move_number": 30,
+   "mover": "white",
+   "fen_before": "8/5k2/1B3Prn/n2p3b/P2P3P/2P5/2PN2P1/R5K1 w - - 0 30",
+   "played": {
+    "san": "Bxa5",
+    "uci": "b6a5"
+   },
+   "eval_best_cp_mover": 466,
+   "eval_played_cp_mover": 466,
+   "win_before_pct": 84.8,
+   "win_after_pct": 84.8,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "great",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Bxa5",
+    "uci": "b6a5",
+    "pv": [
+     "Bxa5",
+     "Nf5",
+     "Bc7",
+     "Nxh4",
+     "g3",
+     "Nf5",
+     "a5",
+     "Nxg3"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "ahead",
+    "material_diff_pawns": 3,
+    "phase": "middlegame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 59,
+   "move_number": 30,
+   "mover": "black",
+   "fen_before": "8/5k2/5Prn/B2p3b/P2P3P/2P5/2PN2P1/R5K1 b - - 0 30",
+   "played": {
+    "san": "Rg8",
+    "uci": "g6g8"
+   },
+   "eval_best_cp_mover": -478,
+   "eval_played_cp_mover": -483,
+   "win_before_pct": 14.7,
+   "win_after_pct": 14.4,
+   "centipawn_loss": 5,
+   "win_pct_lost": 0.2,
+   "accuracy_pct": 99.0,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Nf5",
+    "uci": "h6f5",
+    "pv": [
+     "Nf5",
+     "Bc7",
+     "Nxh4",
+     "g3",
+     "Nf5",
+     "a5",
+     "Nxg3",
+     "Kf2"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -6,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 60,
+   "move_number": 31,
+   "mover": "white",
+   "fen_before": "6r1/5k2/5P1n/B2p3b/P2P3P/2P5/2PN2P1/R5K1 w - - 1 31",
+   "played": {
+    "san": "Kh2",
+    "uci": "g1h2"
+   },
+   "eval_best_cp_mover": 518,
+   "eval_played_cp_mover": 375,
+   "win_before_pct": 87.1,
+   "win_after_pct": 79.9,
+   "centipawn_loss": 143,
+   "win_pct_lost": 7.2,
+   "accuracy_pct": 72.4,
+   "classification": "inaccuracy",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Bc7",
+    "uci": "a5c7",
+    "pv": [
+     "Bc7",
+     "Nf5",
+     "a5",
+     "Nxh4",
+     "g3",
+     "Nf5",
+     "Kf2",
+     "Re8"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 6,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   },
+   "why_suboptimal": {
+    "better_move": "Bc7",
+    "better_line": [
+     "Bc7",
+     "Nf5",
+     "a5",
+     "Nxh4",
+     "g3",
+     "Nf5",
+     "Kf2",
+     "Re8"
+    ],
+    "allowed_opponent": [],
+    "key_features_before": [
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "you have doubled pawns on the c-file (c2, c3) \u2014 they can't defend each other; the c-file is a target",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your pawn on a4 is ISOLATED (no friendly pawn on adjacent files) \u2014 a fixed target; support it with pieces and seek activity",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent's pawn on d5 is ISOLATED \u2014 blockade the square in front, then attack it",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your pawn on g2 is PINNED \u2014 it can't move freely and doesn't truly defend; break the pin or don't rely on it",
+      "moves": [],
+      "wiki": "pins"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your KING on g1 is exposed (broken pawn shield) with enemy heavy pieces on \u2014 get it safe (castle if you can), keep the pawn shield, trade off the enemy's attackers",
+      "moves": [],
+      "wiki": "king_safety"
+     },
+     {
+      "kind": "strength",
+      "side": "mover",
+      "text": "you have a PASSED pawn on g2 \u2014 push it, support it from behind with a rook; it grows stronger as it advances",
+      "moves": [
+       "g3",
+       "g4"
+      ],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "strength",
+      "side": "mover",
+      "text": "you have a PASSED pawn on a4 \u2014 push it, support it from behind with a rook; it grows stronger as it advances",
+      "moves": [],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "strength",
+      "side": "mover",
+      "text": "you have a PASSED pawn on h4 \u2014 push it, support it from behind with a rook; it grows stronger as it advances",
+      "moves": [],
+      "wiki": "pawn_strengths"
+     }
+    ]
+   }
+  },
+  {
+   "ply": 61,
+   "move_number": 31,
+   "mover": "black",
+   "fen_before": "6r1/5k2/5P1n/B2p3b/P2P3P/2P5/2PN2PK/R7 b - - 2 31",
+   "played": {
+    "san": "Rb8",
+    "uci": "g8b8"
+   },
+   "eval_best_cp_mover": -402,
+   "eval_played_cp_mover": -520,
+   "win_before_pct": 18.5,
+   "win_after_pct": 12.8,
+   "centipawn_loss": 118,
+   "win_pct_lost": 5.7,
+   "accuracy_pct": 77.3,
+   "classification": "inaccuracy",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Ng4+",
+    "uci": "h6g4",
+    "pv": [
+     "Ng4+",
+     "Kh1",
+     "Ne3",
+     "Rg1",
+     "Kxf6",
+     "Bc7",
+     "Rc8",
+     "Bf4"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -6,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   },
+   "why_suboptimal": {
+    "better_move": "Ng4+",
+    "better_line": [
+     "Ng4+",
+     "Kh1",
+     "Ne3",
+     "Rg1",
+     "Kxf6",
+     "Bc7",
+     "Rc8",
+     "Bf4"
+    ],
+    "allowed_opponent": [],
+    "key_features_before": [
+     {
+      "kind": "threat",
+      "side": "opponent",
+      "text": "opponent has a PASSED pawn on g2 \u2014 blockade the square in front (a knight is ideal), or get a rook behind it",
+      "moves": [],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "threat",
+      "side": "opponent",
+      "text": "opponent has a PASSED pawn on a4 \u2014 blockade the square in front (a knight is ideal), or get a rook behind it",
+      "moves": [],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "threat",
+      "side": "opponent",
+      "text": "opponent has a PASSED pawn on h4 \u2014 blockade the square in front (a knight is ideal), or get a rook behind it",
+      "moves": [],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "threat",
+      "side": "opponent",
+      "text": "opponent has a PASSED pawn on f6 \u2014 blockade the square in front (a knight is ideal), or get a rook behind it",
+      "moves": [],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent has doubled pawns on the c-file \u2014 a target you can attack (use the c-file / pile pieces on them)",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent's pawn on a4 is ISOLATED \u2014 blockade the square in front, then attack it",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your pawn on d5 is ISOLATED (no friendly pawn on adjacent files) \u2014 a fixed target; support it with pieces and seek activity",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "you are DOWN ~6 points of material \u2014 when given the choice, avoid INITIATING even piece trades (keep pieces on for chances) and seek complications/counterplay. This does NOT mean refuse free material: ALWAYS capture an undefended enemy piece or win a favourable exchange \u2014 that is how you climb back, not a trade to avoid.",
+      "moves": [],
+      "wiki": "material"
+     }
+    ]
+   }
+  },
+  {
+   "ply": 62,
+   "move_number": 32,
+   "mover": "white",
+   "fen_before": "1r6/5k2/5P1n/B2p3b/P2P3P/2P5/2PN2PK/R7 w - - 3 32",
+   "played": {
+    "san": "Bc7",
+    "uci": "a5c7"
+   },
+   "eval_best_cp_mover": 526,
+   "eval_played_cp_mover": 526,
+   "win_before_pct": 87.4,
+   "win_after_pct": 87.4,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Bc7",
+    "uci": "a5c7",
+    "pv": [
+     "Bc7",
+     "Ng4+",
+     "Kg1",
+     "Rc8",
+     "Bf4",
+     "Kxf6",
+     "a5",
+     "Kf5"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 6,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 63,
+   "move_number": 32,
+   "mover": "black",
+   "fen_before": "1r6/2B2k2/5P1n/3p3b/P2P3P/2P5/2PN2PK/R7 b - - 4 32",
+   "played": {
+    "san": "Rg8",
+    "uci": "b8g8"
+   },
+   "eval_best_cp_mover": -513,
+   "eval_played_cp_mover": -547,
+   "win_before_pct": 13.1,
+   "win_after_pct": 11.8,
+   "centipawn_loss": 34,
+   "win_pct_lost": 1.4,
+   "accuracy_pct": 94.1,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Rb2",
+    "uci": "b8b2",
+    "pv": [
+     "Rb2",
+     "a5",
+     "Be2",
+     "a6",
+     "Ng4+",
+     "Kg1",
+     "Bxa6",
+     "Rxa6"
+    ]
+   },
+   "situation": {
+    "priority": "MEET THE THREAT",
+    "material": "losing big",
+    "material_diff_pawns": -6,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "material",
+     "move": "Bxb8"
+    },
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 64,
+   "move_number": 33,
+   "mover": "white",
+   "fen_before": "6r1/2B2k2/5P1n/3p3b/P2P3P/2P5/2PN2PK/R7 w - - 5 33",
+   "played": {
+    "san": "Bd6",
+    "uci": "c7d6"
+   },
+   "eval_best_cp_mover": 545,
+   "eval_played_cp_mover": 450,
+   "win_before_pct": 88.2,
+   "win_after_pct": 84.0,
+   "centipawn_loss": 95,
+   "win_pct_lost": 4.2,
+   "accuracy_pct": 82.9,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Bf4",
+    "uci": "c7f4",
+    "pv": [
+     "Bf4",
+     "Ng4+",
+     "Kg1",
+     "Nxf6",
+     "a5",
+     "Ne4",
+     "Nxe4",
+     "dxe4"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 6,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 65,
+   "move_number": 33,
+   "mover": "black",
+   "fen_before": "6r1/5k2/3B1P1n/3p3b/P2P3P/2P5/2PN2PK/R7 b - - 6 33",
+   "played": {
+    "san": "Nf5",
+    "uci": "h6f5"
+   },
+   "eval_best_cp_mover": -472,
+   "eval_played_cp_mover": -472,
+   "win_before_pct": 15.0,
+   "win_after_pct": 15.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Nf5",
+    "uci": "h6f5",
+    "pv": [
+     "Nf5",
+     "Be5",
+     "Ne3",
+     "Bg3",
+     "Nxc2",
+     "Rb1",
+     "Kxf6",
+     "a5"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -6,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 66,
+   "move_number": 34,
+   "mover": "white",
+   "fen_before": "6r1/5k2/3B1P2/3p1n1b/P2P3P/2P5/2PN2PK/R7 w - - 7 34",
+   "played": {
+    "san": "Be5",
+    "uci": "d6e5"
+   },
+   "eval_best_cp_mover": 488,
+   "eval_played_cp_mover": 488,
+   "win_before_pct": 85.8,
+   "win_after_pct": 85.8,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Be5",
+    "uci": "d6e5",
+    "pv": [
+     "Be5",
+     "Ne3",
+     "Bg3",
+     "Nxc2",
+     "Rb1",
+     "Be2",
+     "Rb8",
+     "Rxb8"
+    ]
+   },
+   "situation": {
+    "priority": "MEET THE THREAT",
+    "material": "winning big",
+    "material_diff_pawns": 6,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "material",
+     "move": "Nxd6"
+    },
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 67,
+   "move_number": 34,
+   "mover": "black",
+   "fen_before": "6r1/5k2/5P2/3pBn1b/P2P3P/2P5/2PN2PK/R7 b - - 8 34",
+   "played": {
+    "san": "Nxh4",
+    "uci": "f5h4"
+   },
+   "eval_best_cp_mover": -492,
+   "eval_played_cp_mover": -532,
+   "win_before_pct": 14.0,
+   "win_after_pct": 12.4,
+   "centipawn_loss": 40,
+   "win_pct_lost": 1.7,
+   "accuracy_pct": 92.7,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Ne3",
+    "uci": "f5e3",
+    "pv": [
+     "Ne3",
+     "Bg3",
+     "Nxc2",
+     "Rb1",
+     "Ne3",
+     "a5",
+     "Ng4+",
+     "Kh1"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -6,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 68,
+   "move_number": 35,
+   "mover": "white",
+   "fen_before": "6r1/5k2/5P2/3pB2b/P2P3n/2P5/2PN2PK/R7 w - - 0 35",
+   "played": {
+    "san": "g3",
+    "uci": "g2g3"
+   },
+   "eval_best_cp_mover": 537,
+   "eval_played_cp_mover": 493,
+   "win_before_pct": 87.8,
+   "win_after_pct": 86.0,
+   "centipawn_loss": 44,
+   "win_pct_lost": 1.8,
+   "accuracy_pct": 92.1,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Rb1",
+    "uci": "a1b1",
+    "pv": [
+     "Rb1",
+     "Rxg2+",
+     "Kh3",
+     "Rxd2",
+     "Kxh4",
+     "Bg6",
+     "a5",
+     "Rxc2"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 5,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 69,
+   "move_number": 35,
+   "mover": "black",
+   "fen_before": "6r1/5k2/5P2/3pB2b/P2P3n/2P3P1/2PN3K/R7 b - - 0 35",
+   "played": {
+    "san": "Nf3+",
+    "uci": "h4f3"
+   },
+   "eval_best_cp_mover": -495,
+   "eval_played_cp_mover": -506,
+   "win_before_pct": 13.9,
+   "win_after_pct": 13.4,
+   "centipawn_loss": 11,
+   "win_pct_lost": 0.5,
+   "accuracy_pct": 97.9,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Ng6",
+    "uci": "h4g6",
+    "pv": [
+     "Ng6",
+     "a5",
+     "Nxe5",
+     "dxe5",
+     "Ke6",
+     "a6",
+     "Kxe5",
+     "a7"
+    ]
+   },
+   "situation": {
+    "priority": "MEET THE THREAT",
+    "material": "losing big",
+    "material_diff_pawns": -5,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "material",
+     "move": "gxh4"
+    },
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 70,
+   "move_number": 36,
+   "mover": "white",
+   "fen_before": "6r1/5k2/5P2/3pB2b/P2P4/2P2nP1/2PN3K/R7 w - - 1 36",
+   "played": {
+    "san": "Nxf3",
+    "uci": "d2f3"
+   },
+   "eval_best_cp_mover": 533,
+   "eval_played_cp_mover": 533,
+   "win_before_pct": 87.7,
+   "win_after_pct": 87.7,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "brilliant",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Nxf3",
+    "uci": "d2f3",
+    "pv": [
+     "Nxf3",
+     "Bxf3",
+     "Kg1",
+     "Ra8",
+     "Kf2",
+     "Bg4",
+     "a5",
+     "Bc8"
+    ]
+   },
+   "situation": {
+    "priority": "RESPOND TO THE CHECK",
+    "material": "winning big",
+    "material_diff_pawns": 5,
+    "phase": "endgame",
+    "in_check": true,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 71,
+   "move_number": 36,
+   "mover": "black",
+   "fen_before": "6r1/5k2/5P2/3pB2b/P2P4/2P2NP1/2P4K/R7 b - - 0 36",
+   "played": {
+    "san": "Bxf3",
+    "uci": "h5f3"
+   },
+   "eval_best_cp_mover": -542,
+   "eval_played_cp_mover": -542,
+   "win_before_pct": 12.0,
+   "win_after_pct": 12.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Bxf3",
+    "uci": "h5f3",
+    "pv": [
+     "Bxf3",
+     "Kg1",
+     "Ra8",
+     "Kf2",
+     "Bg4",
+     "Ke3",
+     "Bc8",
+     "a5"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 72,
+   "move_number": 37,
+   "mover": "white",
+   "fen_before": "6r1/5k2/5P2/3pB3/P2P4/2P2bP1/2P4K/R7 w - - 0 37",
+   "played": {
+    "san": "a5",
+    "uci": "a4a5"
+   },
+   "eval_best_cp_mover": 538,
+   "eval_played_cp_mover": 344,
+   "win_before_pct": 87.9,
+   "win_after_pct": 78.0,
+   "centipawn_loss": 194,
+   "win_pct_lost": 9.9,
+   "accuracy_pct": 64.0,
+   "classification": "inaccuracy",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Kg1",
+    "uci": "h2g1",
+    "pv": [
+     "Kg1",
+     "Ra8",
+     "Kf2",
+     "Bg4",
+     "Ke3",
+     "Bc8",
+     "a5",
+     "Kg6"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 5,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   },
+   "why_suboptimal": {
+    "better_move": "Kg1",
+    "better_line": [
+     "Kg1",
+     "Ra8",
+     "Kf2",
+     "Bg4",
+     "Ke3",
+     "Bc8",
+     "a5",
+     "Kg6"
+    ],
+    "allowed_opponent": [
+     {
+      "kind": "threat",
+      "text": "TRAP / bait \u2014 a 'free' capture that actually loses material; verify with imagine_move before grabbing material: Rxg3 (looks like it wins the pawn, but loses ~5 pawn(s) after recapture)",
+      "moves": []
+     }
+    ],
+    "key_features_before": [
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "you have doubled pawns on the c-file (c2, c3) \u2014 they can't defend each other; the c-file is a target",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your pawn on a4 is ISOLATED (no friendly pawn on adjacent files) \u2014 a fixed target; support it with pieces and seek activity",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent's pawn on d5 is ISOLATED \u2014 blockade the square in front, then attack it",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your KING on h2 is exposed (no pawn on its file) with enemy heavy pieces on \u2014 get it safe (castle if you can), keep the pawn shield, trade off the enemy's attackers",
+      "moves": [],
+      "wiki": "king_safety"
+     },
+     {
+      "kind": "strength",
+      "side": "mover",
+      "text": "you have a PASSED pawn on g3 \u2014 push it, support it from behind with a rook; it grows stronger as it advances",
+      "moves": [
+       "g4"
+      ],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "strength",
+      "side": "mover",
+      "text": "you have a PASSED pawn on a4 \u2014 push it, support it from behind with a rook; it grows stronger as it advances",
+      "moves": [
+       "a5"
+      ],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "strength",
+      "side": "mover",
+      "text": "you have a PASSED pawn on f6 \u2014 push it, support it from behind with a rook; it grows stronger as it advances",
+      "moves": [],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "strength",
+      "side": "mover",
+      "text": "you are UP ~5 points of material \u2014 prefer trading PIECES (not pawns) to simplify toward a won endgame; keep at least one rook or the queen for mating",
+      "moves": [],
+      "wiki": "material"
+     }
+    ]
+   }
+  },
+  {
+   "ply": 73,
+   "move_number": 37,
+   "mover": "black",
+   "fen_before": "6r1/5k2/5P2/P2pB3/3P4/2P2bP1/2P4K/R7 b - - 0 37",
+   "played": {
+    "san": "Rc8",
+    "uci": "g8c8"
+   },
+   "eval_best_cp_mover": -418,
+   "eval_played_cp_mover": -573,
+   "win_before_pct": 17.7,
+   "win_after_pct": 10.8,
+   "centipawn_loss": 155,
+   "win_pct_lost": 6.9,
+   "accuracy_pct": 73.4,
+   "classification": "inaccuracy",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Rh8+",
+    "uci": "g8h8",
+    "pv": [
+     "Rh8+",
+     "Kg1",
+     "Rh1+",
+     "Kf2",
+     "Rxa1",
+     "Kxf3",
+     "Rc1",
+     "g4"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -5,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   },
+   "why_suboptimal": {
+    "better_move": "Rh8+",
+    "better_line": [
+     "Rh8+",
+     "Kg1",
+     "Rh1+",
+     "Kf2",
+     "Rxa1",
+     "Kxf3",
+     "Rc1",
+     "g4"
+    ],
+    "allowed_opponent": [],
+    "key_features_before": [
+     {
+      "kind": "threat",
+      "side": "opponent",
+      "text": "opponent has a PASSED pawn on g3 \u2014 blockade the square in front (a knight is ideal), or get a rook behind it",
+      "moves": [],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "threat",
+      "side": "opponent",
+      "text": "opponent has a PASSED pawn on a5 \u2014 blockade the square in front (a knight is ideal), or get a rook behind it",
+      "moves": [],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "threat",
+      "side": "opponent",
+      "text": "opponent has a PASSED pawn on f6 \u2014 blockade the square in front (a knight is ideal), or get a rook behind it",
+      "moves": [],
+      "wiki": "pawn_strengths"
+     },
+     {
+      "kind": "threat",
+      "side": "mover",
+      "text": "TRAP / bait \u2014 a 'free' capture that actually loses material; verify with imagine_move before grabbing material: Rxg3 (looks like it wins the pawn, but loses ~5 pawn(s) after recapture)",
+      "moves": [],
+      "wiki": "traps"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent has doubled pawns on the c-file \u2014 a target you can attack (use the c-file / pile pieces on them)",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "opponent",
+      "text": "opponent's pawn on a5 is ISOLATED \u2014 blockade the square in front, then attack it",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "your pawn on d5 is ISOLATED (no friendly pawn on adjacent files) \u2014 a fixed target; support it with pieces and seek activity",
+      "moves": [],
+      "wiki": "pawn_weaknesses"
+     },
+     {
+      "kind": "weakness",
+      "side": "mover",
+      "text": "you are DOWN ~5 points of material \u2014 when given the choice, avoid INITIATING even piece trades (keep pieces on for chances) and seek complications/counterplay. This does NOT mean refuse free material: ALWAYS capture an undefended enemy piece or win a favourable exchange \u2014 that is how you climb back, not a trade to avoid.",
+      "moves": [],
+      "wiki": "material"
+     }
+    ]
+   }
+  },
+  {
+   "ply": 74,
+   "move_number": 38,
+   "mover": "white",
+   "fen_before": "2r5/5k2/5P2/P2pB3/3P4/2P2bP1/2P4K/R7 w - - 1 38",
+   "played": {
+    "san": "Ra3",
+    "uci": "a1a3"
+   },
+   "eval_best_cp_mover": 580,
+   "eval_played_cp_mover": 541,
+   "win_before_pct": 89.4,
+   "win_after_pct": 88.0,
+   "centipawn_loss": 39,
+   "win_pct_lost": 1.4,
+   "accuracy_pct": 93.7,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Kg1",
+    "uci": "h2g1",
+    "pv": [
+     "Kg1",
+     "Rxc3",
+     "a6",
+     "Rc8",
+     "Kf2",
+     "Be4",
+     "Ra2",
+     "Rh8"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 5,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 75,
+   "move_number": 38,
+   "mover": "black",
+   "fen_before": "2r5/5k2/5P2/P2pB3/3P4/R1P2bP1/2P4K/8 b - - 2 38",
+   "played": {
+    "san": "Rh8+",
+    "uci": "c8h8"
+   },
+   "eval_best_cp_mover": -564,
+   "eval_played_cp_mover": -623,
+   "win_before_pct": 11.1,
+   "win_after_pct": 9.2,
+   "centipawn_loss": 59,
+   "win_pct_lost": 2.0,
+   "accuracy_pct": 91.5,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Ra8",
+    "uci": "c8a8",
+    "pv": [
+     "Ra8",
+     "a6",
+     "Ra7",
+     "Bb8",
+     "Rd7",
+     "Kg1",
+     "Be4",
+     "a7"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -5,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 76,
+   "move_number": 39,
+   "mover": "white",
+   "fen_before": "7r/5k2/5P2/P2pB3/3P4/R1P2bP1/2P4K/8 w - - 3 39",
+   "played": {
+    "san": "Kg1",
+    "uci": "h2g1"
+   },
+   "eval_best_cp_mover": 624,
+   "eval_played_cp_mover": 624,
+   "win_before_pct": 90.9,
+   "win_after_pct": 90.9,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "forced",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Kg1",
+    "uci": "h2g1",
+    "pv": [
+     "Kg1",
+     "Ra8",
+     "a6",
+     "Ra7",
+     "Kf2",
+     "Bd1",
+     "Bb8",
+     "Ra8"
+    ]
+   },
+   "situation": {
+    "priority": "RESPOND TO THE CHECK",
+    "material": "winning big",
+    "material_diff_pawns": 5,
+    "phase": "endgame",
+    "in_check": true,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 77,
+   "move_number": 39,
+   "mover": "black",
+   "fen_before": "7r/5k2/5P2/P2pB3/3P4/R1P2bP1/2P5/6K1 b - - 4 39",
+   "played": {
+    "san": "Kg6",
+    "uci": "f7g6"
+   },
+   "eval_best_cp_mover": -625,
+   "eval_played_cp_mover": -639,
+   "win_before_pct": 9.1,
+   "win_after_pct": 8.7,
+   "centipawn_loss": 14,
+   "win_pct_lost": 0.4,
+   "accuracy_pct": 98.1,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Ra8",
+    "uci": "h8a8",
+    "pv": [
+     "Ra8",
+     "a6",
+     "Ra7",
+     "Bb8",
+     "Ra8",
+     "Kf2",
+     "Be4",
+     "a7"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -5,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 78,
+   "move_number": 40,
+   "mover": "white",
+   "fen_before": "7r/8/5Pk1/P2pB3/3P4/R1P2bP1/2P5/6K1 w - - 5 40",
+   "played": {
+    "san": "f7",
+    "uci": "f6f7"
+   },
+   "eval_best_cp_mover": 652,
+   "eval_played_cp_mover": 597,
+   "win_before_pct": 91.7,
+   "win_after_pct": 90.0,
+   "centipawn_loss": 55,
+   "win_pct_lost": 1.7,
+   "accuracy_pct": 92.7,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "a6",
+    "uci": "a5a6",
+    "pv": [
+     "a6",
+     "Ra8",
+     "a7",
+     "Kf5",
+     "Kf2",
+     "Bh5",
+     "Bb8",
+     "Kxf6"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 5,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 79,
+   "move_number": 40,
+   "mover": "black",
+   "fen_before": "7r/5P2/6k1/P2pB3/3P4/R1P2bP1/2P5/6K1 b - - 0 40",
+   "played": {
+    "san": "Rf8",
+    "uci": "h8f8"
+   },
+   "eval_best_cp_mover": -579,
+   "eval_played_cp_mover": -637,
+   "win_before_pct": 10.6,
+   "win_after_pct": 8.7,
+   "centipawn_loss": 58,
+   "win_pct_lost": 1.9,
+   "accuracy_pct": 92.0,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Ra8",
+    "uci": "h8a8",
+    "pv": [
+     "Ra8",
+     "a6",
+     "Kxf7",
+     "a7",
+     "Bd1",
+     "Bb8",
+     "Kf6",
+     "Kf2"
+    ]
+   },
+   "situation": {
+    "priority": "MEET THE THREAT",
+    "material": "losing big",
+    "material_diff_pawns": -5,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "material",
+     "move": "Bxh8"
+    },
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 80,
+   "move_number": 41,
+   "mover": "white",
+   "fen_before": "5r2/5P2/6k1/P2pB3/3P4/R1P2bP1/2P5/6K1 w - - 1 41",
+   "played": {
+    "san": "a6",
+    "uci": "a5a6"
+   },
+   "eval_best_cp_mover": 638,
+   "eval_played_cp_mover": 638,
+   "win_before_pct": 91.3,
+   "win_after_pct": 91.3,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "a6",
+    "uci": "a5a6",
+    "pv": [
+     "a6",
+     "Ra8",
+     "a7",
+     "Kxf7",
+     "Bb8",
+     "Bd1",
+     "c4",
+     "Be2"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 5,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 81,
+   "move_number": 41,
+   "mover": "black",
+   "fen_before": "5r2/5P2/P5k1/3pB3/3P4/R1P2bP1/2P5/6K1 b - - 0 41",
+   "played": {
+    "san": "Kxf7",
+    "uci": "g6f7"
+   },
+   "eval_best_cp_mover": -628,
+   "eval_played_cp_mover": -628,
+   "win_before_pct": 9.0,
+   "win_after_pct": 9.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Kxf7",
+    "uci": "g6f7",
+    "pv": [
+     "Kxf7",
+     "a7",
+     "Ra8",
+     "Bb8",
+     "Ke6",
+     "c4",
+     "Bd1",
+     "Kf2"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -5,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 82,
+   "move_number": 42,
+   "mover": "white",
+   "fen_before": "5r2/5k2/P7/3pB3/3P4/R1P2bP1/2P5/6K1 w - - 0 42",
+   "played": {
+    "san": "a7",
+    "uci": "a6a7"
+   },
+   "eval_best_cp_mover": 640,
+   "eval_played_cp_mover": 640,
+   "win_before_pct": 91.3,
+   "win_after_pct": 91.3,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "a7",
+    "uci": "a6a7",
+    "pv": [
+     "a7",
+     "Ra8",
+     "Bb8",
+     "Bd1",
+     "Ra5",
+     "Ke6",
+     "c4",
+     "Kd7"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "ahead",
+    "material_diff_pawns": 4,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 83,
+   "move_number": 42,
+   "mover": "black",
+   "fen_before": "5r2/P4k2/8/3pB3/3P4/R1P2bP1/2P5/6K1 b - - 0 42",
+   "played": {
+    "san": "Re8",
+    "uci": "f8e8"
+   },
+   "eval_best_cp_mover": -646,
+   "eval_played_cp_mover": -704,
+   "win_before_pct": 8.5,
+   "win_after_pct": 7.0,
+   "centipawn_loss": 58,
+   "win_pct_lost": 1.5,
+   "accuracy_pct": 93.4,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Ra8",
+    "uci": "f8a8",
+    "pv": [
+     "Ra8",
+     "Bb8",
+     "Ke6",
+     "c4",
+     "Bd1",
+     "Ra5",
+     "Kd7",
+     "Kf2"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "behind",
+    "material_diff_pawns": -4,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 84,
+   "move_number": 43,
+   "mover": "white",
+   "fen_before": "4r3/P4k2/8/3pB3/3P4/R1P2bP1/2P5/6K1 w - - 1 43",
+   "played": {
+    "san": "a8=Q",
+    "uci": "a7a8q"
+   },
+   "eval_best_cp_mover": 708,
+   "eval_played_cp_mover": 708,
+   "win_before_pct": 93.1,
+   "win_after_pct": 93.1,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "a8=Q",
+    "uci": "a7a8q",
+    "pv": [
+     "a8=Q",
+     "Rxa8",
+     "Rxa8",
+     "Bd1",
+     "Ra6",
+     "Ke8",
+     "Kf2",
+     "Kd7"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "ahead",
+    "material_diff_pawns": 4,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 85,
+   "move_number": 43,
+   "mover": "black",
+   "fen_before": "Q3r3/5k2/8/3pB3/3P4/R1P2bP1/2P5/6K1 b - - 0 43",
+   "played": {
+    "san": "Rxa8",
+    "uci": "e8a8"
+   },
+   "eval_best_cp_mover": -725,
+   "eval_played_cp_mover": -725,
+   "win_before_pct": 6.5,
+   "win_after_pct": 6.5,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "brilliant",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Rxa8",
+    "uci": "e8a8",
+    "pv": [
+     "Rxa8",
+     "Rxa8",
+     "Kg6",
+     "Kf2",
+     "Bd1",
+     "Rf8",
+     "Bxc2",
+     "Ke3"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -12,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 86,
+   "move_number": 44,
+   "mover": "white",
+   "fen_before": "r7/5k2/8/3pB3/3P4/R1P2bP1/2P5/6K1 w - - 0 44",
+   "played": {
+    "san": "Rxa8",
+    "uci": "a3a8"
+   },
+   "eval_best_cp_mover": 721,
+   "eval_played_cp_mover": 721,
+   "win_before_pct": 93.4,
+   "win_after_pct": 93.4,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "great",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Rxa8",
+    "uci": "a3a8",
+    "pv": [
+     "Rxa8",
+     "Kg6",
+     "Kf2",
+     "Bd1",
+     "Ke3",
+     "Kf5",
+     "Rf8+",
+     "Kg5"
+    ]
+   },
+   "situation": {
+    "priority": "MEET THE THREAT",
+    "material": "ahead",
+    "material_diff_pawns": 3,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "material",
+     "move": "Rxa3"
+    },
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 87,
+   "move_number": 44,
+   "mover": "black",
+   "fen_before": "R7/5k2/8/3pB3/3P4/2P2bP1/2P5/6K1 b - - 0 44",
+   "played": {
+    "san": "Kg6",
+    "uci": "f7g6"
+   },
+   "eval_best_cp_mover": -717,
+   "eval_played_cp_mover": -717,
+   "win_before_pct": 6.7,
+   "win_after_pct": 6.7,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Kg6",
+    "uci": "f7g6",
+    "pv": [
+     "Kg6",
+     "Kf2",
+     "Bd1",
+     "Ke3",
+     "Bxc2",
+     "Rf8",
+     "Kg5",
+     "Rg8+"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 88,
+   "move_number": 45,
+   "mover": "white",
+   "fen_before": "R7/8/6k1/3pB3/3P4/2P2bP1/2P5/6K1 w - - 1 45",
+   "played": {
+    "san": "Kf2",
+    "uci": "g1f2"
+   },
+   "eval_best_cp_mover": 717,
+   "eval_played_cp_mover": 717,
+   "win_before_pct": 93.3,
+   "win_after_pct": 93.3,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Kf2",
+    "uci": "g1f2",
+    "pv": [
+     "Kf2",
+     "Bd1",
+     "Rf8",
+     "Kh5",
+     "Ke3",
+     "Kg5",
+     "Rg8+",
+     "Kf5"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 89,
+   "move_number": 45,
+   "mover": "black",
+   "fen_before": "R7/8/6k1/3pB3/3P4/2P2bP1/2P2K2/8 b - - 2 45",
+   "played": {
+    "san": "Bg4",
+    "uci": "f3g4"
+   },
+   "eval_best_cp_mover": -739,
+   "eval_played_cp_mover": -757,
+   "win_before_pct": 6.2,
+   "win_after_pct": 5.8,
+   "centipawn_loss": 18,
+   "win_pct_lost": 0.4,
+   "accuracy_pct": 98.3,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Bd1",
+    "uci": "f3d1",
+    "pv": [
+     "Bd1",
+     "Ke3",
+     "Kf5",
+     "Rg8",
+     "Bh5",
+     "c4",
+     "dxc4",
+     "Rf8+"
+    ]
+   },
+   "situation": {
+    "priority": "MEET THE THREAT",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "material",
+     "move": "Kxf3"
+    },
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 90,
+   "move_number": 46,
+   "mover": "white",
+   "fen_before": "R7/8/6k1/3pB3/3P2b1/2P3P1/2P2K2/8 w - - 3 46",
+   "played": {
+    "san": "Ra6+",
+    "uci": "a8a6"
+   },
+   "eval_best_cp_mover": 836,
+   "eval_played_cp_mover": 745,
+   "win_before_pct": 95.6,
+   "win_after_pct": 94.0,
+   "centipawn_loss": 91,
+   "win_pct_lost": 1.6,
+   "accuracy_pct": 92.9,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Rg8+",
+    "uci": "a8g8",
+    "pv": [
+     "Rg8+",
+     "Kh5",
+     "Rxg4",
+     "Kxg4",
+     "Kg2",
+     "Kf5",
+     "Kf3",
+     "Ke6"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 91,
+   "move_number": 46,
+   "mover": "black",
+   "fen_before": "8/8/R5k1/3pB3/3P2b1/2P3P1/2P2K2/8 b - - 4 46",
+   "played": {
+    "san": "Kh7",
+    "uci": "g6h7"
+   },
+   "eval_best_cp_mover": -812,
+   "eval_played_cp_mover": -831,
+   "win_before_pct": 4.8,
+   "win_after_pct": 4.5,
+   "centipawn_loss": 19,
+   "win_pct_lost": 0.3,
+   "accuracy_pct": 98.6,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Kf5",
+    "uci": "g6f5",
+    "pv": [
+     "Kf5",
+     "Rf6+",
+     "Kg5",
+     "Rf8",
+     "Bh5",
+     "Rh8",
+     "Bd1",
+     "Rg8+"
+    ]
+   },
+   "situation": {
+    "priority": "RESPOND TO THE CHECK",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": true,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 92,
+   "move_number": 47,
+   "mover": "white",
+   "fen_before": "8/7k/R7/3pB3/3P2b1/2P3P1/2P2K2/8 w - - 5 47",
+   "played": {
+    "san": "Ra7+",
+    "uci": "a6a7"
+   },
+   "eval_best_cp_mover": 846,
+   "eval_played_cp_mover": 812,
+   "win_before_pct": 95.8,
+   "win_after_pct": 95.2,
+   "centipawn_loss": 34,
+   "win_pct_lost": 0.5,
+   "accuracy_pct": 97.6,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Ke3",
+    "uci": "f2e3",
+    "pv": [
+     "Ke3",
+     "Bd1",
+     "Rb6",
+     "Kg8",
+     "g4",
+     "Kf7",
+     "g5",
+     "Bxc2"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 93,
+   "move_number": 47,
+   "mover": "black",
+   "fen_before": "8/R6k/8/3pB3/3P2b1/2P3P1/2P2K2/8 b - - 6 47",
+   "played": {
+    "san": "Kh6",
+    "uci": "h7h6"
+   },
+   "eval_best_cp_mover": -850,
+   "eval_played_cp_mover": -850,
+   "win_before_pct": 4.2,
+   "win_after_pct": 4.2,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Kh6",
+    "uci": "h7h6",
+    "pv": [
+     "Kh6",
+     "Rg7",
+     "Bd1",
+     "g4",
+     "Bxc2",
+     "Rg8",
+     "Kh7",
+     "Rf8"
+    ]
+   },
+   "situation": {
+    "priority": "RESPOND TO THE CHECK",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": true,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 94,
+   "move_number": 48,
+   "mover": "white",
+   "fen_before": "8/R7/7k/3pB3/3P2b1/2P3P1/2P2K2/8 w - - 7 48",
+   "played": {
+    "san": "Bf6",
+    "uci": "e5f6"
+   },
+   "eval_best_cp_mover": 871,
+   "eval_played_cp_mover": 772,
+   "win_before_pct": 96.1,
+   "win_after_pct": 94.5,
+   "centipawn_loss": 99,
+   "win_pct_lost": 1.6,
+   "accuracy_pct": 93.0,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Ke3",
+    "uci": "f2e3",
+    "pv": [
+     "Ke3",
+     "Bd1",
+     "Kf4",
+     "Kg6",
+     "g4",
+     "Bxc2",
+     "Rg7+",
+     "Kh6"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 95,
+   "move_number": 48,
+   "mover": "black",
+   "fen_before": "8/R7/5B1k/3p4/3P2b1/2P3P1/2P2K2/8 b - - 8 48",
+   "played": {
+    "san": "Kg6",
+    "uci": "h6g6"
+   },
+   "eval_best_cp_mover": -811,
+   "eval_played_cp_mover": -862,
+   "win_before_pct": 4.8,
+   "win_after_pct": 4.0,
+   "centipawn_loss": 51,
+   "win_pct_lost": 0.8,
+   "accuracy_pct": 96.5,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Bd1",
+    "uci": "g4d1",
+    "pv": [
+     "Bd1",
+     "Be5",
+     "Kg5",
+     "Rg7+",
+     "Kf5",
+     "Ke3",
+     "Bh5",
+     "Rg8"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 96,
+   "move_number": 49,
+   "mover": "white",
+   "fen_before": "8/R7/5Bk1/3p4/3P2b1/2P3P1/2P2K2/8 w - - 9 49",
+   "played": {
+    "san": "Be5",
+    "uci": "f6e5"
+   },
+   "eval_best_cp_mover": 840,
+   "eval_played_cp_mover": 840,
+   "win_before_pct": 95.7,
+   "win_after_pct": 95.7,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Be5",
+    "uci": "f6e5",
+    "pv": [
+     "Be5",
+     "Kf5",
+     "Ke3",
+     "Ke6",
+     "Rg7",
+     "Bh3",
+     "g4",
+     "Bg2"
+    ]
+   },
+   "situation": {
+    "priority": "MEET THE THREAT",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "material",
+     "move": "Kxf6"
+    },
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 97,
+   "move_number": 49,
+   "mover": "black",
+   "fen_before": "8/R7/6k1/3pB3/3P2b1/2P3P1/2P2K2/8 b - - 10 49",
+   "played": {
+    "san": "Bh5",
+    "uci": "g4h5"
+   },
+   "eval_best_cp_mover": -915,
+   "eval_played_cp_mover": -960,
+   "win_before_pct": 3.3,
+   "win_after_pct": 2.8,
+   "centipawn_loss": 45,
+   "win_pct_lost": 0.5,
+   "accuracy_pct": 97.8,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Bd1",
+    "uci": "g4d1",
+    "pv": [
+     "Bd1",
+     "Ke3",
+     "Kf5",
+     "Rg7",
+     "Bh5",
+     "Rg8",
+     "Bd1",
+     "c4"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 98,
+   "move_number": 50,
+   "mover": "white",
+   "fen_before": "8/R7/6k1/3pB2b/3P4/2P3P1/2P2K2/8 w - - 11 50",
+   "played": {
+    "san": "Ra6+",
+    "uci": "a7a6"
+   },
+   "eval_best_cp_mover": 1145,
+   "eval_played_cp_mover": 1220,
+   "win_before_pct": 98.5,
+   "win_after_pct": 98.9,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Ke3",
+    "uci": "f2e3",
+    "pv": [
+     "Ke3",
+     "Kg5",
+     "Rh7",
+     "Bd1",
+     "Rg7+",
+     "Kf5",
+     "Rg8",
+     "Bh5"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 99,
+   "move_number": 50,
+   "mover": "black",
+   "fen_before": "8/8/R5k1/3pB2b/3P4/2P3P1/2P2K2/8 b - - 12 50",
+   "played": {
+    "san": "Kf5",
+    "uci": "g6f5"
+   },
+   "eval_best_cp_mover": -902,
+   "eval_played_cp_mover": -902,
+   "win_before_pct": 3.5,
+   "win_after_pct": 3.5,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Kf5",
+    "uci": "g6f5",
+    "pv": [
+     "Kf5",
+     "Rf6+",
+     "Kg5",
+     "Rf8",
+     "Bd1",
+     "Rg8+",
+     "Kf5",
+     "Ke3"
+    ]
+   },
+   "situation": {
+    "priority": "RESPOND TO THE CHECK",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": true,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 100,
+   "move_number": 51,
+   "mover": "white",
+   "fen_before": "8/8/R7/3pBk1b/3P4/2P3P1/2P2K2/8 w - - 13 51",
+   "played": {
+    "san": "Rf6+",
+    "uci": "a6f6"
+   },
+   "eval_best_cp_mover": 1809,
+   "eval_played_cp_mover": 1809,
+   "win_before_pct": 99.9,
+   "win_after_pct": 99.9,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Rf6+",
+    "uci": "a6f6",
+    "pv": [
+     "Rf6+",
+     "Kg4",
+     "Rf8",
+     "Kg5",
+     "Rg8+",
+     "Kf5",
+     "Ke3",
+     "Bd1"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 101,
+   "move_number": 51,
+   "mover": "black",
+   "fen_before": "8/8/5R2/3pBk1b/3P4/2P3P1/2P2K2/8 b - - 14 51",
+   "played": {
+    "san": "Kg5",
+    "uci": "f5g5"
+   },
+   "eval_best_cp_mover": -1212,
+   "eval_played_cp_mover": -1212,
+   "win_before_pct": 1.1,
+   "win_after_pct": 1.1,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Kg5",
+    "uci": "f5g5",
+    "pv": [
+     "Kg5",
+     "Rf8",
+     "Bd1",
+     "Rg8+",
+     "Kf5",
+     "Ke3",
+     "Bxc2",
+     "g4+"
+    ]
+   },
+   "situation": {
+    "priority": "RESPOND TO THE CHECK",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": true,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 102,
+   "move_number": 52,
+   "mover": "white",
+   "fen_before": "8/8/5R2/3pB1kb/3P4/2P3P1/2P2K2/8 w - - 15 52",
+   "played": {
+    "san": "Re6",
+    "uci": "f6e6"
+   },
+   "eval_best_cp_mover": 1310,
+   "eval_played_cp_mover": 915,
+   "win_before_pct": 99.2,
+   "win_after_pct": 96.7,
+   "centipawn_loss": 395,
+   "win_pct_lost": 2.5,
+   "accuracy_pct": 89.2,
+   "classification": "good",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Rf8",
+    "uci": "f6f8",
+    "pv": [
+     "Rf8",
+     "Bd1",
+     "Rg8+",
+     "Kf5",
+     "Ke3",
+     "Bxc2",
+     "g4+",
+     "Ke6"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 103,
+   "move_number": 52,
+   "mover": "black",
+   "fen_before": "8/8/4R3/3pB1kb/3P4/2P3P1/2P2K2/8 b - - 16 52",
+   "played": {
+    "san": "Bg4",
+    "uci": "h5g4"
+   },
+   "eval_best_cp_mover": -992,
+   "eval_played_cp_mover": -992,
+   "win_before_pct": 2.5,
+   "win_after_pct": 2.5,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Bg4",
+    "uci": "h5g4",
+    "pv": [
+     "Bg4",
+     "Re7",
+     "Bd1",
+     "Rg7+",
+     "Kf5",
+     "Ke3",
+     "Bh5",
+     "Rg8"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 104,
+   "move_number": 53,
+   "mover": "white",
+   "fen_before": "8/8/4R3/3pB1k1/3P2b1/2P3P1/2P2K2/8 w - - 17 53",
+   "played": {
+    "san": "Re8",
+    "uci": "e6e8"
+   },
+   "eval_best_cp_mover": 1434,
+   "eval_played_cp_mover": 1434,
+   "win_before_pct": 99.5,
+   "win_after_pct": 99.5,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Re8",
+    "uci": "e6e8",
+    "pv": [
+     "Re8",
+     "Bd7",
+     "Re7",
+     "Ba4",
+     "Rg7+",
+     "Kf5",
+     "g4+",
+     "Ke6"
+    ]
+   },
+   "situation": {
+    "priority": "MEET THE THREAT",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "material",
+     "move": "Bxe6"
+    },
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 105,
+   "move_number": 53,
+   "mover": "black",
+   "fen_before": "4R3/8/8/3pB1k1/3P2b1/2P3P1/2P2K2/8 b - - 18 53",
+   "played": {
+    "san": "Bf5",
+    "uci": "g4f5"
+   },
+   "eval_best_cp_mover": -1339,
+   "eval_played_cp_mover": -1439,
+   "win_before_pct": 0.7,
+   "win_after_pct": 0.5,
+   "centipawn_loss": 100,
+   "win_pct_lost": 0.2,
+   "accuracy_pct": 99.0,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Bd1",
+    "uci": "g4d1",
+    "pv": [
+     "Bd1",
+     "Rg8+",
+     "Kf5",
+     "Ke3",
+     "Bxc2",
+     "g4+",
+     "Ke6",
+     "Rg7"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 106,
+   "move_number": 54,
+   "mover": "white",
+   "fen_before": "4R3/8/8/3pBbk1/3P4/2P3P1/2P2K2/8 w - - 19 54",
+   "played": {
+    "san": "Kf3",
+    "uci": "f2f3"
+   },
+   "eval_best_cp_mover": 3872,
+   "eval_played_cp_mover": 1126,
+   "win_before_pct": 100.0,
+   "win_after_pct": 98.4,
+   "centipawn_loss": 2746,
+   "win_pct_lost": 1.6,
+   "accuracy_pct": 93.2,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Rg8+",
+    "uci": "e8g8",
+    "pv": [
+     "Rg8+",
+     "Kh6",
+     "Rg7",
+     "Bxc2",
+     "Ke3",
+     "Bb1",
+     "Kf4",
+     "Be4"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 107,
+   "move_number": 54,
+   "mover": "black",
+   "fen_before": "4R3/8/8/3pBbk1/3P4/2P2KP1/2P5/8 b - - 20 54",
+   "played": {
+    "san": "Bg4+",
+    "uci": "f5g4"
+   },
+   "eval_best_cp_mover": -5050,
+   "eval_played_cp_mover": -5122,
+   "win_before_pct": 0.0,
+   "win_after_pct": 0.0,
+   "centipawn_loss": 72,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Bxc2",
+    "uci": "f5c2",
+    "pv": [
+     "Bxc2",
+     "Rg8+",
+     "Kf5",
+     "g4+",
+     "Ke6",
+     "Rh8",
+     "Kf7",
+     "Rh6"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 108,
+   "move_number": 55,
+   "mover": "white",
+   "fen_before": "4R3/8/8/3pB1k1/3P2b1/2P2KP1/2P5/8 w - - 21 55",
+   "played": {
+    "san": "Ke3",
+    "uci": "f3e3"
+   },
+   "eval_best_cp_mover": 1343,
+   "eval_played_cp_mover": 1343,
+   "win_before_pct": 99.3,
+   "win_after_pct": 99.3,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Kf2",
+    "uci": "f3f2",
+    "pv": [
+     "Kf2",
+     "Bh5",
+     "Rg8+",
+     "Kf5",
+     "Ke3",
+     "Bd1",
+     "c4",
+     "Ke6"
+    ]
+   },
+   "situation": {
+    "priority": "RESPOND TO THE CHECK",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": true,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 109,
+   "move_number": 55,
+   "mover": "black",
+   "fen_before": "4R3/8/8/3pB1k1/3P2b1/2P1K1P1/2P5/8 b - - 22 55",
+   "played": {
+    "san": "Kg6",
+    "uci": "g5g6"
+   },
+   "eval_best_cp_mover": -1157,
+   "eval_played_cp_mover": -1453,
+   "win_before_pct": 1.4,
+   "win_after_pct": 0.5,
+   "centipawn_loss": 296,
+   "win_pct_lost": 0.9,
+   "accuracy_pct": 95.9,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Bh5",
+    "uci": "g4h5",
+    "pv": [
+     "Bh5",
+     "Rf8",
+     "Bd1",
+     "Rg8+",
+     "Kf5",
+     "c4",
+     "Ke6",
+     "c3"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 110,
+   "move_number": 56,
+   "mover": "white",
+   "fen_before": "4R3/8/6k1/3pB3/3P2b1/2P1K1P1/2P5/8 w - - 23 56",
+   "played": {
+    "san": "Kf4",
+    "uci": "e3f4"
+   },
+   "eval_best_cp_mover": 3434,
+   "eval_played_cp_mover": 1276,
+   "win_before_pct": 100.0,
+   "win_after_pct": 99.1,
+   "centipawn_loss": 2158,
+   "win_pct_lost": 0.9,
+   "accuracy_pct": 96.0,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Rg8+",
+    "uci": "e8g8",
+    "pv": [
+     "Rg8+",
+     "Kf5",
+     "Rf8+",
+     "Kg5",
+     "Bf4+",
+     "Kh5",
+     "Rh8+",
+     "Kg6"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 111,
+   "move_number": 56,
+   "mover": "black",
+   "fen_before": "4R3/8/6k1/3pB3/3P1Kb1/2P3P1/2P5/8 b - - 24 56",
+   "played": {
+    "san": "Bd7",
+    "uci": "g4d7"
+   },
+   "eval_best_cp_mover": -1450,
+   "eval_played_cp_mover": -6592,
+   "win_before_pct": 0.5,
+   "win_after_pct": 0.0,
+   "centipawn_loss": 5142,
+   "win_pct_lost": 0.5,
+   "accuracy_pct": 97.9,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Be2",
+    "uci": "g4e2",
+    "pv": [
+     "Be2",
+     "Rh8",
+     "Kf7",
+     "g4",
+     "Bd1",
+     "Rh6",
+     "Bxc2",
+     "g5"
+    ]
+   },
+   "situation": {
+    "priority": "MEET THE THREAT",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "material",
+     "move": "Kxg4"
+    },
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 112,
+   "move_number": 57,
+   "mover": "white",
+   "fen_before": "4R3/3b4/6k1/3pB3/3P1K2/2P3P1/2P5/8 w - - 25 57",
+   "played": {
+    "san": "Re7",
+    "uci": "e8e7"
+   },
+   "eval_best_cp_mover": 8115,
+   "eval_played_cp_mover": 8115,
+   "win_before_pct": 100.0,
+   "win_after_pct": 100.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Re7",
+    "uci": "e8e7",
+    "pv": [
+     "Re7",
+     "Bb5",
+     "Re6+",
+     "Kf7",
+     "Rh6",
+     "Bf1",
+     "g4",
+     "Bb5"
+    ]
+   },
+   "situation": {
+    "priority": "MEET THE THREAT",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "material",
+     "move": "Bxe8"
+    },
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 113,
+   "move_number": 57,
+   "mover": "black",
+   "fen_before": "8/3bR3/6k1/3pB3/3P1K2/2P3P1/2P5/8 b - - 26 57",
+   "played": {
+    "san": "Bb5",
+    "uci": "d7b5"
+   },
+   "eval_best_cp_mover": -1037,
+   "eval_played_cp_mover": -1037,
+   "win_before_pct": 2.1,
+   "win_after_pct": 2.1,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Bb5",
+    "uci": "d7b5",
+    "pv": [
+     "Bb5",
+     "Rg7+",
+     "Kh6",
+     "g4",
+     "Be8",
+     "Rg8",
+     "Bd7",
+     "Rf8"
+    ]
+   },
+   "situation": {
+    "priority": "MEET THE THREAT",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "material",
+     "move": "Rxd7"
+    },
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 114,
+   "move_number": 58,
+   "mover": "white",
+   "fen_before": "8/4R3/6k1/1b1pB3/3P1K2/2P3P1/2P5/8 w - - 27 58",
+   "played": {
+    "san": "g4",
+    "uci": "g3g4"
+   },
+   "eval_best_cp_mover": 9920,
+   "eval_played_cp_mover": 9920,
+   "win_before_pct": 100.0,
+   "win_after_pct": 100.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "g4",
+    "uci": "g3g4",
+    "pv": [
+     "g4",
+     "Be8",
+     "Rg7+",
+     "Kh6",
+     "Kf5",
+     "Bg6+",
+     "Rxg6+",
+     "Kh7"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 115,
+   "move_number": 58,
+   "mover": "black",
+   "fen_before": "8/4R3/6k1/1b1pB3/3P1KP1/2P5/2P5/8 b - - 0 58",
+   "played": {
+    "san": "Ba6",
+    "uci": "b5a6"
+   },
+   "eval_best_cp_mover": -9930,
+   "eval_played_cp_mover": -9950,
+   "win_before_pct": 0.0,
+   "win_after_pct": 0.0,
+   "centipawn_loss": 20,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Be8",
+    "uci": "b5e8",
+    "pv": [
+     "Be8",
+     "Rg7+",
+     "Kh6",
+     "Kf5",
+     "Bg6+",
+     "Rxg6+",
+     "Kh7",
+     "Rg7+"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 116,
+   "move_number": 59,
+   "mover": "white",
+   "fen_before": "8/4R3/b5k1/3pB3/3P1KP1/2P5/2P5/8 w - - 1 59",
+   "played": {
+    "san": "Rg7+",
+    "uci": "e7g7"
+   },
+   "eval_best_cp_mover": 9950,
+   "eval_played_cp_mover": 9950,
+   "win_before_pct": 100.0,
+   "win_after_pct": 100.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Rg7+",
+    "uci": "e7g7",
+    "pv": [
+     "Rg7+",
+     "Kh6",
+     "Kf5",
+     "Bc8+",
+     "Kf6",
+     "Bxg4",
+     "Bf4+",
+     "Kh5"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 117,
+   "move_number": 59,
+   "mover": "black",
+   "fen_before": "8/6R1/b5k1/3pB3/3P1KP1/2P5/2P5/8 b - - 2 59",
+   "played": {
+    "san": "Kh6",
+    "uci": "g6h6"
+   },
+   "eval_best_cp_mover": -9960,
+   "eval_played_cp_mover": -9960,
+   "win_before_pct": 0.0,
+   "win_after_pct": 0.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "forced",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Kh6",
+    "uci": "g6h6",
+    "pv": [
+     "Kh6",
+     "Kf5",
+     "Bc8+",
+     "Kf6",
+     "Bxg4",
+     "Bf4+",
+     "Kh5",
+     "Rh7#"
+    ]
+   },
+   "situation": {
+    "priority": "RESPOND TO THE CHECK",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": true,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 118,
+   "move_number": 60,
+   "mover": "white",
+   "fen_before": "8/6R1/b6k/3pB3/3P1KP1/2P5/2P5/8 w - - 3 60",
+   "played": {
+    "san": "g5+",
+    "uci": "g4g5"
+   },
+   "eval_best_cp_mover": 9960,
+   "eval_played_cp_mover": 9910,
+   "win_before_pct": 100.0,
+   "win_after_pct": 100.0,
+   "centipawn_loss": 50,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Kf5",
+    "uci": "f4f5",
+    "pv": [
+     "Kf5",
+     "Bc8+",
+     "Kf6",
+     "Bxg4",
+     "Bf4+",
+     "Kh5",
+     "Rh7#"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 119,
+   "move_number": 60,
+   "mover": "black",
+   "fen_before": "8/6R1/b6k/3pB1P1/3P1K2/2P5/2P5/8 b - - 0 60",
+   "played": {
+    "san": "Kh5",
+    "uci": "h6h5"
+   },
+   "eval_best_cp_mover": -9920,
+   "eval_played_cp_mover": -9920,
+   "win_before_pct": 0.0,
+   "win_after_pct": 0.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "forced",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Kh5",
+    "uci": "h6h5",
+    "pv": [
+     "Kh5",
+     "Rh7+",
+     "Kg6",
+     "Rh6+",
+     "Kf7",
+     "g6+",
+     "Ke7",
+     "Rh7+"
+    ]
+   },
+   "situation": {
+    "priority": "RESPOND TO THE CHECK",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": true,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 120,
+   "move_number": 61,
+   "mover": "white",
+   "fen_before": "8/6R1/b7/3pB1Pk/3P1K2/2P5/2P5/8 w - - 1 61",
+   "played": {
+    "san": "Rh7+",
+    "uci": "g7h7"
+   },
+   "eval_best_cp_mover": 9920,
+   "eval_played_cp_mover": 9920,
+   "win_before_pct": 100.0,
+   "win_after_pct": 100.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Rh7+",
+    "uci": "g7h7",
+    "pv": [
+     "Rh7+",
+     "Kg6",
+     "Rh6+",
+     "Kf7",
+     "g6+",
+     "Ke7",
+     "Rh7+",
+     "Ke6"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 121,
+   "move_number": 61,
+   "mover": "black",
+   "fen_before": "8/7R/b7/3pB1Pk/3P1K2/2P5/2P5/8 b - - 2 61",
+   "played": {
+    "san": "Kg6",
+    "uci": "h5g6"
+   },
+   "eval_best_cp_mover": -9930,
+   "eval_played_cp_mover": -9930,
+   "win_before_pct": 0.0,
+   "win_after_pct": 0.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "forced",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Kg6",
+    "uci": "h5g6",
+    "pv": [
+     "Kg6",
+     "Rh6+",
+     "Kf7",
+     "g6+",
+     "Ke7",
+     "Rh7+",
+     "Ke6",
+     "g7"
+    ]
+   },
+   "situation": {
+    "priority": "RESPOND TO THE CHECK",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": true,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 122,
+   "move_number": 62,
+   "mover": "white",
+   "fen_before": "8/7R/b5k1/3pB1P1/3P1K2/2P5/2P5/8 w - - 3 62",
+   "played": {
+    "san": "Rh8",
+    "uci": "h7h8"
+   },
+   "eval_best_cp_mover": 9930,
+   "eval_played_cp_mover": 9890,
+   "win_before_pct": 100.0,
+   "win_after_pct": 100.0,
+   "centipawn_loss": 40,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Rh6+",
+    "uci": "h7h6",
+    "pv": [
+     "Rh6+",
+     "Kf7",
+     "g6+",
+     "Ke7",
+     "g7",
+     "Bd3",
+     "cxd3",
+     "Kf7"
+    ]
+   },
+   "situation": {
+    "priority": "MEET THE THREAT",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "material",
+     "move": "Kxh7"
+    },
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 123,
+   "move_number": 62,
+   "mover": "black",
+   "fen_before": "7R/8/b5k1/3pB1P1/3P1K2/2P5/2P5/8 b - - 4 62",
+   "played": {
+    "san": "Kf7",
+    "uci": "g6f7"
+   },
+   "eval_best_cp_mover": -9900,
+   "eval_played_cp_mover": -9900,
+   "win_before_pct": 0.0,
+   "win_after_pct": 0.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Kf7",
+    "uci": "g6f7",
+    "pv": [
+     "Kf7",
+     "Rh6",
+     "Bc8",
+     "g6+",
+     "Ke7",
+     "g7",
+     "Be6",
+     "Rxe6+"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 124,
+   "move_number": 63,
+   "mover": "white",
+   "fen_before": "7R/5k2/b7/3pB1P1/3P1K2/2P5/2P5/8 w - - 5 63",
+   "played": {
+    "san": "Rh7+",
+    "uci": "h8h7"
+   },
+   "eval_best_cp_mover": 9900,
+   "eval_played_cp_mover": 9880,
+   "win_before_pct": 100.0,
+   "win_after_pct": 100.0,
+   "centipawn_loss": 20,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Rh6",
+    "uci": "h8h6",
+    "pv": [
+     "Rh6",
+     "Bc8",
+     "g6+",
+     "Ke7",
+     "g7",
+     "Be6",
+     "Rxe6+",
+     "Kxe6"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 125,
+   "move_number": 63,
+   "mover": "black",
+   "fen_before": "8/5k1R/b7/3pB1P1/3P1K2/2P5/2P5/8 b - - 6 63",
+   "played": {
+    "san": "Ke6",
+    "uci": "f7e6"
+   },
+   "eval_best_cp_mover": -9920,
+   "eval_played_cp_mover": -9930,
+   "win_before_pct": 0.0,
+   "win_after_pct": 0.0,
+   "centipawn_loss": 10,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Ke8",
+    "uci": "f7e8",
+    "pv": [
+     "Ke8",
+     "g6",
+     "Bc8",
+     "Rh8+",
+     "Kd7",
+     "g7",
+     "Kc6",
+     "Rxc8+"
+    ]
+   },
+   "situation": {
+    "priority": "RESPOND TO THE CHECK",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": true,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 126,
+   "move_number": 64,
+   "mover": "white",
+   "fen_before": "8/7R/b3k3/3pB1P1/3P1K2/2P5/2P5/8 w - - 7 64",
+   "played": {
+    "san": "g6",
+    "uci": "g5g6"
+   },
+   "eval_best_cp_mover": 9930,
+   "eval_played_cp_mover": 9900,
+   "win_before_pct": 100.0,
+   "win_after_pct": 100.0,
+   "centipawn_loss": 30,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Rh6+",
+    "uci": "h7h6",
+    "pv": [
+     "Rh6+",
+     "Ke7",
+     "Rxa6",
+     "Kf7",
+     "Kf5",
+     "Ke7",
+     "Ra7+",
+     "Kd8"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 127,
+   "move_number": 64,
+   "mover": "black",
+   "fen_before": "8/7R/b3k1P1/3pB3/3P1K2/2P5/2P5/8 b - - 0 64",
+   "played": {
+    "san": "Bc4",
+    "uci": "a6c4"
+   },
+   "eval_best_cp_mover": -9920,
+   "eval_played_cp_mover": -9960,
+   "win_before_pct": 0.0,
+   "win_after_pct": 0.0,
+   "centipawn_loss": 40,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Bd3",
+    "uci": "a6d3",
+    "pv": [
+     "Bd3",
+     "Rh6",
+     "Bxg6",
+     "Rxg6+",
+     "Ke7",
+     "Kf5",
+     "Kd7",
+     "Rh6"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 128,
+   "move_number": 65,
+   "mover": "white",
+   "fen_before": "8/7R/4k1P1/3pB3/2bP1K2/2P5/2P5/8 w - - 1 65",
+   "played": {
+    "san": "g7",
+    "uci": "g6g7"
+   },
+   "eval_best_cp_mover": 9960,
+   "eval_played_cp_mover": 9960,
+   "win_before_pct": 100.0,
+   "win_after_pct": 100.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "g7",
+    "uci": "g6g7",
+    "pv": [
+     "g7",
+     "Kd7",
+     "g8=Q+",
+     "Kc6",
+     "Qb8",
+     "Bb3",
+     "Qb7#"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 129,
+   "move_number": 65,
+   "mover": "black",
+   "fen_before": "8/6PR/4k3/3pB3/2bP1K2/2P5/2P5/8 b - - 0 65",
+   "played": {
+    "san": "Kf7",
+    "uci": "e6f7"
+   },
+   "eval_best_cp_mover": -9970,
+   "eval_played_cp_mover": -9970,
+   "win_before_pct": 0.0,
+   "win_after_pct": 0.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Kf7",
+    "uci": "e6f7",
+    "pv": [
+     "Kf7",
+     "Rh8",
+     "Ke6",
+     "g8=Q+",
+     "Kd7",
+     "Qe8#"
+    ]
+   },
+   "situation": {
+    "priority": "SURVIVAL \u2014 you are being mated",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "mate",
+     "move": "g8=Q#"
+    },
+    "has_forcing_move": false,
+    "mate_savers": [
+     "Kf7",
+     "Kd7"
+    ]
+   }
+  },
+  {
+   "ply": 130,
+   "move_number": 66,
+   "mover": "white",
+   "fen_before": "8/5kPR/8/3pB3/2bP1K2/2P5/2P5/8 w - - 1 66",
+   "played": {
+    "san": "Rh6",
+    "uci": "h7h6"
+   },
+   "eval_best_cp_mover": 9970,
+   "eval_played_cp_mover": 9940,
+   "win_before_pct": 100.0,
+   "win_after_pct": 100.0,
+   "centipawn_loss": 30,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Rh8",
+    "uci": "h7h8",
+    "pv": [
+     "Rh8",
+     "Ke6",
+     "g8=Q+",
+     "Kd7",
+     "Qe8#"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 131,
+   "move_number": 66,
+   "mover": "black",
+   "fen_before": "8/5kP1/7R/3pB3/2bP1K2/2P5/2P5/8 b - - 2 66",
+   "played": {
+    "san": "Bf1",
+    "uci": "c4f1"
+   },
+   "eval_best_cp_mover": -9950,
+   "eval_played_cp_mover": -9970,
+   "win_before_pct": 0.0,
+   "win_after_pct": 0.0,
+   "centipawn_loss": 20,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Be2",
+    "uci": "c4e2",
+    "pv": [
+     "Be2",
+     "Rh8",
+     "Ke7",
+     "g8=Q",
+     "Bh5",
+     "Qd8+",
+     "Ke6",
+     "Qd6+"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 132,
+   "move_number": 67,
+   "mover": "white",
+   "fen_before": "8/5kP1/7R/3pB3/3P1K2/2P5/2P5/5b2 w - - 3 67",
+   "played": {
+    "san": "Rh8",
+    "uci": "h6h8"
+   },
+   "eval_best_cp_mover": 9970,
+   "eval_played_cp_mover": 9970,
+   "win_before_pct": 100.0,
+   "win_after_pct": 100.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Rh8",
+    "uci": "h6h8",
+    "pv": [
+     "Rh8",
+     "Bg2",
+     "g8=Q+",
+     "Ke7",
+     "Qe8#"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 133,
+   "move_number": 67,
+   "mover": "black",
+   "fen_before": "7R/5kP1/8/3pB3/3P1K2/2P5/2P5/5b2 b - - 4 67",
+   "played": {
+    "san": "Ke7",
+    "uci": "f7e7"
+   },
+   "eval_best_cp_mover": -9980,
+   "eval_played_cp_mover": -9980,
+   "win_before_pct": 0.0,
+   "win_after_pct": 0.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Be2",
+    "uci": "f1e2",
+    "pv": [
+     "Be2",
+     "g8=Q+",
+     "Ke7",
+     "Qe8#"
+    ]
+   },
+   "situation": {
+    "priority": "COUNTERPLAY \u2014 you are behind",
+    "material": "losing big",
+    "material_diff_pawns": -8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 134,
+   "move_number": 68,
+   "mover": "white",
+   "fen_before": "7R/4k1P1/8/3pB3/3P1K2/2P5/2P5/5b2 w - - 5 68",
+   "played": {
+    "san": "g8=Q",
+    "uci": "g7g8q"
+   },
+   "eval_best_cp_mover": 9980,
+   "eval_played_cp_mover": 9980,
+   "win_before_pct": 100.0,
+   "win_after_pct": 100.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "g8=Q",
+    "uci": "g7g8q",
+    "pv": [
+     "g8=Q",
+     "Bg2",
+     "Qe8#"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 8,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 135,
+   "move_number": 68,
+   "mover": "black",
+   "fen_before": "6QR/4k3/8/3pB3/3P1K2/2P5/2P5/5b2 b - - 0 68",
+   "played": {
+    "san": "Bc4",
+    "uci": "f1c4"
+   },
+   "eval_best_cp_mover": -9990,
+   "eval_played_cp_mover": -9990,
+   "win_before_pct": 0.0,
+   "win_after_pct": 0.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "excellent",
+   "is_best_move": false,
+   "best_move": {
+    "san": "Be2",
+    "uci": "f1e2",
+    "pv": [
+     "Be2",
+     "Qe8#"
+    ]
+   },
+   "situation": {
+    "priority": "SURVIVAL \u2014 you are being mated",
+    "material": "losing big",
+    "material_diff_pawns": -16,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": {
+     "kind": "mate",
+     "move": "Rh7#"
+    },
+    "has_forcing_move": false,
+    "mate_savers": []
+   }
+  },
+  {
+   "ply": 136,
+   "move_number": 69,
+   "mover": "white",
+   "fen_before": "6QR/4k3/8/3pB3/2bP1K2/2P5/2P5/8 w - - 1 69",
+   "played": {
+    "san": "Rh7#",
+    "uci": "h8h7"
+   },
+   "eval_best_cp_mover": 9990,
+   "eval_played_cp_mover": 9990,
+   "win_before_pct": 100.0,
+   "win_after_pct": 100.0,
+   "centipawn_loss": 0,
+   "win_pct_lost": 0.0,
+   "accuracy_pct": 100.0,
+   "classification": "best",
+   "is_best_move": true,
+   "best_move": {
+    "san": "Rh7#",
+    "uci": "h8h7",
+    "pv": [
+     "Rh7#"
+    ]
+   },
+   "situation": {
+    "priority": "CONSOLIDATE \u2014 you are ahead",
+    "material": "winning big",
+    "material_diff_pawns": 16,
+    "phase": "endgame",
+    "in_check": false,
+    "threat_against_mover": null,
+    "has_forcing_move": true,
+    "mate_savers": []
+   }
+  }
+ ],
+ "engine_available": true,
+ "final_fen": "6Q1/4k2R/8/3pB3/2bP1K2/2P5/2P5/8 b - - 2 69",
+ "result": "1-0",
+ "summary": {
+  "white": {
+   "accuracy_pct": 92.5,
+   "avg_centipawn_loss": 119.0,
+   "move_counts": {
+    "brilliant": 1,
+    "great": 4,
+    "best": 25,
+    "excellent": 18,
+    "good": 14,
+    "inaccuracy": 4,
+    "mistake": 1,
+    "blunder": 1,
+    "forced": 1
+   },
+   "n_moves": 69,
+   "worst_moments": [
+    {
+     "ply": 30,
+     "move": "Bg3",
+     "classification": "blunder",
+     "win_pct_lost": 27.4,
+     "better_move": "dxe5"
+    },
+    {
+     "ply": 6,
+     "move": "Nf3",
+     "classification": "mistake",
+     "win_pct_lost": 17.4,
+     "better_move": "e5"
+    },
+    {
+     "ply": 72,
+     "move": "a5",
+     "classification": "inaccuracy",
+     "win_pct_lost": 9.9,
+     "better_move": "Kg1"
+    },
+    {
+     "ply": 56,
+     "move": "Rxa5",
+     "classification": "inaccuracy",
+     "win_pct_lost": 9.5,
+     "better_move": "Rxd5"
+    },
+    {
+     "ply": 38,
+     "move": "f3",
+     "classification": "inaccuracy",
+     "win_pct_lost": 7.6,
+     "better_move": "Qh5"
+    }
+   ],
+   "weakness_tags": {
+    "priority:CALCULATE": {
+     "n_total": 6,
+     "n_mistakes": 1,
+     "mistake_rate": 0.167
+    },
+    "phase:middlegame": {
+     "n_total": 20,
+     "n_mistakes": 3,
+     "mistake_rate": 0.15
+    },
+    "phase:opening": {
+     "n_total": 10,
+     "n_mistakes": 1,
+     "mistake_rate": 0.1
+    },
+    "under_threat:material": {
+     "n_total": 10,
+     "n_mistakes": 1,
+     "mistake_rate": 0.1
+    },
+    "priority:MEET": {
+     "n_total": 10,
+     "n_mistakes": 1,
+     "mistake_rate": 0.1
+    },
+    "priority:CONSOLIDATE": {
+     "n_total": 44,
+     "n_mistakes": 4,
+     "mistake_rate": 0.091
+    },
+    "had_forcing_move": {
+     "n_total": 47,
+     "n_mistakes": 3,
+     "mistake_rate": 0.064
+    },
+    "phase:endgame": {
+     "n_total": 39,
+     "n_mistakes": 2,
+     "mistake_rate": 0.051
+    },
+    "priority:PLAY": {
+     "n_total": 4,
+     "n_mistakes": 0,
+     "mistake_rate": 0.0
+    },
+    "in_check": {
+     "n_total": 4,
+     "n_mistakes": 0,
+     "mistake_rate": 0.0
+    },
+    "priority:RESPOND": {
+     "n_total": 4,
+     "n_mistakes": 0,
+     "mistake_rate": 0.0
+    }
+   }
+  },
+  "black": {
+   "accuracy_pct": 91.8,
+   "avg_centipawn_loss": 124.6,
+   "move_counts": {
+    "brilliant": 3,
+    "great": 1,
+    "best": 18,
+    "excellent": 25,
+    "good": 6,
+    "inaccuracy": 9,
+    "mistake": 2,
+    "blunder": 1,
+    "forced": 3
+   },
+   "n_moves": 68,
+   "worst_moments": [
+    {
+     "ply": 33,
+     "move": "Bf5",
+     "classification": "blunder",
+     "win_pct_lost": 20.3,
+     "better_move": "Bg4"
+    },
+    {
+     "ply": 15,
+     "move": "Rg8",
+     "classification": "mistake",
+     "win_pct_lost": 13.8,
+     "better_move": "Ba6"
+    },
+    {
+     "ply": 7,
+     "move": "Bxc3+",
+     "classification": "mistake",
+     "win_pct_lost": 11.4,
+     "better_move": "dxe4"
+    },
+    {
+     "ply": 29,
+     "move": "e5",
+     "classification": "inaccuracy",
+     "win_pct_lost": 9.1,
+     "better_move": "Kg7"
+    },
+    {
+     "ply": 17,
+     "move": "f6",
+     "classification": "inaccuracy",
+     "win_pct_lost": 8.1,
+     "better_move": "Rh8"
+    }
+   ],
+   "weakness_tags": {
+    "priority:PLAY": {
+     "n_total": 7,
+     "n_mistakes": 4,
+     "mistake_rate": 0.571
+    },
+    "phase:opening": {
+     "n_total": 10,
+     "n_mistakes": 5,
+     "mistake_rate": 0.5
+    },
+    "priority:CALCULATE": {
+     "n_total": 2,
+     "n_mistakes": 1,
+     "mistake_rate": 0.5
+    },
+    "phase:middlegame": {
+     "n_total": 19,
+     "n_mistakes": 5,
+     "mistake_rate": 0.263
+    },
+    "had_forcing_move": {
+     "n_total": 21,
+     "n_mistakes": 5,
+     "mistake_rate": 0.238
+    },
+    "priority:COUNTERPLAY": {
+     "n_total": 39,
+     "n_mistakes": 7,
+     "mistake_rate": 0.179
+    },
+    "phase:endgame": {
+     "n_total": 39,
+     "n_mistakes": 2,
+     "mistake_rate": 0.051
+    },
+    "under_threat:material": {
+     "n_total": 9,
+     "n_mistakes": 0,
+     "mistake_rate": 0.0
+    },
+    "priority:MEET": {
+     "n_total": 9,
+     "n_mistakes": 0,
+     "mistake_rate": 0.0
+    },
+    "in_check": {
+     "n_total": 9,
+     "n_mistakes": 0,
+     "mistake_rate": 0.0
+    },
+    "priority:RESPOND": {
+     "n_total": 9,
+     "n_mistakes": 0,
+     "mistake_rate": 0.0
+    }
+   }
+  }
+ },
+ "opponent_elo": "850",
+ "outcome": "win"
+}

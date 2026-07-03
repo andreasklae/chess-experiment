@@ -94,6 +94,33 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | No
             "draw. If you are winning, this throws away the win.", True
         )
 
+    # Walks INTO a forced mate-in-1: after this move the opponent has a move that
+    # checkmates us. This is the king-safety loss pattern (12/12 recent ranked losses
+    # were checkmates) — the defensive twin of the SEE hang-gate. Pure mechanics (scan
+    # the opponent's replies for mate); no judgement. SOFT so a forced/only-move can
+    # still be played (sometimes every move loses), but loud — the agent must not
+    # reflexively walk into a one-move mate. Skip if we are already delivering mate
+    # (handled above) or the opponent has no mating material anyway.
+    opp_mates = []
+    for reply in after.legal_moves:
+        a2 = after.copy(stack=False)
+        a2.push(reply)
+        if a2.is_checkmate():
+            try:
+                opp_mates.append(after.san(reply))
+            except Exception:
+                opp_mates.append(after.uci(reply))
+            if len(opp_mates) >= 3:
+                break
+    if opp_mates:
+        return (
+            f"⚠ this move WALKS INTO MATE: after it the opponent plays "
+            f"{opp_mates[0].rstrip('#+')}# and it is CHECKMATE. Unless every legal move loses and this "
+            f"is the toughest, pick another — check your king's safety with "
+            f"chess__imagine_move first (read positional/defending-the-king.md).",
+            False,
+        )
+
     # Is the opponent reduced to a bare (or pawns-only) king? Then any free
     # gift of a rook-or-better is never a real sacrifice — it is a basic-mate
     # blunder, and confirm must not wave it through.
@@ -149,6 +176,41 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | No
                 "its move). Pick a move that makes progress — shrink the enemy "
                 "king's box or mobility, drive it toward the edge/corner.",
                 True,
+            )
+
+    # Greek-gift bishop sacrifice (Bxh7+/Bxh2+): a piece sac that gives CHECK,
+    # so SEE on the square reads it as a "trade" (bishop for the h-pawn + check)
+    # and the material-loss check below never fires — yet it LOSES outright when
+    # the king can escape the follow-up (…Kg6/…Kf8) and White has no knockout
+    # (the batch-3 top accuracy-leak: 4 of 11 such sacs threw a won game away).
+    # Whether it WORKS needs calculating the king hunt to a leaf, which is exactly
+    # what imagine_line is for — so this is a SOFT nudge to go verify, never a
+    # verdict on the sacrifice. Fires only when it is a REAL sac (the piece is not
+    # recovered on its square by SEE) into a castled king that can recapture.
+    if (os.environ.get("CHESS_DISABLE_GREEK_GIFT_NUDGE") != "1"
+            and board.piece_at(move.from_square)
+            and board.piece_at(move.from_square).piece_type == chess.BISHOP
+            and move.to_square in (chess.H7, chess.H2)
+            and board.is_capture(move)
+            and after.is_check()):
+        target = move.to_square
+        # the enemy king must be able to recapture (the sac's whole premise)
+        enemy_king = after.king(not mover)
+        king_can_take = enemy_king is not None and target in after.attacks(enemy_king)
+        # a REAL sacrifice: after the forced recapture we are down material on that
+        # square (SEE from our seat < 0 means taking back doesn't recover the piece)
+        real_sac = static_exchange_eval(after, target, mover) < 0 or king_can_take
+        if king_can_take and real_sac:
+            return (
+                "GREEK-GIFT SACRIFICE CHECK: this is a bishop sacrifice on "
+                f"{chess.square_name(target)} — it WINS only if you calculate the whole "
+                "king hunt to a forced mate or decisive attack. Before committing, play "
+                "it out with chess__imagine_line: the sac, "
+                f"…K x{chess.square_name(target)}, your Ng5+ (or Ng4+), and EVERY king "
+                "reply — especially …Kg6 and …Kf8 (the king walking OUT). If the king "
+                "escapes and you have no follow-up check/mate, the sac just loses a piece; "
+                "play a quiet move instead. Only confirm this if imagine_line shows it wins.",
+                False,  # SOFT: a sound Greek gift is legitimate and must be confirmable
             )
 
     # Losing trades, via static exchange evaluation on the moved piece's
@@ -359,10 +421,71 @@ def _blunder_gate(board: chess.Board, move: chess.Move) -> tuple[str, bool] | No
                     f"{chess.square_name(psq)} is hanging (the opponent wins "
                     f"material in the exchange there), and a move this turn "
                     f"could save it — you are leaving it to be taken. If that "
-                    f"is not a deliberate sacrifice, rescue it instead. Use "
-                    f"chess__imagine_move to confirm it is really safe.",
+                    f"is not a deliberate sacrifice, rescue it instead. Do NOT "
+                    f"judge that exchange by counting attackers in prose — run "
+                    f"chess__imagine_trade(target=\"{chess.square_name(psq)}\") "
+                    f"for the exact capture order.",
                     severe,
                 )
+
+    # Dangerous opponent CHECKS this move allows (SOFT): the refutation of a
+    # quiet-looking move often BEGINS with a check the hang-scans cannot see
+    # (check-then-fork, zwischenzug). Same design class as WALKS-INTO-MATE:
+    # scan the opponent's replies, state mechanical facts, tell the agent to
+    # calculate. Decided 2 of 4 iteration-2 batch losses (Rd1?? → Ne3+ forking
+    # the rook, d02026; Nxb3?? → Bxf3+ zwischenzug, 7f8176); fires on ~1–2% of
+    # fine moves. Soft: a dangerous check may be answerable — the agent must
+    # play it out with imagine_line, not be blocked.
+    try:
+        from imagine_move import _dangerous_opponent_checks
+        danger = _dangerous_opponent_checks(after)
+    except Exception:
+        danger = []
+    if danger:
+        return (
+            "after this move the opponent has a DANGEROUS CHECK you may not "
+            "have calculated: " + "; ".join(danger) + ". A check is forcing — "
+            "you must answer it before executing your own plan. Play each out "
+            "with chess__imagine_line (their check → your best evasion → their "
+            "follow-up). If your move survives them, re-commit with "
+            "confirm=true; otherwise pick a different move.",
+            False,
+        )
+
+    # Undo-shuffle (SOFT, any winning position — the general sibling of the
+    # bare-king repetition gate above): a quiet move that exactly REVERSES one
+    # of our last two moves while we are clearly ahead. This is the drift
+    # pattern that drains wins toward 50-move/repetition draws (game 9eddc039:
+    # Nf5-d4-f5…; game cf272d: Rc4-c7-c6-c5-c4…). Pure bookkeeping on the move
+    # history; soft because a retreat-and-return is occasionally correct (e.g.
+    # after the opponent's threat has passed) — the agent may confirm.
+    if board.move_stack and not board.is_check() and not after.is_check() \
+            and not board.is_capture(move) \
+            and board.piece_type_at(move.from_square) != chess.PAWN:
+        my_mat2 = sum(MATERIAL[p.piece_type] for p in board.piece_map().values()
+                      if p.color == mover and p.piece_type != chess.KING)
+        their_mat2 = sum(MATERIAL[p.piece_type] for p in board.piece_map().values()
+                         if p.color != mover and p.piece_type != chess.KING)
+        if my_mat2 - their_mat2 >= 300:
+            replay = board.copy()
+            recent_own: list[chess.Move] = []
+            while replay.move_stack and len(recent_own) < 2:
+                mv2 = replay.pop()
+                if replay.turn == mover:
+                    recent_own.append(mv2)
+            if any(mv2.from_square == move.to_square and mv2.to_square == move.from_square
+                   for mv2 in recent_own):
+                return (
+                    "this move exactly UN-DOES a move you just played (shuffling) "
+                    "while you are clearly winning. Shuffling makes no progress and "
+                    "feeds the 50-move/repetition draw. Re-read your standing plan "
+                    "(top of this turn) and play a move that EXECUTES it — a pawn "
+                    "push, a favourable capture, or your king marching in. If the "
+                    "shuffle is genuinely forced/correct, re-commit with "
+                    "confirm=true and say why in `reasoning`.",
+                    False,
+                )
+
     return None
 
 
@@ -481,11 +604,15 @@ def main() -> None:
                 " This hangs a PIECE / throws the game away — it is almost "
                 "certainly a losing blunder, and blundering pieces is the #1 way "
                 "this agent loses won games. The default is to PICK A DIFFERENT, "
-                "SAFE MOVE. You may override with confirm=true ONLY if it is a "
-                "forced checkmate, OR you can state in `reasoning` the exact "
-                "forced line (move by move, with the opponent's replies) that "
-                "WINS THE MATERIAL BACK or mates. If you cannot name that line, "
-                "do NOT override — choose a move that keeps your pieces."
+                "SAFE MOVE. You may override with confirm=true ONLY if "
+                "chess__imagine_line has shown you a PROVEN line for this exact "
+                "move — one whose verdict says every opponent reply was FORCED "
+                "(or that you tested every alternative it named) and that ends "
+                "in mate or winning the material back. A line where the verdict "
+                "said a reply was CHOSEN BY YOU is hope, not calculation — "
+                "overriding on hope is how this agent has thrown away won games "
+                "(Qxh7+, 6 games). If you have no PROVEN line, do NOT override — "
+                "choose a move that keeps your pieces."
             )
         else:
             prefix = (

@@ -278,13 +278,21 @@ def render_eval_line(board: chess.Board) -> str:
     return f"Material balance: {sign}{abs(pawns):.2f} ({verdict(score)})"
 
 
-def render_eval_delta_line(before: chess.Board, after: chess.Board) -> str:
+def render_eval_delta_line(before: chess.Board, after: chess.Board,
+                           move: chess.Move | None = None) -> str:
     """Format the before/after eval with delta for imagine_move output:
     `Material balance: +0.30 → +0.20 (Δ -0.10, slight material lead for white)`.
 
     The delta is from the mover's perspective only in the sense of which
     side gained or lost material — the signed value is always white-positive,
-    same as the eval itself."""
+    same as the eval itself.
+
+    SEE-aware caveat: the raw static `after` eval counts a captured piece as a
+    permanent gain even when the moved piece will simply be RECAPTURED next move
+    (e.g. Qxf6+ Kxf6 — the queen grab shows '+10' but the queen is lost back).
+    When `move` is given and the moved piece is hanging on its destination, we
+    append the realistic post-recapture balance so the agent is not lured by a
+    phantom material lead it cannot keep."""
     ev_before = evaluate(before)
     ev_after = evaluate(after)
     s_before = ev_before["score"]
@@ -296,10 +304,23 @@ def render_eval_delta_line(before: chess.Board, after: chess.Board) -> str:
         return f"{sign}{abs(score) / 100.0:.2f}"
 
     delta_sign = "+" if delta >= 0 else "-"
-    return (
+    line = (
         f"Material balance: {_fmt(s_before)} → {_fmt(s_after)} "
         f"(Δ {delta_sign}{abs(delta) / 100.0:.2f}, {verdict(s_after)})"
     )
+    if move is not None and not after.is_checkmate():
+        mover = before.turn  # the side that just moved
+        see_loss = static_exchange_eval(after, move.to_square, not mover)
+        if see_loss >= 150:  # the moved piece is hanging — recapture is coming
+            # White-positive realistic score after the opponent recaptures.
+            realistic = s_after - (see_loss if mover == chess.WHITE else -see_loss)
+            line += (
+                f"  ⚠ this counts the captured piece as kept, but the moving piece is "
+                f"hanging on {chess.square_name(move.to_square)} — after the recapture the realistic "
+                f"balance is ~{_fmt(realistic)}. Do NOT trust the lead above unless you have "
+                f"calculated a follow-up (imagine_line) that keeps it."
+            )
+    return line
 
 
 # ── Phase detection ────────────────────────────────────────────────────────

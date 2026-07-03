@@ -83,6 +83,14 @@ class TestBackRank:
         out = radar("6k1/5pp1/7p/8/8/8/8/R5K1 w - - 0 1") or ""
         assert "trapped on its back rank" not in out
 
+    def test_back_rank_flagged_when_blocked_by_a_piece_not_only_pawns(self):
+        # m3xxZ (pin medium): black Kg8, f7 occupied by a ROOK (not a pawn),
+        # g7/h7 pawns; open d-file + white rook → Rd8+ back-rank mate. The old
+        # detector required all forward squares to be PAWNS and missed this.
+        out = radar("6k1/r1p2rpp/2b5/pp6/4P3/1B1R4/PPP3PP/6K1 w - - 0 25") or ""
+        assert "trapped on its back rank" in out
+        assert "back-rank-mate.md" in out
+
     def test_own_back_rank_warned_when_threatened(self):
         # White to move, own king h1 walled by g2/h2, black rook on open
         # d-file → defensive luft warning (game 9b0d7590 mate pattern).
@@ -107,6 +115,34 @@ class TestPassedPawns:
     def test_blocked_file_not_passed(self):
         out = radar("6k1/p4ppp/P7/8/8/8/5PPP/6K1 w - - 0 1") or ""
         assert "Your passed pawn" not in out
+
+    def test_safe_passer_push_surfaced(self):
+        # pWCJd (advanced-pawn): the win is to push the e6 passer to e7. The
+        # radar must surface the concrete safe push move, not just note the pawn.
+        out = radar("8/p1p4p/1p2P3/3P1k2/P3p3/2B1P1K1/4r3/8 w - - 0 45")
+        assert "Push it now: e7" in out
+
+    def test_passer_push_suppressed_when_king_under_fire(self):
+        # eTe2h (defend-fork medium): a passer push (b6) was wrongly recommended
+        # while White's king is exposed and Black has Qxg3+ winning material after
+        # the push. The push prompt must be suppressed when the advance lets the
+        # opponent win material (king-safety guard) — but the passer is still noted.
+        out = radar("8/5pkp/6p1/1P6/2Q2K2/4P1P1/3rBP1q/8 w - - 0 40") or ""
+        assert "Push it now" not in out
+        assert "passed pawn" in out.lower()
+
+    def test_passer_push_kept_through_harmless_spite_checks(self):
+        # pWCJd: after e7 Black has only harmless spite checks (Rxe3+, Rg2+) that
+        # win nothing; the push is still correct and must still be prompted.
+        out = radar("8/p1p4p/1p2P3/3P1k2/P3p3/2B1P1K1/4r3/8 w - - 0 45") or ""
+        assert "Push it now: e7" in out
+
+    def test_unsafe_passer_push_not_surfaced(self):
+        # A passer whose advance square is guarded by the enemy → no push prompt.
+        out = radar("6k1/8/8/8/8/8/r3P3/4K3 w - - 0 1") or ""
+        # e2-e4 is safe here actually; use a blockaded/guarded case:
+        out2 = radar("4r3/4P3/8/8/8/8/8/4K1k1 w - - 0 1") or ""  # e7 push blocked by Re8 control
+        assert "Push it now" not in out2
 
 
 class TestDrawRules:

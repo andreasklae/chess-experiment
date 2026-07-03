@@ -252,11 +252,30 @@ def _discovered_attacks(board_before: chess.Board, board_after: chess.Board, mov
     return discoveries
 
 
+def _captured_value_cp(board_before: chess.Board, move: chess.Move) -> int:
+    """Material (centipawns) this move captures outright (0 if not a capture).
+    Used to NET a side-effect hanging-piece loss against the gain the move just
+    made — a move that wins a knight and lets a knight hang is an even trade, not
+    a 3-point loss. (en-passant captures a pawn.)"""
+    if not board_before.is_capture(move):
+        return 0
+    if board_before.is_en_passant(move):
+        return MATERIAL[chess.PAWN]
+    victim = board_before.piece_at(move.to_square)
+    return MATERIAL.get(victim.piece_type, 0) if victim else 0
+
+
 def _newly_hanging_own_pieces(board_before: chess.Board, board_after: chess.Board, move: chess.Move) -> list[str]:
     """List own pieces (other than the moved piece) that became unsafe as a
-    side-effect of this move (was safe before, has attackers ≥ defenders now)."""
+    side-effect of this move (was safe before, has attackers ≥ defenders now).
+
+    A side-effect loss is NETTED against any material the move captured: winning
+    a piece and letting a same-valued piece hang is an even trade, not a loss —
+    so the agent is told the net and prompted to calculate a follow-up rather
+    than abandon a winning capture on a one-ply fear (the YZ2IM failure mode)."""
     mover_color = board_before.turn
     enemy_color = not mover_color
+    captured_cp = _captured_value_cp(board_before, move)
     new_hanging: list[str] = []
     for sq in chess.SQUARES:
         if sq == move.to_square:
@@ -290,17 +309,121 @@ def _newly_hanging_own_pieces(board_before: chess.Board, board_after: chess.Boar
         atk_str = ", ".join(describe_piece(board_after, a) for a in sorted(attackers_after))
         def_str = (", ".join(describe_piece(board_after, d) for d in sorted(defenders_after))
                    if defenders_after else "nothing")
-        loss_note = (
-            f" — you would lose ~{see_loss // 100} pawn(s) of material in the "
-            f"exchange here"
-            if see_loss >= 150
-            else ""
-        )
+        loss_note = ""
+        if see_loss >= 150:
+            if captured_cp > 0:
+                # NET the side-effect loss against what this move just captured.
+                net = see_loss - captured_cp
+                if net <= 0:
+                    loss_note = (
+                        f" — but this move CAPTURED ~{captured_cp // 100} pawn(s), so even if this "
+                        f"piece falls the trade is roughly even or better (net ~{net // 100}); "
+                        f"don't abandon the capture on this alone — calculate the follow-up with "
+                        f"imagine_line (you may win MORE after the recapture)"
+                    )
+                else:
+                    loss_note = (
+                        f" — net loss ~{net // 100} pawn(s) after offsetting the ~{captured_cp // 100} "
+                        f"this move captured; calculate the follow-up before deciding"
+                    )
+            else:
+                loss_note = (
+                    f" — you would lose ~{see_loss // 100} pawn(s) of material in the exchange here"
+                )
+        # Explicit attacker/defender counts, not just a prose list. The model
+        # counts poorly off a rendering (board-visualization benchmark 2026-06-24)
+        # so the tool states the number. Pure mechanics (len of the sets above).
         new_hanging.append(
-            f"{describe_piece(board_after, sq)} — attacked by {atk_str}; "
-            f"defended by {def_str}{loss_note}"
+            f"{describe_piece(board_after, sq)} — attacked by "
+            f"{len(attackers_after)} ({atk_str}); defended by "
+            f"{len(defenders_after)} ({def_str}){loss_note}"
         )
     return new_hanging
+
+
+def _dangerous_opponent_checks(board_after: chess.Board) -> list[str]:
+    """Opponent checking replies (after our imagined move) that are BOTH safe
+    for them (we cannot win the checking piece where it lands — single-square
+    SEE) AND materially threatening: the check captures a piece, or from its
+    new square the checker attacks one of our winnable non-pawn pieces (a
+    fork). This is the class that decided 2 of 4 iteration-2 batch losses:
+    Rd1?? allowed Ne3+ forking the rook (game d02026, +375 → −556) and Nxb3??
+    allowed the Bxf3+ zwischenzug (game 7f8176, +263 → −324) — quiet-looking
+    moves whose refutation begins with a CHECK, which the one-ply hang scans
+    cannot see. Same design class as the WALKS-INTO-MATE gate: scan the
+    opponent's legal replies, report mechanical facts (check flag, capture
+    value, attack geometry, SEE), never a verdict — the agent is told to
+    CALCULATE each. Fires on ~1–2%% of fine moves (measured on two batches)."""
+    me = not board_after.turn
+    found: list[str] = []
+    for mv in board_after.legal_moves:
+        if not board_after.gives_check(mv):
+            continue
+        b2 = board_after.copy()
+        b2.push(mv)
+        if static_exchange_eval(b2, mv.to_square, me) >= 100:
+            continue  # we win the checker back where it lands — not dangerous
+        victim = board_after.piece_at(mv.to_square)
+        gain = MATERIAL.get(victim.piece_type, 0) if victim else 0
+        forked = []
+        for sq in b2.attacks(mv.to_square):
+            p = b2.piece_at(sq)
+            if (p and p.color == me and p.piece_type not in (chess.PAWN, chess.KING)
+                    and static_exchange_eval(b2, sq, not me) >= 100):
+                forked.append(f"your {PIECE_NAMES[p.piece_type]} on {chess.square_name(sq)}")
+        if gain >= 300 or forked:
+            what = []
+            if gain >= 300:
+                what.append(f"captures ~{gain // 100} pawn(s) of material")
+            if forked:
+                what.append("then wins " + ", ".join(forked) +
+                            " (you must answer the check first)")
+            found.append(f"**{board_after.san(mv)}** — " + " and ".join(what))
+        if len(found) >= 3:
+            break
+    return found
+
+
+def _still_hanging_own_pieces(board_before: chess.Board, board_after: chess.Board,
+                              move: chess.Move) -> list[str]:
+    """Own pieces that were ALREADY losing the exchange before this move and
+    STILL are after it — i.e. the imagined move ignores an existing hang. The
+    newly-hanging scan above deliberately skips these ('not this move's
+    fault'), which made a candidate that ignores a threatened piece look
+    clean: game 2358c1 mv67, imagine_move(Kh3) said nothing about the d2
+    knight the opponent was winning (~320cp), and the agent talked itself into
+    'it's only a trade'. Pure single-square SEE, netted against any capture
+    the move makes; silent when the move gives check (the opponent must answer
+    the check before cashing the hang)."""
+    mover_color = board_before.turn
+    enemy_color = not mover_color
+    if board_after.is_check():
+        return []
+    captured_cp = _captured_value_cp(board_before, move)
+    still: list[str] = []
+    for sq in chess.SQUARES:
+        if sq == move.to_square:
+            continue
+        piece = board_after.piece_at(sq)
+        if piece is None or piece.color != mover_color:
+            continue
+        before_piece = board_before.piece_at(sq)
+        if before_piece is None or before_piece.color != mover_color:
+            continue
+        see_before = static_exchange_eval(board_before, sq, enemy_color)
+        see_after = static_exchange_eval(board_after, sq, enemy_color)
+        if see_before < 150 or see_after < 150:
+            continue
+        if captured_cp >= see_after:
+            continue  # the move cashes at least as much as it concedes
+        still.append(
+            f"{describe_piece(board_after, sq)} — the opponent was ALREADY winning "
+            f"~{see_after // 100} pawn(s) capturing here before this move, and this move "
+            f"does NOT address it (doesn't move, defend, or out-trade it). Verify with "
+            f"`chess__imagine_trade(target=\"{chess.square_name(sq)}\")` — if the exchange "
+            f"is really lost, prefer a move that saves the piece or makes a bigger threat."
+        )
+    return still
 
 
 def _en_passant_offered(board_after: chess.Board) -> str | None:
@@ -348,7 +471,9 @@ def _bad_trade_warning(
         f"the opponent captures here and you recapture, you come out about "
         f"{net_loss} centipawns DOWN (roughly {net_loss // 100} pawn(s) of "
         f"material). The square is defended by count, but you lose material "
-        f"in the trade — verify this is a sacrifice you intend."
+        f"in the trade — verify this is a sacrifice you intend. "
+        f"**Run `chess__imagine_trade(target=\"{chess.square_name(move.to_square)}\")` "
+        f"to see the whole exchange played out.**"
     )
 
 
@@ -392,6 +517,108 @@ def _moved_piece_hanging_warning(
     )
 
 
+def _uncalculated_mating_checks(board: chess.Board) -> tuple[list[str], int] | None:
+    """If the side to move has legal CHECK(s) that leave the enemy king with <=1
+    escape square (nearly-mate candidates), return (check_sans, min_escapes) for
+    ALL such checks (most-boxing first). Pure mechanics — enumerates the side's own
+    legal checks and counts the enemy king's resulting escapes via a null move.
+    Used to remind the agent, when it is about to play a QUIET move, that
+    un-calculated mating check(s) exist (its commonest miss: judging only at one ply
+    and never extending a forcing check). CRITICAL: returns EVERY boxing check, not
+    just one — several checks may box the king equally yet only one mates (idFVb:
+    Qg8+/Qe8+/Qc8+ all box to 0, only Qe8+ mates), so naming a single check sends
+    the agent to calculate the wrong one and wrongly conclude 'no mate'. It does NOT
+    assert any check wins — the agent must calculate each with imagine_line."""
+    found: list[tuple[str, int]] = []
+    for mv in board.legal_moves:
+        b = board.copy(stack=False)
+        try:
+            san = board.san(mv)
+        except Exception:
+            san = board.uci(mv)
+        b.push(mv)
+        if b.is_checkmate():
+            return ([san], 0)
+        if not b.is_check():
+            continue
+        enemy_king = b.king(b.turn)
+        if enemy_king is None:
+            continue
+        # The enemy is in check (b.is_check() above) and it's their turn, so the
+        # king's own legal moves ARE its escape squares — count them directly. A
+        # null move is illegal while in check and must not be used here.
+        esc = sum(1 for m in b.legal_moves if m.from_square == enemy_king)
+        if esc <= 1:
+            found.append((san, esc))
+    if not found:
+        return None
+    found.sort(key=lambda t: t[1])
+    return ([s for s, _ in found], found[0][1])
+
+
+def _own_king_danger(board_after: chess.Board) -> dict | None:
+    """Assess whether the AGENT's OWN king is still under attack after its move —
+    the defensive twin of the offensive mate signals. It is now the opponent's turn;
+    look at what the opponent can do TO the agent's king:
+      - a forced mate-in-1 (opponent has a mating move) → walked INTO mate,
+      - a check that also wins material (a king-hunt continuation),
+      - the raw count of checks the opponent has (how exposed the king is).
+    Returns a dict, or None if the king is not meaningfully in danger. Pure mechanics
+    (enumerate the opponent's checks + one-ply material); the agent decides. Used to
+    stop the agent picking a 'one-ply-safe-looking' king move that walks into a
+    continued attack (def_83f3cf: Kf2 faces 6 checks incl. Qxf4+, while Kd1 holds)."""
+    opp = board_after.turn                       # opponent to move now
+    mate_moves, winning_checks, all_checks = [], [], []
+    try:
+        from _eval import static_exchange_eval, MATERIAL as _MAT
+    except Exception:
+        static_exchange_eval = None; _MAT = {}
+    for mv in board_after.legal_moves:
+        if not board_after.gives_check(mv):
+            continue
+        try:
+            san = board_after.san(mv)
+        except Exception:
+            san = board_after.uci(mv)
+        b = board_after.copy(stack=False); b.push(mv)
+        if b.is_checkmate():
+            mate_moves.append(san); all_checks.append(san); continue
+        all_checks.append(san)
+        # a check that also wins material off us (king-hunt with tempo): does the
+        # OPPONENT's capturing check NET material? Use SEE from the opponent's seat
+        # on the capture square BEFORE the capture (the standard "is this capture
+        # good for the mover" exchange) — this correctly nets our recapture, so a
+        # check that merely TRADES (e.g. Qxe4+ Kxe4 winning the queen back) is NOT
+        # flagged, only one that actually wins material with check.
+        if board_after.is_capture(mv) and static_exchange_eval is not None:
+            try:
+                if static_exchange_eval(board_after, mv.to_square, opp) >= 100:
+                    winning_checks.append(san)
+            except Exception:
+                pass
+    if not all_checks and not mate_moves:
+        return None
+    return dict(mate=mate_moves, winning_checks=winning_checks,
+                n_checks=len(all_checks), checks=all_checks)
+
+
+def _available_checks(board: chess.Board, exclude: chess.Move | None = None) -> list[str]:
+    """SANs of the side-to-move's legal CHECKS, excluding `exclude`. Used for the
+    zwischenzug nudge — naming the in-between checks the agent could insert before a
+    natural capture. Mechanics only; the agent decides whether one wins more."""
+    out: list[str] = []
+    for mv in board.legal_moves:
+        if exclude is not None and mv == exclude:
+            continue
+        if board.gives_check(mv):
+            try:
+                out.append(board.san(mv))
+            except Exception:
+                pass
+    # capturing checks first (sharpest), then quiet checks
+    return sorted(out, key=lambda s: (0 if "x" in s else 1, s))
+
+
 def _material_loss(board_before: chess.Board, board_after: chess.Board,
                    move: chess.Move) -> tuple[int, str | None]:
     """Largest single-square material loss this move causes (centipawns) and
@@ -411,7 +638,14 @@ def _material_loss(board_before: chess.Board, board_after: chess.Board,
     moved = board_after.piece_at(move.to_square)
     loss = max(0, opp_gain - my_gain)
     piece = PIECE_NAMES[moved.piece_type] if moved else None
-    # Other own pieces left hanging (safe before, losing after).
+    # Other own pieces left hanging (safe before, losing after). NET each against
+    # the material this move captured (my_gain): winning a knight and leaving a
+    # knight hanging is an even trade, not a piece down — the side-effect loss is
+    # only a real loss to the extent it EXCEEDS what the move just won. Without
+    # this, the blunder gate / banner falsely condemns winning captures that
+    # allow an equal recapture (the YZ2IM failure: Bxf7 wins a knight, the e4
+    # knight then hangs, net 0 — and Bxg8 follows). The agent must still
+    # CALCULATE the follow-up (imagine_line), which the surrounding text prompts.
     for psq in chess.SQUARES:
         if psq == move.to_square:
             continue
@@ -423,7 +657,7 @@ def _material_loss(board_before: chess.Board, board_after: chess.Board,
             continue
         if static_exchange_eval(board_before, psq, not mover) >= 150:
             continue  # not safe before this move
-        l = static_exchange_eval(board_after, psq, not mover)
+        l = max(0, static_exchange_eval(board_after, psq, not mover) - my_gain)
         if l > loss:
             loss, piece = l, PIECE_NAMES[p.piece_type]
     return loss, piece
@@ -513,15 +747,36 @@ def render_imagine(
 
     out: list[str] = []
     if blunder:
-        out.append(
-            f"> ⛔ **BLUNDER — this move LOSES your {loss_piece} (~{loss_cp // 100} "
-            f"pawns).** After the opponent's best recapture you are DOWN about "
-            f"{loss_cp} centipawns of material. This is almost certainly a losing "
-            f"move; the 'check', 'king mobility', and capture details below do NOT "
-            f"make up for losing a {loss_piece}. Play it ONLY if it is forced "
-            f"checkmate, or you have calculated the exact line that wins the "
-            f"material back (use chess__imagine_line). Otherwise pick a safe move."
-        )
+        gives_check = board_after.is_check() and not opp_move
+        if gives_check:
+            # A material-losing move that GIVES CHECK is forcing: the opponent's
+            # reply is constrained, which is exactly how sacrifices and mating
+            # attacks work. A one-ply material count CANNOT judge it — the point
+            # of the sac is what happens AFTER the forced reply. So do not condemn
+            # it; send the agent to calculate the line to its end (where the
+            # leaf verdict will say 'checkmate' or count the regained material).
+            out.append(
+                f"> ⚠️ **This move gives CHECK but loses ~{loss_cp // 100} pawns at ONE ply "
+                f"(your {loss_piece}).** Do NOT judge a check on the one-ply count — a check "
+                f"forces the reply, so a sacrifice like this often **mates or wins the material "
+                f"back** a move or two later. **Before rejecting it, calculate the WHOLE line with "
+                f"`chess__imagine_line`** (this check → their forced reply → your follow-up → …) and "
+                f"read the verdict at the end of the line. Only reject it if, after calculating to "
+                f"the end, you are still down with no mate. And only PLAY it if the leaf verdict "
+                f"says the line is PROVEN — a sacrifice is sound only when it works against EVERY "
+                f"reply to the check; if the verdict says a reply was CHOSEN BY YOU (not forced), "
+                f"test the alternatives it names before you believe the line."
+            )
+        else:
+            out.append(
+                f"> ⛔ **BLUNDER — this move LOSES your {loss_piece} (~{loss_cp // 100} "
+                f"pawns).** After the opponent's best recapture you are DOWN about "
+                f"{loss_cp} centipawns of material. This is almost certainly a losing "
+                f"move; the 'king mobility' and capture details below do NOT "
+                f"make up for losing a {loss_piece}. Play it ONLY if it is forced "
+                f"checkmate, or you have calculated the exact line that wins the "
+                f"material back (use chess__imagine_line). Otherwise pick a safe move."
+            )
         out.append("")
     if opp_move:
         you = color_name(agent_color)
@@ -538,9 +793,223 @@ def render_imagine(
             f"opposite of when imagining your own move."
         )
         out.append("")
+    # QUIET-MOVE-WHILE-MATE-AVAILABLE nudge. The agent's single biggest holdout is
+    # playing a calm/defensive move while a forcing mate sits un-calculated on the
+    # board — it judges candidates at ONE ply (imagine_move) and never extends a
+    # check with imagine_line. When THIS imagined move is the agent's own, is quiet
+    # (no check, no capture) and the position offers a check that boxes the enemy
+    # king to <=1 escape, say so here, before the move's calm details lull it. We
+    # name the boxing check the board already offers and send it to imagine_line —
+    # mechanics only; whether the check actually mates is for the agent to verify.
+    if not opp_move and not board_after.is_check() and not board_before.is_capture(move):
+        mc = _uncalculated_mating_checks(board_before)
+        if mc is not None:
+            chk_sans, esc = mc
+            shown = chk_sans[:4]
+            first = shown[0]
+            many = len(shown) > 1
+            out.append(
+                f"> ♛ **Wait — before playing this quiet move, you have "
+                f"{'checks' if many else 'a check'} ({', '.join(shown)}) that box the enemy king to "
+                f"{esc} escape square(s).** {'These are' if many else 'That is a'} forced-mate "
+                f"candidate{'s' if many else ''} you have NOT calculated. A quiet/defensive move throws "
+                f"away a mating attack. **Calculate {'EACH of them' if many else 'it'} to the end: "
+                f"`chess__imagine_line(moves=\"{first},...\")`"
+                + (f" — and DON'T stop if the first one fails; try the others ({', '.join(shown[1:])}). "
+                   f"Several checks can box the king equally yet only ONE mates." if many else " ")
+                + f"** Read the leaf for 'CHECKMATE'. Only play the quiet move if NONE of these checks, "
+                f"calculated out, wins — don't decline a check just because it loses material at one ply."
+            )
+            out.append("")
     out.append(f"## Move: {_move_summary(board_before, move)}")
     out.append("")
+    # If this is a capture into a square the opponent can recapture on, point the
+    # agent at imagine_trade to count the WHOLE exchange (its top weakness is
+    # stopping a trade one capture early). Only for the agent's own move.
+    if board_before.is_capture(move) and not opp_move:
+        tsq = chess.square_name(move.to_square)
+        if board_after.attackers(not board_before.turn, move.to_square):
+            out.append(f"_This is a capture — the opponent can recapture on {tsq}. "
+                       f"Run `chess__imagine_trade(target=\"{tsq}\")` to see the full "
+                       f"exchange and whether you end up + or − material._")
+            out.append("")
+    # ZWISCHENZUG (in-between move) nudge. The agent's largest medium holdout is
+    # playing the natural recapture/capture immediately when an in-between CHECK
+    # wins more: the check forces a reply and the capture usually still stands after
+    # it (46IHG: Rxa1 recaptures, but Rxd7+ FIRST then Nxd7 then Rxa1 wins the d7
+    # piece too; 9E8ij/HIYQC similar; SQi65 Rg3+ before Rxh5 makes it mate). When
+    # the imagined move is a NON-CHECK capture and the agent has a legal check
+    # available, point it at the zwischenzug. Mechanics (lists the checks); the
+    # agent calculates whether inserting one wins more.
+    if (board_before.is_capture(move) and not opp_move
+            and not board_after.is_check()):
+        checks_avail = _available_checks(board_before, exclude=move)
+        if checks_avail:
+            shown = checks_avail[:4]
+            out.append(
+                f"**↹ ZWISCHENZUG? Before this recapture/capture, you have check(s) available: "
+                f"{', '.join(shown)}.** An IN-BETWEEN check played FIRST often wins more — the check "
+                f"forces a reply and your capture here usually still stands afterwards (e.g. check → "
+                f"they answer → you take what you were going to take, plus the check won something). "
+                f"**Calculate the check first with `chess__imagine_line(moves=\"{shown[0]},...\")`** "
+                f"before settling for the immediate capture."
+            )
+            out.append("")
     out.append(f"**Check:** {check_text}")
+    # NEARLY-MATE nudge: a check that leaves the opponent very few legal replies
+    # is almost mate — and the agent's commonest miss is rejecting such a check
+    # (often a sacrifice) because at ONE ply it loses material, never extending to
+    # the mate one move later (e.g. Qd8+ Rxd8 Rxd8#). When the move checks and the
+    # opponent has <=2 replies, name them and push the agent to extend by exactly
+    # one move with imagine_line to test for mate. Pure mechanics (reply count);
+    # the agent still calculates. Only for the agent's own move.
+    if board_after.is_check() and not opp_move and not board_after.is_checkmate():
+        replies = list(board_after.legal_moves)
+        # How boxed is the enemy king after THIS check? Count its escape squares
+        # (give it the move via a null). A check can leave the king 0 escape squares
+        # yet still allow many BLOCKS/captures (1pYEx: Bh5+ boxes the king to 0
+        # escapes but the opponent has 7 replies — all blocks). The mating-attack
+        # signal must key on king-escapes, not total reply count, or it misses
+        # discovered checks where the bishop has many discovering squares.
+        king_escapes = None
+        ek = board_after.king(board_after.turn)
+        if ek is not None:
+            # It is the enemy king's turn and it is IN CHECK, so its own legal moves
+            # ARE its escape squares — count them directly. (Do NOT push a null move:
+            # that is illegal while in check and silently misreports the count.)
+            king_escapes = sum(1 for m in board_after.legal_moves if m.from_square == ek)
+        boxed = king_escapes is not None and king_escapes <= 1
+        if (1 <= len(replies) <= 2) or boxed:
+            reply_sans = []
+            for r in replies[:6]:
+                try:
+                    reply_sans.append(board_after.san(r))
+                except Exception:
+                    pass
+            mv_san = board_before.san(move)
+            nxt = reply_sans[0] if reply_sans else "their reply"
+            out.append("")
+            if len(replies) <= 2:
+                head = (f"this check leaves the opponent only {len(replies)} legal "
+                        f"repl{'y' if len(replies)==1 else 'ies'} ({', '.join(reply_sans)})")
+            else:
+                head = (f"this check boxes the enemy king to {king_escapes} escape square(s) "
+                        f"(it must block or capture — {len(replies)} replies)")
+            out.append(
+                f"**⚠ NEARLY MATE — {head}.** A check that forces the king into a box is how "
+                f"mating combinations work — **extend with `chess__imagine_line(moves=\"{mv_san},"
+                f"{nxt}\")`** and read the leaf for 'CHECKMATE'. Do NOT reject this check because it "
+                f"loses material at one ply — if it MATES, material is irrelevant."
+            )
+            # SIBLING boxing checks: several checks can box the king equally, yet
+            # only ONE has a mating follow-up (I5Hd8: Qe6+/Qf7+ both force Kh8, only
+            # Qf7+ mates; 1pYEx: 8 bishop discovered-checks box to 0, only Bb5+ mates
+            # via Bb5+ Kd8 Re8#). When the agent picks a boxing check that does NOT
+            # immediately mate, remind it the OTHER boxing checks exist and must each
+            # be calculated — it routinely commits to the first it tries. Mechanics
+            # only; the agent calculates which mates.
+            others = []
+            try:
+                allc = _uncalculated_mating_checks(board_before)
+                if allc is not None:
+                    others = [s for s in allc[0] if s != mv_san]
+            except Exception:
+                others = []
+            if others:
+                # List them all when few; when many, give the count + first several
+                # AND make explicit the list is partial, so the agent doesn't assume
+                # the winning check is among the shown ones (a truncated list can hide
+                # the winner).
+                if len(others) <= 6:
+                    body = (f"Other checks also box the king: {', '.join(others)}. "
+                            f"**Calculate EACH of them.**")
+                else:
+                    body = (f"{len(others)} OTHER checks also box the king "
+                            f"({', '.join(others[:6])}, …) — **calculate EVERY boxing check, "
+                            f"not just these.** With this many, the mating one is easy to miss.")
+                out.append(
+                    f"**↳ {body}** This check may not be the one that mates — only ONE boxing "
+                    f"check may have a mating follow-up; don't commit to the first you try."
+                )
+            out.append("")
+    # KING-DANGER (item P, defensive): does THIS move leave the agent's OWN king
+    # under continued attack? The agent picks a one-ply-safe-looking king/quiet move
+    # and walks into a follow-up check/mate (def_83f3cf: Kf2 faces Qxf4+ and 5 more
+    # checks; def_1c8d91/def_a646e4: a quiet 'active' move ignores a mate threat).
+    # Only for the agent's OWN move, and only when its king isn't already perfectly
+    # safe. Mechanics (count the opponent's checks / one-ply mate); the agent decides.
+    # MATE-DEFENSE check: if the opponent was threatening mate before this move, does
+    # THIS move actually stop it? Delivered at the decision point so the agent can't
+    # play a move that ignores the mate (or wrongly dismiss one that defends). Only
+    # the agent's own move, and only when a mate was genuinely threatened.
+    if not opp_move and not board_after.is_checkmate():
+        try:
+            from _features import _opponent_threat
+            pre_threat = _opponent_threat(board_before)
+        except Exception:
+            pre_threat = None
+        if pre_threat and pre_threat[0] == "mate":
+            # does the opponent STILL have mate-in-1 after this move?
+            still_mate = False
+            if not board_after.is_game_over():
+                for r in board_after.legal_moves:
+                    c = board_after.copy(stack=False); c.push(r)
+                    if c.is_checkmate():
+                        still_mate = True; break
+            if still_mate:
+                out.append(
+                    f"⛔ **THIS MOVE DOES NOT STOP THE MATE — the opponent was threatening "
+                    f"{pre_threat[1]} and still mates after this. This move loses on the spot.** "
+                    f"Pick a move from the mate-defence shortlist in show_position's Situation header."
+                )
+            else:
+                out.append(
+                    f"✓ **This move STOPS the threatened mate ({pre_threat[1]}).** Good — now verify "
+                    f"with `imagine_line` that it doesn't lose to a DIFFERENT follow-up (a second threat "
+                    f"or a winning check), and compare it to the other mate-stoppers."
+                )
+            out.append("")
+    if not opp_move and not board_after.is_checkmate():
+        kd = _own_king_danger(board_after)
+        if kd is not None:
+            if kd["mate"]:
+                out.append(
+                    f"⛔ **WALKS INTO MATE — after this move the opponent has checkmate: "
+                    f"{', '.join(kd['mate'][:3])}.** Do NOT play this; pick a different reply "
+                    f"that does not allow a mate (try another king square, a block, or capturing "
+                    f"the checker), and verify it with `imagine_move`."
+                )
+            elif kd["winning_checks"]:
+                out.append(
+                    f"⚠ **YOUR KING STAYS IN DANGER — after this move the opponent has a check that "
+                    f"also WINS MATERIAL: {', '.join(kd['winning_checks'][:3])}.** This move does not "
+                    f"get your king to safety — the opponent continues with tempo and nets material. "
+                    f"Look for a reply that does NOT allow a material-winning check (calculate the "
+                    f"candidate replies with `imagine_line`). (Note: more checks ≠ worse — a check you "
+                    f"can simply answer is harmless; what matters is whether a check WINS or MATES.)"
+                )
+            elif kd["n_checks"] >= 5:
+                # Purely informational — do NOT claim 'fewer checks is safer' (a king
+                # can have many harmless checks yet be perfectly safe; def_71acaf: the
+                # HOLDING move Ke3 allows more checks than the LOSING Kg1). Just prompt
+                # calculation of whether any check actually wins/mates.
+                out.append(
+                    f"_After this move the opponent has {kd['n_checks']} checks "
+                    f"({', '.join(kd['checks'][:5])}…). Many checks alone don't mean danger — "
+                    f"calculate whether ANY of them wins material or starts a mate with `imagine_line`._"
+                )
+    # Why this move may be STRONG: an unanswerable threat — e.g. it attacks a
+    # valuable piece WHILE giving check, so the side to reply can't both answer
+    # the check and save the piece. Advisory; tells the agent to verify the line.
+    # When the imagined move is the OPPONENT's (in an imagine_line), make clear
+    # this is the opponent's strong move — a threat to meet, not the agent's win.
+    try:
+        from _features import why_stronger
+        prefix = "OPPONENT's move is " if opp_move else ""
+        for line in why_stronger(board_before, move):
+            out.append(f"**{prefix}{line}**")
+    except Exception:
+        pass
     if board_before.move_stack and not board_after.is_checkmate():
         if board_after.can_claim_threefold_repetition():
             out.append(
@@ -574,7 +1043,7 @@ def render_imagine(
         )
         out.append("")
     else:
-        out.append(f"**{render_eval_delta_line(board_before, board_after)}**")
+        out.append(f"**{render_eval_delta_line(board_before, board_after, move)}**")
         out.append(EVAL_WARNING)
         out.append("")
     out.append("```")
@@ -627,6 +1096,34 @@ def render_imagine(
     else:
         out.append("- (none)")
     out.append("")
+
+    # Pre-existing hangs this move IGNORES (own moves only): without this, a
+    # candidate that walks past a piece the opponent is already winning renders
+    # completely clean and the agent judges the exchange in prose instead.
+    if not opp_move:
+        still_hanging = _still_hanging_own_pieces(board_before, board_after, move)
+        if still_hanging:
+            out.append("## ⚠ Still hanging (this move ignores it)")
+            out.append("")
+            for h in still_hanging:
+                out.append(f"- {h}")
+            out.append("")
+        # Dangerous opponent CHECKS this move allows: the refutation of a
+        # quiet-looking move often BEGINS with a check (zwischenzug, check-then-
+        # fork), which no same-square hang scan can see.
+        danger = _dangerous_opponent_checks(board_after)
+        if danger:
+            out.append("## ⚠ Dangerous opponent checks after this move")
+            out.append("")
+            for h in danger:
+                out.append(f"- {h}")
+            out.append("")
+            out.append(
+                "_A check is FORCING — you cannot ignore it to execute your own "
+                "plan. Play EACH of these out with `chess__imagine_line` (their "
+                "check → your best evasion → their follow-up) before committing "
+                "this move. If one of them wins material, pick a different move._")
+            out.append("")
 
     if ep_text:
         out.append(f"**En passant available:** {ep_text}")
@@ -691,16 +1188,36 @@ def render_imagine(
         top = ranked[0]
         # Headline the refutation when the replies are the OPPONENT's and their
         # best reply wins a piece (or mates) — i.e. THIS move loses material.
-        if not opp_move and (top[2] == "mate" or top[1] >= 300):
+        # BUT net the opponent's gain against what this move just captured: a
+        # move that wins a knight and lets the opponent win a knight back is an
+        # even trade, not a refutation. Only shout "loses material" when the move
+        # is genuinely down AFTER netting (the YZ2IM fix: Bxf7 captured a knight,
+        # so ...Rxe4 winning a knight is even — and Bxg8 then wins more).
+        captured_cp = _captured_value_cp(board_before, move)
+        net_gain = top[1] - captured_cp  # opponent's net edge after this capture
+        if not opp_move and (top[2] == "mate" or net_gain >= 300):
             if top[2] == "mate":
                 out.append(f"**⛔ The opponent has CHECKMATE in reply: {top[4]}. This move loses on the spot.**")
             else:
                 out.append(
                     f"**⛔ The opponent's strongest reply, {top[4]}, WINS your "
-                    f"{top[3]} (about {top[1]} cp / ~{top[1] // 100} pawns). This "
-                    f"move is NOT an even trade — after {top[4]} you are down "
+                    f"{top[3]} (about {top[1]} cp / ~{top[1] // 100} pawns)"
+                    + (f", and this move only captured ~{captured_cp // 100} — net you are "
+                       f"down ~{net_gain // 100} pawn(s)." if captured_cp > 0 else ".")
+                    + f" This move is NOT an even trade — after {top[4]} you are down "
                     f"material. Do not play it expecting a fair exchange.**"
                 )
+            out.append("")
+        elif not opp_move and captured_cp > 0 and top[1] >= 300 and net_gain < 300:
+            # The opponent wins a piece back, but this move captured enough that
+            # the trade is roughly even — don't scare the agent off; prompt it to
+            # look DEEPER for a follow-up that wins more.
+            out.append(
+                f"**↔ Roughly even material:** the opponent's best reply {top[4]} wins ~{top[1] // 100} "
+                f"pawn(s) back, but this move captured ~{captured_cp // 100} — net ~{net_gain // 100}. "
+                f"This is a trade, not a blunder. Use `chess__imagine_line` to check whether a follow-up "
+                f"after {top[4]} wins MORE (an in-between capture/check) before deciding."
+            )
             out.append("")
         out.append(
             f"_{len(legal)} legal replies, sorted by the material the "
@@ -746,6 +1263,24 @@ def render_imagine(
                 "`chess__imagine_line` (this move, the opponent's best reply, your "
                 "follow-up — add one move at a time) and confirm the line works."
             )
+
+    # Position assessment for the RESULTING board, ALWAYS from the AGENT's seat
+    # (YOURS = the agent). When imagine_move imagines the agent's own move,
+    # agent_color is None and the mover IS the agent, so mover_color is correct.
+    # But imagine_line can imagine the OPPONENT's move (agent_color != mover);
+    # there we must frame from agent_color, or a Black move that forks the White
+    # agent would wrongly read as "YOURS". This is what lets the agent assess the
+    # opponent's replies as strongly as its own.
+    seat = agent_color if agent_color is not None else mover_color
+    try:
+        from _features import render_features_for
+        feats = render_features_for(board_after, seat,
+                                    heading="After this move — strengths, weaknesses & ideas")
+        if feats:
+            out.append("")
+            out.append(feats)
+    except Exception:
+        pass
 
     return "\n".join(out)
 

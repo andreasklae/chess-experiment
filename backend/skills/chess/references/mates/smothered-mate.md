@@ -2,7 +2,7 @@
 category: mates
 description: Knight mates a king fully boxed in by its own pieces, usually in the corner. Includes the forced Philidor's legacy sequence (double check, queen sacrifice, knight mate).
 triggers: [smothered mate, king in corner behind own pieces, knight near enemy king, philidor]
-related_pages: [mates/arabian-mate, tactics/deflection]
+related_pages: [mates/arabian-mate, tactics/deflection, tactics/discovered-attacks]
 tags: [mate, knight, corner, forcing-sequence]
 template_pieces: [knight, queen]
 template_king_zone: back-rank

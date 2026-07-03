@@ -2,8 +2,8 @@
 
 Per-game post-mortems: what happened in a specific game, where it turned,
 what the agent got wrong, and the lesson drawn from it. These feed the rest
-of the wiki — a recurring mistake here becomes a new `principles/` or
-`patterns/` page.
+of the wiki — a recurring mistake here becomes a new `principles/`, `tactics/`,
+or `positional/` page.
 
 **This folder is for post-game review, not for use during play.** During a
 live game you do not read game analyses; you read the principle/pattern/plan

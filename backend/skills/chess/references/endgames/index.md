@@ -13,6 +13,8 @@ not grinding an endgame).
 | Read this when… | Page |
 |---|---|
 | only kings and pawns remain — promotion, opposition, pawn races, creating a passed pawn | [king-pawn-endings](king-pawn-endings.md) |
+| you have (or face) a passed pawn — when to push, king escort, blockade, outside passer, promotion blunders | [passed-pawns](passed-pawns.md) |
+| rooks are on the board with pawn(s) — rook behind the passer, Lucena win, Philidor draw, cutting off the king | [rook-endings](rook-endings.md) |
 
 ## Routing
 

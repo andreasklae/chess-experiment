@@ -1,0 +1,498 @@
+{
+  "gg_49fef3": {
+    "status": "solved",
+    "topic": "greek-gift-sound",
+    "difficulty": "greek-gift",
+    "rating": 0,
+    "solved_plies": 1,
+    "total_plies": 1,
+    "aborted_reason": null,
+    "run_id": "run_1782984117",
+    "ts": "2026-07-02T11:22:14",
+    "category": {
+      "legal_moves_count": 31,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 1,
+      "solver_moves": 1,
+      "material_before": 2,
+      "mover_piece": "bishop",
+      "first_move_is_capture": true,
+      "first_move_is_check": false,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Bxh2",
+      "targets": [],
+      "n_targets": 0,
+      "targets_king": false,
+      "captured_value": 5,
+      "material_after_line": 7,
+      "ends_in_mate": false,
+      "signature": "bishop captures"
+    },
+    "tool_calls_total": 4,
+    "imagine_line_calls": 0,
+    "imagine_move_calls": 1,
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "8/2R4p/4r1k1/8/2N2B2/PPK5/7r/8 w - - 0 46",
+        "expected_uci": "f4h2",
+        "expected_san": "Bxh2",
+        "played_uci": "f4h2",
+        "played_san": "Bxh2",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "The opponent's rook on h2 is completely undefended. Capturing it with the bishop (Bxh2) wins a full rook for nothing, increasing my material advantage to a decisive level. I have checked for intermediate checks (Ne5+, Rg7+), but they don't seem to offer an immediate win of more material or mate that outweighs the simplicity of taking the rook now. The only annoying reply is Re3+, which I can easily step away from with the king. \u00b7 goal: Win the rook on h2 and simplify the game. \u00b7 plan: Convert the decisive material advantage by capturing the undefended rook on h2, then simplifying the position by trading remaining pieces or pushing passed pawns."
+      }
+    ]
+  },
+  "gg_5149e9": {
+    "status": "solved",
+    "topic": "greek-gift-sound",
+    "difficulty": "greek-gift",
+    "rating": 0,
+    "solved_plies": 1,
+    "total_plies": 1,
+    "aborted_reason": null,
+    "run_id": "run_1782984117",
+    "ts": "2026-07-02T11:22:29",
+    "category": {
+      "legal_moves_count": 32,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 1,
+      "solver_moves": 1,
+      "material_before": 0,
+      "mover_piece": "bishop",
+      "first_move_is_capture": true,
+      "first_move_is_check": false,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Bxh7",
+      "targets": [
+        "rook"
+      ],
+      "n_targets": 1,
+      "targets_king": false,
+      "captured_value": 1,
+      "material_after_line": 1,
+      "ends_in_mate": false,
+      "signature": "bishop captures"
+    },
+    "tool_calls_total": 5,
+    "imagine_line_calls": 0,
+    "imagine_move_calls": 1,
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "rnbq1kr1/p1p1nppp/1p2p3/3pP3/3P4/2PB1N2/P1P2PPP/R1BQ1RK1 w - - 5 9",
+        "expected_uci": "d3h7",
+        "expected_san": "Bxh7",
+        "played_uci": "d3h7",
+        "played_san": "Bxh7",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "Bxh7 wins a pawn for nothing. The move is safe as the bishop is not under immediate attack, and it removes a key defender of the black kingside. I checked for immediate counter-threats in imagine_move and found none that recover the material or create decisive threats. \u00b7 goal: Develop the remaining pieces (Bc1) and consolidate the space advantage. \u00b7 plan: Consolidate the material advantage gained by taking the h7 pawn, develop the c1 bishop (potentially to a3 or f4), and prepare a kingside attack or central break based on Black's response. Smothered mate geometry is noted but requires specific conditions not yet fully met."
+      }
+    ]
+  },
+  "gg_0dbb76": {
+    "status": "failed",
+    "topic": "greek-gift-sound",
+    "difficulty": "greek-gift",
+    "rating": 0,
+    "solved_plies": 0,
+    "total_plies": 1,
+    "aborted_reason": "agent played h2h3, expected f5h7",
+    "run_id": "run_1782984117",
+    "ts": "2026-07-02T11:22:51",
+    "category": {
+      "legal_moves_count": 45,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 1,
+      "solver_moves": 1,
+      "material_before": 8,
+      "mover_piece": "bishop",
+      "first_move_is_capture": true,
+      "first_move_is_check": false,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Bxh7",
+      "targets": [],
+      "n_targets": 0,
+      "targets_king": false,
+      "captured_value": 1,
+      "material_after_line": 9,
+      "ends_in_mate": false,
+      "signature": "bishop captures"
+    },
+    "tool_calls_total": 8,
+    "imagine_line_calls": 1,
+    "imagine_move_calls": 3,
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "r2k3N/2q4p/p1n2p1n/3p1B2/3P4/1PP5/P1Q2PPP/R3R1K1 w - - 1 20",
+        "expected_uci": "f5h7",
+        "expected_san": "Bxh7",
+        "played_uci": "h2h3",
+        "played_san": "h3",
+        "correct": false,
+        "accepted_as": null,
+        "reasoning": "I have a decisive material advantage (+8). While Nf7+ and Re8+ were forcing, calculation showed they don't lead to immediate mate and instead sacrifice material unnecessarily. Prioritizing king safety by creating luft with h3 prevents any potential back-rank accidents while I maintain my dominant position. Rejected Nf7+ as it just hangs the knight for no forced gain. \u00b7 plan: Consolidate the win: create luft for the king to eliminate back-rank threats, then simplify by trading pieces to reach a won endgame."
+      }
+    ]
+  },
+  "gg_02f2e6": {
+    "status": "solved",
+    "topic": "greek-gift-sound",
+    "difficulty": "greek-gift",
+    "rating": 0,
+    "solved_plies": 1,
+    "total_plies": 1,
+    "aborted_reason": null,
+    "run_id": "run_1782984117",
+    "ts": "2026-07-02T11:23:14",
+    "category": {
+      "legal_moves_count": 29,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 1,
+      "solver_moves": 1,
+      "material_before": 0,
+      "mover_piece": "bishop",
+      "first_move_is_capture": true,
+      "first_move_is_check": false,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Bxh7",
+      "targets": [
+        "rook"
+      ],
+      "n_targets": 1,
+      "targets_king": false,
+      "captured_value": 1,
+      "material_after_line": 1,
+      "ends_in_mate": false,
+      "signature": "bishop captures"
+    },
+    "tool_calls_total": 9,
+    "imagine_line_calls": 1,
+    "imagine_move_calls": 4,
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "5br1/2B2ppp/5k2/2p5/P3B3/5P2/1PP3PP/6K1 w - - 4 27",
+        "expected_uci": "e4h7",
+        "expected_san": "Bxh7",
+        "played_uci": "a4a5",
+        "played_san": "a5",
+        "correct": true,
+        "accepted_as": "holds",
+        "reasoning": "Evaluated forcing moves first: Be5+ loses the bishop for nothing, and the sequence starting with Bxh7 allows black to eventually regain the material or trap the bishop (as seen in the imagine_line attempt where Bg8 was hung to the rook). Bd8+ is a safe check but doesn't immediately yield a concrete win. Pushing the passed pawn with a5 is the most consistent progress in this endgame, creating a long-term threat and utilizing the bishop on c7 for support. No immediate tactical threats from black were found. \u00b7 goal: advance the passed a-pawn and maintain the bishop pair advantage \u00b7 plan: Endgame conversion: utilize the passed a-pawn to create winning chances while keeping the bishop pair. Activate the king and restrict the enemy king's activity."
+      }
+    ]
+  },
+  "gg_e98d7f": {
+    "status": "solved",
+    "topic": "greek-gift-sound",
+    "difficulty": "greek-gift",
+    "rating": 0,
+    "solved_plies": 1,
+    "total_plies": 1,
+    "aborted_reason": null,
+    "run_id": "run_1782984117",
+    "ts": "2026-07-02T11:23:40",
+    "category": {
+      "legal_moves_count": 41,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 1,
+      "solver_moves": 1,
+      "material_before": 2,
+      "mover_piece": "bishop",
+      "first_move_is_capture": true,
+      "first_move_is_check": false,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Bxh7",
+      "targets": [
+        "rook"
+      ],
+      "n_targets": 1,
+      "targets_king": false,
+      "captured_value": 1,
+      "material_after_line": 3,
+      "ends_in_mate": false,
+      "signature": "bishop captures"
+    },
+    "tool_calls_total": 9,
+    "imagine_line_calls": 3,
+    "imagine_move_calls": 2,
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "2r1kbr1/1p3ppp/p2p4/3b2B1/8/PP1B1N2/R4PPP/5RK1 w - - 0 22",
+        "expected_uci": "d3h7",
+        "expected_san": "Bxh7",
+        "played_uci": "f1e1",
+        "played_san": "Re1+",
+        "correct": true,
+        "accepted_as": "holds",
+        "reasoning": "I have a significant material advantage (+2 pawns) and the opponent's king is exposed on the e-file. Re1+ is a forcing move that restricts the king's mobility and sets up further tactical opportunities. I've imagined the line Re1+, Kd7, Bf5+ which puts the king in a precarious position and potentially allows winning the rook on c8 or the pawn on h7. While my own king lacks luft, the current initiative is strong enough to prioritize the attack. \u00b7 plan: Use checks to displace the black king and create tactical weaknesses. After Re1+, look to coordinate the bishops and rooks to win material (like the Rc8) or deliver mate. Maintain material advantage and eventually simplify to a won endgame."
+      }
+    ]
+  },
+  "gg_95c0ac": {
+    "status": "solved",
+    "topic": "greek-gift-unsound",
+    "difficulty": "greek-gift",
+    "rating": 0,
+    "solved_plies": 1,
+    "total_plies": 1,
+    "aborted_reason": null,
+    "run_id": "run_1782984117",
+    "ts": "2026-07-02T11:24:04",
+    "category": {
+      "legal_moves_count": 38,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 1,
+      "solver_moves": 1,
+      "material_before": 0,
+      "mover_piece": "bishop",
+      "first_move_is_capture": true,
+      "first_move_is_check": true,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Bxh7+",
+      "targets": [
+        "king"
+      ],
+      "n_targets": 1,
+      "targets_king": true,
+      "captured_value": 1,
+      "material_after_line": 1,
+      "ends_in_mate": false,
+      "signature": "bishop captures"
+    },
+    "tool_calls_total": 9,
+    "imagine_line_calls": 2,
+    "imagine_move_calls": 2,
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "r2qr1k1/pb1n1ppp/1p2p3/2ppP3/3P4/2PB1N2/PP2QPPP/R4RK1 w - - 0 14",
+        "expected_uci": "d3h7",
+        "expected_san": "Bxh7+",
+        "played_uci": "h2h3",
+        "played_san": "h3",
+        "correct": true,
+        "accepted_as": "holds",
+        "reasoning": "I calculated the forcing move Bxh7+ (Greek Gift), but it fails because after 1. Bxh7+ Kxh7 2. Ng5+ the opponent can simply play 2... Qxg5, winning a piece without sufficient compensation. Similarly, a quiet Ng5 just hangs the knight. Therefore, I will play a safe, prophylactic move h3 to give my king luft and prevent any back-rank issues or pins on g2, while maintaining my central space advantage. \u00b7 goal: establish a solid kingside attack/position while securing the king. \u00b7 plan: The Greek Gift sacrifice was calculated and refuted because ...Qxg5 wins the knight for free. I will prioritize king safety (creating luft) and positional preparation for a kingside attack, following the 'london-ne5-attack' principles (Ne5 outpost, f4, etc.) once the center is stable."
+      }
+    ]
+  },
+  "gg_de7174": {
+    "status": "solved",
+    "topic": "greek-gift-unsound",
+    "difficulty": "greek-gift",
+    "rating": 0,
+    "solved_plies": 1,
+    "total_plies": 1,
+    "aborted_reason": null,
+    "run_id": "run_1782984117",
+    "ts": "2026-07-02T11:24:33",
+    "category": {
+      "legal_moves_count": 36,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 1,
+      "solver_moves": 1,
+      "material_before": 0,
+      "mover_piece": "bishop",
+      "first_move_is_capture": true,
+      "first_move_is_check": true,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Bxh7+",
+      "targets": [
+        "king"
+      ],
+      "n_targets": 1,
+      "targets_king": true,
+      "captured_value": 1,
+      "material_after_line": 1,
+      "ends_in_mate": false,
+      "signature": "bishop captures"
+    },
+    "tool_calls_total": 11,
+    "imagine_line_calls": 3,
+    "imagine_move_calls": 4,
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "r1bqr1k1/p4ppp/1p2p3/2npP3/8/2PB1N2/PP3PPP/R2Q1RK1 w - - 0 14",
+        "expected_uci": "d3h7",
+        "expected_san": "Bxh7+",
+        "played_uci": "d3e2",
+        "played_san": "Be2",
+        "correct": true,
+        "accepted_as": "holds",
+        "reasoning": "I initially investigated the forcing move Bxh7+, but calculation with imagine_line showed it loses significant material (-5) after Kxh7 Ng5+ Qxg5. Similarly, Ng5 immediately is a blunder as it hangs the knight to the queen. Be2 is a solid positional move that saves the bishop from the knight on c5 and maintains the structural integrity of the London setup. While it's a retreat, it ensures no immediate material loss and prepares for the long-term kingside attack plan. \u00b7 goal: Secure the bishop and prepare a slow buildup for the kingside attack. \u00b7 plan: London System: Transitioning to the kingside attack. Objective: Protect the bishop from the Nc5, prevent tactical blunders, and eventually maneuver the knight to e5 followed by f4 and Rh3. Target: The h7 square and Black's king."
+      }
+    ]
+  },
+  "gg_92f464": {
+    "status": "solved",
+    "topic": "greek-gift-sound",
+    "difficulty": "greek-gift",
+    "rating": 0,
+    "solved_plies": 1,
+    "total_plies": 1,
+    "aborted_reason": null,
+    "run_id": "run_1782984117",
+    "ts": "2026-07-02T11:24:57",
+    "category": {
+      "legal_moves_count": 39,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 1,
+      "solver_moves": 1,
+      "material_before": 4,
+      "mover_piece": "bishop",
+      "first_move_is_capture": true,
+      "first_move_is_check": false,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Bxh7",
+      "targets": [
+        "rook"
+      ],
+      "n_targets": 1,
+      "targets_king": false,
+      "captured_value": 1,
+      "material_after_line": 5,
+      "ends_in_mate": false,
+      "signature": "bishop captures"
+    },
+    "tool_calls_total": 8,
+    "imagine_line_calls": 1,
+    "imagine_move_calls": 3,
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "r2qk1r1/4bppp/ppn5/3pPB2/2p2P2/2P2N2/PP1N1PPP/R2Q1RK1 w q - 1 15",
+        "expected_uci": "f5h7",
+        "expected_san": "Bxh7",
+        "played_uci": "f5h7",
+        "played_san": "Bxh7",
+        "correct": true,
+        "accepted_as": "exact",
+        "reasoning": "I am significantly ahead in material (+4.6). My priority is safe conversion. I evaluated Bg6, but it blunders the bishop. I evaluated Bd7+, but it is a speculative sacrifice. Bxh7 is a safe, forcing move that wins a pawn, removes a defender of the kingside, and puts the rook on g8 under direct attack. I have verified it doesn't hang material or allow an immediate devastating counter. \u00b7 goal: win the rook on g8 or further expose the black king \u00b7 plan: Consolidate the material advantage (+4.6) by trading pieces and simplifying. Avoid risky sacrifices (like Bg6) and instead take safe material gains (Bxh7) while keeping the king safe (plan for luft)."
+      }
+    ]
+  },
+  "gg_7ea785": {
+    "status": "solved",
+    "topic": "greek-gift-unsound",
+    "difficulty": "greek-gift",
+    "rating": 0,
+    "solved_plies": 1,
+    "total_plies": 1,
+    "aborted_reason": null,
+    "run_id": "run_1782984117",
+    "ts": "2026-07-02T11:25:20",
+    "category": {
+      "legal_moves_count": 35,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 1,
+      "solver_moves": 1,
+      "material_before": 0,
+      "mover_piece": "bishop",
+      "first_move_is_capture": true,
+      "first_move_is_check": true,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Bxh7+",
+      "targets": [
+        "king"
+      ],
+      "n_targets": 1,
+      "targets_king": true,
+      "captured_value": 1,
+      "material_after_line": 1,
+      "ends_in_mate": false,
+      "signature": "bishop captures"
+    },
+    "tool_calls_total": 9,
+    "imagine_line_calls": 2,
+    "imagine_move_calls": 2,
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "r2qr1k1/pbpn1ppp/1p2p3/3pP3/3P4/2PB1N2/PP3PPP/R2Q1RK1 w - - 3 13",
+        "expected_uci": "d3h7",
+        "expected_san": "Bxh7+",
+        "played_uci": "h2h3",
+        "played_san": "h3",
+        "correct": true,
+        "accepted_as": "holds",
+        "reasoning": "I analyzed the Greek Gift sacrifice (Bxh7+) and found it unsound because the knight on g5 is undefended and can be captured by the queen (Qxg5), leading to a significant material loss without a forced mate. I also rejected Ng5 for the same reason. I decided to play h3 to provide 'luft' for my king, addressing a positional weakness flagged by the radar, while maintaining my central control and preparing for a slower, more secure kingside build-up. \u00b7 plan: Control the center and prepare a kingside attack. The immediate goal is to create luft for the king to avoid back-rank threats and then coordinate pieces for an attack or central break."
+      }
+    ]
+  },
+  "gg_44d716": {
+    "status": "solved",
+    "topic": "greek-gift-unsound",
+    "difficulty": "greek-gift",
+    "rating": 0,
+    "solved_plies": 1,
+    "total_plies": 1,
+    "aborted_reason": null,
+    "run_id": "run_1782984117",
+    "ts": "2026-07-02T11:25:36",
+    "category": {
+      "legal_moves_count": 40,
+      "in_check": false,
+      "solver_color": "white",
+      "solution_plies": 1,
+      "solver_moves": 1,
+      "material_before": 0,
+      "mover_piece": "bishop",
+      "first_move_is_capture": true,
+      "first_move_is_check": true,
+      "first_move_is_promotion": false,
+      "first_move_is_quiet": false,
+      "first_move_san": "Bxh7+",
+      "targets": [
+        "king"
+      ],
+      "n_targets": 1,
+      "targets_king": true,
+      "captured_value": 1,
+      "material_after_line": 1,
+      "ends_in_mate": false,
+      "signature": "bishop captures"
+    },
+    "tool_calls_total": 6,
+    "imagine_line_calls": 0,
+    "imagine_move_calls": 2,
+    "attempts": [
+      {
+        "ply": 0,
+        "fen_before": "r1bqr1k1/p1pn1ppp/1p2p3/3pP3/3P4/2PB4/PP1N1PPP/R2Q1RK1 w - - 1 12",
+        "expected_uci": "d3h7",
+        "expected_san": "Bxh7+",
+        "played_uci": "d1g4",
+        "played_san": "Qg4",
+        "correct": true,
+        "accepted_as": "holds",
+        "reasoning": "Played Qg4 to activate the queen, pressure e6 and g7, and prepare for a kingside attack. Rejected Ne4 immediately because it loses material to dxe4. Moving the queen first avoids the Ne5 fork threat (as the queen is now active) and sets up pins. Watch: Black may try ...Nxe5 or ...Qg5. \u00b7 goal: Place knight on e5 to support kingside attack. \u00b7 plan: Execute a kingside attack: activate queen to g4, establish knight on e5, and target the castled king (potentially using a smothered mate pattern or Greek gift if conditions permit)."
+      }
+    ]
+  }
+}

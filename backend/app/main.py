@@ -3,8 +3,10 @@ import json
 import logging
 import os
 import shutil
+import time
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from pathlib import Path
 from typing import Annotated
 
 
@@ -31,7 +33,7 @@ def _configure_logging() -> None:
 _configure_logging()
 logger = logging.getLogger("app.main")
 
-from fastapi import Depends, FastAPI, Response
+from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
@@ -55,6 +57,59 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
     batch_service = BatchService(settings.batches_dir, settings.games_dir)
     fastapi_app.state.batch_service = batch_service
     fastapi_app.state.batch_runner = BatchRunner(batch_service, fastapi_app.state.game_service)
+    fastapi_app.state.puzzle_run = None  # the current/last PuzzleRun, if any
+    fastapi_app.state.puzzle_task = None
+    # Named puzzle SETS registry (each: puzzle JSON + its own progress file). The
+    # agent-SOLVING benchmark is the offensive set. (A defensiveMove-tagged
+    # 'solving' set was tried and removed: verified against the Lichess tagger
+    # source, motif themes describe the SOLVER's own move, so they don't yield
+    # genuine 'defend against the opponent's tactic' puzzles. The defensive work
+    # instead lives as a DETECTOR-verification harness over flipped positions —
+    # see experiments/puzzle-benchmark/flip_puzzles.py + verify_threat_warnings.py.)
+    from app.puzzle_progress import PuzzleProgress
+    _pb = Path(__file__).resolve().parents[2] / "experiments" / "puzzle-benchmark"
+    fastapi_app.state.puzzle_sets = {
+        "offensive": {
+            "puzzles": _pb / "puzzles.json",
+            "progress": PuzzleProgress(_pb / "results" / "progress.json"),
+        },
+        # Defensive set: pre-blunder positions mined from agent-lost-by-mate games,
+        # Stockfish-verified that a holding move existed. The agent must find ANY
+        # move that holds (graded via acceptable_uci). See
+        # experiments/puzzle-benchmark/puzzles_defensive.json + the Item-P note.
+        "defensive": {
+            "puzzles": _pb / "puzzles_defensive.json",
+            "progress": PuzzleProgress(_pb / "results" / "progress_defensive.json"),
+        },
+        # London set: London-System opening puzzles from the Lichess DB (white solver),
+        # split into 'book' (the solution is a London theory move) and 'tactic' (a
+        # London-middlegame tactic the wiki/guide should help with). Tests the opening
+        # wiki + the chess__opening_book / chess__opening_guide tools.
+        "london": {
+            "puzzles": _pb / "puzzles_london.json",
+            "progress": PuzzleProgress(_pb / "results" / "progress_london.json"),
+        },
+        # Greek-gift set: Bxh7+/Bxh2+ sacrifices the agent actually played, Stockfish-
+        # classified sound vs unsound. 'sound' = the sac IS best (accept Bxh7+); 'unsound'
+        # = the sac throws a won game away (accept ANY quiet move that holds the edge, i.e.
+        # NOT the sac). Tests the commit-time Greek-gift nudge: decline unsound sacs while
+        # still playing sound ones. See experiments/puzzle-benchmark/puzzles_greek_gift.json.
+        # Promotion-technique set: 22 real positions (141 own games mined) where
+        # the agent had a Stockfish-winning (>= +250) endgame with a passed pawn
+        # on ranks 2-6 and neither pushed it nor brought the king closer for 3+
+        # moves (the knight-shuffle pattern, game 9eddc039). acceptable_uci =
+        # engine moves within 30cp of best; at least one is always a passer
+        # push / king-approach / rook-to-file (a technique drill, not a tactic).
+        "promotion": {
+            "puzzles": _pb / "puzzles_promotion.json",
+            "progress": PuzzleProgress(_pb / "results" / "progress_promotion.json"),
+        },
+        "greek_gift": {
+            "puzzles": _pb / "puzzles_greek_gift.json",
+            "progress": PuzzleProgress(_pb / "results" / "progress_greek_gift.json"),
+        },
+    }
+    fastapi_app.state.puzzle_progress = fastapi_app.state.puzzle_sets["offensive"]["progress"]
     logger.info("startup · ready")
     try:
         yield
@@ -365,5 +420,207 @@ async def agent_events(game_id: str, service: GameServiceDep) -> StreamingRespon
                     yield ": keep-alive\n\n"
         finally:
             service.unsubscribe_agent_events(game_id, queue)
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
+
+
+# ============================================================================
+# PUZZLE BENCHMARK
+# ============================================================================
+
+from pydantic import BaseModel as _BaseModel  # noqa: E402
+
+_PUZZLE_SET_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "experiments" / "puzzle-benchmark" / "puzzles.json"
+)
+
+
+class PuzzleRunRequest(_BaseModel):
+    mode: str = "all"                 # all | unsolved | untested | failed
+    set: str = "offensive"            # which puzzle set: offensive | defensive
+    topics: list[str] | None = None   # filter to these topics (None = all)
+    difficulties: list[str] | None = None  # filter by difficulty (easy/medium/hard/expert)
+    per_topic: int | None = None      # cap N puzzles PER TOPIC (None = no cap)
+    limit: int | None = None          # legacy flat cap on total (None = no cap)
+    ids: list[str] | None = None      # run only these puzzle ids (overrides filters)
+
+
+def _resolve_set(name: str):
+    """Return (puzzles_path, progress_store) for a named puzzle set, or 400."""
+    sets = app.state.puzzle_sets
+    if name not in sets:
+        raise HTTPException(status_code=400,
+                            detail=f"Unknown puzzle set '{name}'. Known: {sorted(sets)}.")
+    return sets[name]["puzzles"], sets[name]["progress"]
+
+
+def _load_specs(puzzles_path=None):
+    from app.puzzle_service import load_puzzle_set
+    return load_puzzle_set(puzzles_path or _PUZZLE_SET_PATH)
+
+
+@app.get("/api/puzzles")
+def list_puzzles(set: str = "offensive") -> dict:
+    """The fixed puzzle set: counts per topic/band so the UI can show the menu."""
+    puzzles_path, _ = _resolve_set(set)
+    specs = _load_specs(puzzles_path)
+    topics: dict[str, int] = {}
+    for s in specs:
+        topics[s.topic] = topics.get(s.topic, 0) + 1
+    import json as _json
+    raw = {p["id"]: p for p in _json.loads(puzzles_path.read_text())}
+    return {"total": len(specs), "set": set, "topics": topics,
+            "puzzles": [{"id": s.id, "topic": s.topic, "rating": s.rating,
+                         "band": s.band, "themes": s.themes,
+                         "title": raw.get(s.id, {}).get("title", s.topic),
+                         "difficulty": raw.get(s.id, {}).get("difficulty", ""),
+                         "lichess_url": raw.get(s.id, {}).get("lichess_url", "")}
+                        for s in specs]}
+
+
+@app.post("/api/puzzles/run")
+async def start_puzzle_run(request: PuzzleRunRequest) -> dict:
+    import asyncio as _asyncio
+    from app.puzzle_runner import PuzzleRun, run_puzzles
+
+    existing = app.state.puzzle_task
+    if existing is not None and not existing.done():
+        raise HTTPException(status_code=409, detail="A puzzle run is already in progress.")
+
+    puzzles_path, progress = _resolve_set(request.set)
+    specs = _load_specs(puzzles_path)
+    if request.ids:
+        idset = set(request.ids)
+        specs = [s for s in specs if s.id in idset]
+    else:
+        if request.topics:
+            tset = set(request.topics)
+            specs = [s for s in specs if s.topic in tset]
+        if request.difficulties:
+            dset = set(request.difficulties)
+            specs = [s for s in specs if s.difficulty in dset]
+        # Apply the run mode (all / unsolved / untested / failed) using the
+        # persistent progress store, so a run can resume only what's needed.
+        allowed = set(progress.filter_ids([s.id for s in specs], request.mode))
+        specs = [s for s in specs if s.id in allowed]
+        # Cap N per topic (after mode/difficulty filtering) so the slider gives
+        # a balanced sample across topics rather than a flat head-of-list cut.
+        if request.per_topic:
+            seen: dict[str, int] = {}
+            capped = []
+            for s in specs:
+                if seen.get(s.topic, 0) < request.per_topic:
+                    capped.append(s); seen[s.topic] = seen.get(s.topic, 0) + 1
+            specs = capped
+        elif request.limit:
+            specs = specs[: request.limit]
+    if not specs:
+        raise HTTPException(status_code=400,
+                            detail=f"No puzzles match (mode={request.mode}). "
+                                   "Everything in scope may already be solved.")
+
+    out_path = _PUZZLE_SET_PATH.parent / "results" / f"run_{int(time.time())}.jsonl"
+    run = PuzzleRun(specs, out_path, progress=progress, mode=request.mode)
+    run.set_name = request.set  # which set this run belongs to (for the status view)
+    app.state.puzzle_run = run
+    service = app.state.game_service
+    app.state.puzzle_task = _asyncio.create_task(run_puzzles(service, run))
+    return {"started": True, "n": len(specs), "set": request.set,
+            "mode": request.mode, "out_path": str(out_path)}
+
+
+@app.post("/api/puzzles/run/abort")
+async def abort_puzzle_run() -> dict:
+    """Abort the in-progress puzzle run: stop before the next puzzle, and end the
+    currently-playing puzzle game now (deleting it makes the agent turn unwind)."""
+    run = app.state.puzzle_run
+    if run is None or not run.running:
+        raise HTTPException(status_code=409, detail="No puzzle run is in progress.")
+    run.stop_requested = True
+    gid = run.current_game_id
+    if gid:
+        try:
+            await app.state.game_service.delete(gid)
+        except Exception:
+            pass  # game may have already finished; the loop stop-check handles it
+    return {"aborting": True, "completed": len(run.results)}
+
+
+@app.get("/api/puzzles/progress")
+def puzzle_progress(set: str = "offensive") -> dict:
+    """Persistent per-topic / per-difficulty solved-failed-untested overview."""
+    puzzles_path, progress = _resolve_set(set)
+    return progress.overview(_load_specs(puzzles_path))
+
+
+@app.get("/api/puzzles/progress/{puzzle_id}")
+def puzzle_progress_detail(puzzle_id: str, set: str = "offensive") -> dict:
+    _, progress = _resolve_set(set)
+    rec = progress.get(puzzle_id)
+    if rec is None:
+        return {"status": "untested"}
+    return rec
+
+
+@app.get("/api/puzzles/run")
+def puzzle_run_status() -> dict:
+    run = app.state.puzzle_run
+    if run is None:
+        return {"running": False, "results": []}
+    solved = sum(1 for r in run.results if r.get("solved"))
+    return {"running": run.running, "idx": run.idx, "n": len(run.specs),
+            "set": getattr(run, "set_name", "offensive"),
+            "completed": len(run.results), "solved": solved,
+            "results": run.results}
+
+
+@app.get("/api/puzzles/run/events")
+async def puzzle_run_events() -> StreamingResponse:
+    """Persistent puzzle-run event stream. Stays open even when idle, and
+    attaches to whatever run is current — so a run launched from anywhere
+    (the UI, a script, this API) is picked up live without a page refresh.
+
+    The stream follows `app.state.puzzle_run` across runs: it subscribes to the
+    active run, forwards its events, and when that run ends it goes back to
+    waiting for the next one. A late subscriber catches up via a replayed
+    `puzzle_result` per completed puzzle plus a `run_status` snapshot."""
+
+    async def stream() -> AsyncIterator[str]:
+        seen_run = None          # the run object we are currently attached to
+        queue = None
+
+        while True:
+            run = app.state.puzzle_run
+
+            # A new run appeared (or the first one): attach + replay catch-up.
+            if run is not None and run is not seen_run:
+                seen_run = run
+                queue = run.subscribe()
+                started = {"type": "run_started", "n": len(run.specs),
+                           "running": run.running, "mode": run.mode}
+                yield f"data: {json.dumps(started)}\n\n"
+                for r in run.results:        # catch a late subscriber up
+                    yield f"data: {json.dumps({'type': 'puzzle_result', **r})}\n\n"
+
+            if queue is None:
+                # No run yet — idle heartbeat so the connection stays open and
+                # the client keeps listening for the next run.
+                await asyncio.sleep(2)
+                yield ": idle\n\n"
+                continue
+
+            try:
+                evt = await asyncio.wait_for(queue.get(), timeout=15)
+                yield f"data: {json.dumps(evt)}\n\n"
+            except asyncio.TimeoutError:
+                yield ": keep-alive\n\n"
+
+            # Current run finished and drained: emit run_done, then detach and
+            # loop back to wait for the next run (do NOT close the stream).
+            if seen_run is not None and not seen_run.running and queue.empty():
+                yield f"data: {json.dumps({'type': 'run_done', 'n': len(seen_run.results)})}\n\n"
+                seen_run = None
+                queue = None
 
     return StreamingResponse(stream(), media_type="text/event-stream")

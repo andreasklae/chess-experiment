@@ -192,10 +192,34 @@ def _safe_squares_line(board: chess.Board, sq: int, own_color: bool) -> str | No
     if not safe:
         return "  ↳ no safe square to relocate it — consider defending it, "\
                "capturing the attacker, or counter-attacking instead."
-    names = ", ".join(chess.square_name(s) for s in safe)
-    return f"  ↳ safe squares to move it (not losing material there): {names}"\
-           " — verify the full move with imagine_move (this ignores discovered"\
-           " attacks)."
+    # A safe square that is ALSO a capture lets the attacked piece escape AND win
+    # material — the best kind of "retreat". Highlight these separately: the agent
+    # has moved an attacked knight to a bare "safe" square while a safe square that
+    # CAPTURED A ROOK was on the list (e.g. an attacked Nf7 with Nxh8 available — it
+    # ran to a check instead of grabbing the rook). Name the piece each captures.
+    piece = board.piece_at(sq)
+    capture_escapes: list[str] = []
+    plain: list[str] = []
+    for dsq in safe:
+        victim = board.piece_at(dsq)
+        if victim is not None and victim.color != own_color:
+            try:
+                san = board.san(chess.Move(sq, dsq))
+            except Exception:
+                san = chess.square_name(dsq)
+            capture_escapes.append(f"{san} (grabs the {PIECE_NAMES[victim.piece_type]})")
+        else:
+            plain.append(chess.square_name(dsq))
+    parts: list[str] = []
+    if capture_escapes:
+        parts.append(
+            "  ↳ **BEST: move it to safety WITH A CAPTURE — escapes the attack AND "
+            f"wins material: {', '.join(capture_escapes)}. Take it (verify with imagine_move).**")
+    if plain:
+        parts.append(
+            f"  ↳ safe squares to move it (not losing material there): {', '.join(plain)}"
+            " — verify the full move with imagine_move (this ignores discovered attacks).")
+    return "\n".join(parts)
 
 
 def attack_defense_section(
@@ -224,7 +248,36 @@ def attack_defense_section(
         desc = piece_label(board, sq, pinned=board.is_pinned(own_color, sq))
         atk_str = format_chain(board, opp_color, attacker_chain)
         def_str = format_chain(board, own_color, defender_chain) if defender_chain else "nothing"
-        lines.append(f"- {desc}: {action} {atk_str}; defended by {def_str}")
+        # State the counts as explicit integers, not just a prose list the model
+        # must tally itself. The board-visualization benchmark (2026-06-24) found
+        # the model reads relations well but counts attackers on a square poorly
+        # (0.20 from FEN) — so surface the number as a computed fact. Pure
+        # mechanics: len() of the chains the tool already built. See
+        # decisions/2026-06-23-board-visualization-benchmark.md.
+        n_atk = len(attacker_chain)
+        n_def = len(defender_chain)
+        line = (
+            f"- {desc}: {action} {n_atk} ({atk_str}); "
+            f"defended by {n_def} ({def_str})"
+        )
+        # For OUR pieces: attacker/defender COUNTS do not decide an exchange —
+        # the capture ORDER does (least valuable attacker first). Surface the
+        # SEE verdict so "2 attackers vs 1 defender but it's just a trade"
+        # prose-reasoning can't survive contact with the arithmetic, and name
+        # the imagine_trade call that settles it. (Game 2358c1 move 67: agent
+        # counted "a trade" on d2; SEE says the opponent wins ~320cp.)
+        if show_safe_squares:
+            see = static_exchange_eval(board, sq, opp_color)
+            if see >= 100:
+                sq_name = chess.square_name(sq)
+                line += (
+                    f" — **the opponent WINS ~{see}cp capturing here (exchange "
+                    f"arithmetic, not attacker counts). If your move this turn "
+                    f"doesn't save/defend it or win more elsewhere, you are "
+                    f"giving this piece away — verify the exchange with "
+                    f"`chess__imagine_trade(target=\"{sq_name}\")`.**"
+                )
+        lines.append(line)
         # For OUR attacked pieces, when the piece is actually losing material
         # on its square, list where it can go without re-hanging it.
         if show_safe_squares:
@@ -249,6 +302,73 @@ def _piece_list(board: chess.Board, color: bool) -> str:
     return ", ".join(f"{sym}{chess.square_name(sq)}" for _, sym, sq in pieces) or "(none)"
 
 
+def _opening_radar(board: chess.Board) -> list[str]:
+    """Inline opening guidance for White: the prepared book move (if any) + the theory
+    pages that fit the position. Surfaced in show_position because the agent does not
+    reliably call the opening tools on its own. Returns [] when not White to move or
+    nothing applies. Book is memorised theory; the routes are wiki pointers — neither
+    forces a move."""
+    if board.turn != chess.WHITE:
+        return []
+    # No opening guidance in the endgame: the London plan pointers were still
+    # rendering at move 67 of a K+N+P-vs-K ending (game 9eddc039), pure noise
+    # competing with the PROMOTE priority for the agent's attention.
+    if "endgame" in detect_phase(board)[0]:
+        return []
+    lines: list[str] = []
+    # book move (memorised theory)
+    try:
+        import _opening_book as _ob
+        entry = _ob.lookup(board)
+    except Exception:
+        entry = None
+    if entry is not None:
+        mv = ", ".join(entry.moves)
+        # Is the book move a legal answer to a check we are under? Then it is NOT a
+        # "quiet setup move to skip for tactics" — it IS the forcing response, and it
+        # often looks like it loses a pawn (a pawn/piece block the checker captures)
+        # while actually winning after the recapture. This is the exact spot the agent
+        # bailed on repeatedly (in check, book says c3, agent plays Kf1 because 'c3
+        # loses a pawn'). Reframe: calculate the block through, don't run the king.
+        in_check = board.is_check()
+        book_answers_check = False
+        if in_check:
+            for san in entry.moves:
+                try:
+                    if board.parse_san(san) in board.legal_moves:
+                        book_answers_check = True
+                        break
+                except Exception:
+                    pass
+        label = "candidate" if len(entry.moves) == 1 else "candidates (reason among them)"
+        if in_check and book_answers_check:
+            lines.append(
+                f"- **📖 IN CHECK — book {label}: {mv}** ({entry.line}). {entry.idea} "
+                f"This is a BLOCK/response to the check, not a quiet move. It may look like "
+                f"it loses a pawn — **calculate it through with `imagine_line` "
+                f"({entry.moves[0]} → their capture → your recapture)**: a block the checker "
+                f"takes usually WINS material back. Don't just run the king to escape a pawn "
+                f"loss the recapture erases.")
+        else:
+            line = f"- **📖 Book {label}: {mv}** ({entry.line}). {entry.idea}"
+            if entry.exceptions:
+                line += (f" **BUT this is prepared theory, not forced — EXCEPTION: "
+                         f"{entry.exceptions}.** Reason from `{entry.wiki}` and decide; a "
+                         f"check/capture/threat below beats a quiet book move.")
+            lines.append(line)
+    # theory-page routes (the guide)
+    try:
+        import opening_guide as _og
+        rs = _og.routes(board)
+    except Exception:
+        rs = []
+    for situation, page, why in rs[:3]:
+        lines.append(f"- **📖 {situation}** → read `{page}` ({why}).")
+    if not lines:
+        return []
+    return ["## Opening", *lines, ""]
+
+
 def render_position(board: chess.Board, move_cap: int | None = None) -> str:
     """Markdown-formatted position report. Each section is a small heading
     so the agent (and the UI) can scan; the ASCII board sits in a fenced
@@ -261,7 +381,33 @@ def render_position(board: chess.Board, move_cap: int | None = None) -> str:
     opp_color = not own_color
     phase, score, move = detect_phase(board)
 
+    # SITUATION header (adaptive priority) — the first thing the agent reads. It
+    # triages the position from mechanical facts (material / threat / forcing / phase)
+    # and names what to prioritise, so the same feature below is weighted correctly
+    # for THIS position (e.g. a material-losing capture is fine when defending a mate,
+    # bad when winning and safe). Informative, never move-selecting.
+    situation_lines = []
+    try:
+        from _features import assess_situation
+        situation_lines = assess_situation(board).get("lines", []) + [""]
+    except Exception:
+        situation_lines = []
+
+    # OPENING book + guide, surfaced INLINE (the agent does not reliably CALL the
+    # chess__opening_book / chess__opening_guide tools — verified 0 calls over a 40-puzzle
+    # London run — so the prepared move + the theory-page routing are shown here, at the
+    # decision point, the same way the inline forcing-move list beats "look at forcing
+    # moves" prose. Book = memorised theory (fair); guide = a wiki pointer. Only when
+    # White to move and something applies.)
+    opening_lines: list[str] = []
+    try:
+        opening_lines = _opening_radar(board)
+    except Exception:
+        opening_lines = []
+
     out = [
+        *situation_lines,
+        *opening_lines,
         f"**Phase:** {phase} (move {move}, phase score {score}/24)",
         "",
         f"**{render_eval_line(board)}**",
@@ -300,6 +446,15 @@ def render_position(board: chess.Board, move_cap: int | None = None) -> str:
     net = _king_net_section(board)
     if net:
         out += ["", net]
+    # Positional / tactical / fundamentals assessment (strengths, weaknesses,
+    # potentials — both sides, with handling suggestions and wiki pointers).
+    try:
+        from _features import render_features
+        feats = render_features(board)
+        if feats:
+            out += ["", feats]
+    except Exception:
+        pass  # features must never take down the position report
     radar = render_radar(board, move_cap=move_cap)
     if radar:
         out += ["", radar]

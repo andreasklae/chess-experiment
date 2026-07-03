@@ -149,7 +149,10 @@ def test_newly_hanging_after_queen_abandons_pawn(im):
     assert "## Newly hanging own pieces" in out
     hanging_section = out.split("## Newly hanging own pieces")[1].split("##")[0]
     assert "pawn on d4" in hanging_section
-    assert "defended by nothing" in hanging_section
+    # Counts are now stated explicitly (board-visualization benchmark 2026-06-24):
+    # "attacked by 1 (...); defended by 0 (nothing)".
+    assert "defended by 0 (nothing)" in hanging_section
+    assert "attacked by 1 (pawn on e5)" in hanging_section
 
 
 def test_no_newly_hanging_when_safe(im):
@@ -293,6 +296,43 @@ def test_opponent_legal_moves_zero_on_mate(im):
     assert "checkmate" in out.lower()
 
 
+# ── capture-netting: a winning capture that allows an equal recapture is an
+#    even trade, not a blunder (regression for puzzle YZ2IM) ─────────────────
+
+_YZ2IM = "4r1r1/p1k2np1/1pp1Bp1p/5P1P/2P1N3/1P6/8/2K3R1 w - - 1 36"
+
+
+def test_capture_allowing_equal_recapture_is_not_a_material_loss(im):
+    # Bxf7 wins a knight; the e4 knight then hangs to the e8 rook (Rxe4). Netted,
+    # that is an even trade (the move captured a knight), so _material_loss must
+    # report ~0 -- NOT a 3-pawn loss. (Bxg8 actually then wins more, but even the
+    # one-ply-deep verdict must be "even", not "blunder".)
+    b = chess.Board(_YZ2IM)
+    mv = chess.Move.from_uci("e6f7")
+    after = b.copy(); after.push(mv)
+    loss_cp, _ = im._material_loss(b, after, mv)
+    assert loss_cp == 0, f"expected even trade, got {loss_cp}cp loss"
+
+
+def test_capture_netting_does_not_hide_real_blunder(im):
+    # Hanging the queen for NOTHING (no capture) is still a full blunder -- the
+    # netting only offsets by material the move actually captured.
+    b = chess.Board("4k3/1q6/8/8/8/8/8/Q3K3 w - - 0 1")
+    mv = chess.Move.from_uci("a1a7")  # Qa7?? Qxa7
+    after = b.copy(); after.push(mv)
+    loss_cp, piece = im._material_loss(b, after, mv)
+    assert loss_cp >= 800 and piece == "queen"
+
+
+def test_imagine_reframes_even_capture_not_as_refutation(im):
+    # The opponent-reply section must NOT shout "NOT an even trade" for Bxf7;
+    # instead it shows the "roughly even" note prompting deeper calculation.
+    out = im.render_imagine(chess.Board(_YZ2IM), chess.Move.from_uci("e6f7"))
+    assert "NOT an even trade" not in out
+    assert "BLUNDER" not in out
+    assert "roughly even" in out.lower() or "↔" in out
+
+
 # ── _attacks_and_defenses helper ───────────────────────────────────────────
 
 
@@ -311,3 +351,134 @@ def test_attacks_and_defenses_splits_correctly(im):
     # No enemy on attacked squares, so atk is empty.
     # Defends includes any own piece on f3/h3/e2; only e2 has one.
     assert defs == {chess.E2}
+
+
+def test_blunder_banner_redirects_a_checking_sacrifice_to_calculate(im):
+    # A material-losing CHECK must NOT be flatly condemned as a blunder; it must
+    # tell the agent to calculate the whole line (a sac/mate is judged at the end,
+    # not at one ply). 3MIRf: Qxh7+ loses the queen at one ply but forces mate.
+    b = chess.Board("5r1k/pp3p1p/2pb1np1/q7/3PnB1P/2N2Q2/PP3PP1/3RR1K1 w - - 0 1")
+    # use the real puzzle position after its setup move for fidelity:
+    import json, pathlib
+    pj = pathlib.Path(__file__).resolve().parents[2] / "experiments/puzzle-benchmark/puzzles.json"
+    if pj.exists():
+        puz = {p["id"]: p for p in json.loads(pj.read_text())}.get("3MIRf")
+        if puz:
+            b = chess.Board(puz["fen"]); b.push(chess.Move.from_uci(puz["moves"][0]))
+            out = im.render_imagine(b, chess.Move.from_uci("h4h7"))
+            assert "gives CHECK but loses" in out
+            assert "calculate the WHOLE line" in out
+            assert "BLUNDER" not in out.split("\n")[0]  # not the hard-condemn banner
+
+
+def test_non_check_material_loss_still_hard_blunder(im):
+    b = chess.Board("4k3/1q6/8/8/8/8/8/Q3K3 w - - 0 1")
+    out = im.render_imagine(b, chess.Move.from_uci("a1a7"))  # Qa7?? hangs queen, no check
+    assert "BLUNDER" in out and "LOSES your queen" in out
+
+
+def test_nearly_mate_nudge_on_forcing_check_sacrifice(im):
+    # 8QAW1: Qd8+ is a queen sac leaving Black exactly ONE reply (Rxd8), then
+    # Rxd8#. imagine_move must flag NEARLY MATE and hand the agent the imagine_line
+    # call to find the mate — the lever for forced-mate sacs the agent declines.
+    b = chess.Board("k5r1/ppp3r1/6q1/3Q4/4p3/6p1/PP5P/2RR2K1 w - - 0 33")
+    out = im.render_imagine(b, chess.Move.from_uci("d5d8"))
+    assert "NEARLY MATE" in out
+    assert "only 1 legal reply" in out and "Rxd8" in out
+    assert 'imagine_line(moves="Qd8+,Rxd8")' in out
+
+
+def test_nearly_mate_silent_when_many_replies(im):
+    # A check the king easily escapes (many replies) must NOT trigger the nudge.
+    b = chess.Board("4k3/8/8/8/8/8/4R3/4K3 w - - 0 1")  # Re2-e7+? king has d/f files
+    # Rook check on the e-file: king on e8 can go to d7/d8/f7/f8 -> several replies
+    out = im.render_imagine(b, chess.Move.from_uci("e2e7"))
+    assert "NEARLY MATE" not in out
+
+
+def test_boxing_check_escape_count_is_correct_in_check(im):
+    """Regression: the enemy-king escape count after a check must count the king's
+    legal moves DIRECTLY (it is in check, its turn) — never via a null move, which
+    is illegal while in check and silently misreports. 1pYEx: after Bh5+ the king
+    has 2 real escapes (NOT boxed); only Bb5+/Bg4+ box it to <=1. The old null-move
+    method wrongly reported 0 escapes for every check."""
+    b = chess.Board("rnb1kb1r/ppp2npp/3p1q2/8/8/8/PPPPBPPP/RNBQR1K1 w kq - 2 9")
+    sans, esc = im._uncalculated_mating_checks(b)
+    assert esc <= 1
+    assert "Bb5+" in sans            # the real mating candidate
+    assert "Bh5+" not in sans        # NOT boxing (2 escapes) — must be excluded
+
+
+def test_zwischenzug_nudge_on_natural_recapture(im):
+    """46IHG: after the opponent grabs the queen on a1, the win is the in-between
+    check Rxd7+ FIRST, then Nxd7, then Rxa1 -- not the immediate recapture Rxa1.
+    When the agent imagines the natural recapture (a non-check capture) and a legal
+    check exists, imagine_move must surface the zwischenzug."""
+    b = chess.Board("8/p2r2kp/1p4p1/2n5/8/3R2P1/4PP1P/q4RK1 w - - 0 45")
+    out = im.render_imagine(b, b.parse_san("Rxa1"))
+    assert "ZWISCHENZUG" in out and "Rxd7+" in out
+    # a quiet position with NO check available -> helper returns empty
+    assert im._available_checks(chess.Board("4k3/8/8/8/8/8/P7/4K3 w - - 0 1")) == []
+
+
+class TestStillHangingOwnPieces:
+    """A candidate move that IGNORES a pre-existing hang must say so — the
+    newly-hanging scan deliberately skips pieces that were already unsafe, which
+    made such candidates render clean (game 2358c1 mv67: imagine_move(Kh3) said
+    nothing about the d2 knight the opponent was winning; the agent asserted
+    'it's only a trade' with the wrong capture order and lost a piece)."""
+
+    FEN_2358C1 = "6r1/p4p2/4k3/1p1pP2p/7P/Pn4P1/2rN2K1/3R4 w - - 7 34"
+
+    def _render(self, im, fen, san):
+        b = chess.Board(fen)
+        return im.render_imagine(b, b.parse_san(san))
+
+    def test_ignoring_move_flags_still_hanging(self, im):
+        out = self._render(im, self.FEN_2358C1, "Kh3")
+        assert "Still hanging (this move ignores it)" in out
+        assert "knight on d2" in out
+        assert 'imagine_trade(target="d2")' in out
+
+    def test_saving_move_is_silent(self, im):
+        # Rxd2?? is illegal (own piece); moving the attacked-piece scenario:
+        # defend d2 is impossible here, but a move BY the hanging piece must not
+        # flag (use a position where the hanging piece moves away).
+        fen = "4k3/8/8/8/8/1n6/3N4/4K2R w K - 0 1"  # Nd2 attacked by Nb3, undefended
+        out = self._render(im, fen, "Nf3")  # moves the hanging piece away
+        assert "Still hanging" not in out
+
+    def test_check_giving_move_is_silent(self, im):
+        # Same 2358c1 position: a checking move forces the reply, opponent
+        # cannot cash the d2 hang on the immediate reply.
+        b = chess.Board(self.FEN_2358C1)
+        checks = [m for m in b.legal_moves if b.gives_check(m)]
+        if checks:
+            out = im.render_imagine(b, checks[0])
+            assert "Still hanging" not in out
+
+    def test_safe_pieces_never_flag(self, im):
+        out = self._render(im, chess.STARTING_FEN, "e4")
+        assert "Still hanging" not in out
+
+
+class TestDangerousOpponentChecks:
+    def test_bxf3_zwischenzug_flagged(self, im):
+        # 7f8176 mv55: Nxb3?? allows Bxf3+ (capture-with-check the agent never
+        # calculated). The imagined-move report must name it.
+        import json, glob
+        sf = [f for f in glob.glob('games/line-proof-audit/*.json')
+              if '7f8176' in f and not f.endswith('_agent.json')]
+        if not sf:
+            import pytest; pytest.skip('game record not present')
+        sd = json.load(open(sf[0]))
+        b = chess.Board()
+        for u in sd['uci_moves'][:54]: b.push_uci(u)
+        out = im.render_imagine(b, chess.Move.from_uci('d2b3'))
+        assert "Dangerous opponent checks" in out
+        assert "Bxf3+" in out
+
+    def test_start_position_silent(self, im):
+        b = chess.Board()
+        out = im.render_imagine(b, b.parse_san("e4"))
+        assert "Dangerous opponent checks" not in out

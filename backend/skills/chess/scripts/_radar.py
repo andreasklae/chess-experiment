@@ -1098,10 +1098,17 @@ def _back_rank_lines(board: chess.Board, own: bool) -> list[str]:
     f = chess.square_file(ksq)
     front_files = [x for x in (f - 1, f, f + 1) if 0 <= x <= 7]
     front_squares = [chess.square(x, back) + forward for x in front_files]
-    blocked = all(
-        (p := board.piece_at(sq)) is not None and p.color == opp and p.piece_type == chess.PAWN
-        for sq in front_squares
-    )
+    # The king has no forward luft if every forward square is occupied by one of
+    # its OWN pieces (a pawn is the classic case, but a friendly rook/bishop on
+    # f7 boxes the king just the same — m3xxZ) OR is covered by one of our
+    # pieces (it can't flee onto a guarded square). Either way the escape is
+    # denied; both make a back-rank mate real.
+    def _forward_blocked(sq: int) -> bool:
+        p = board.piece_at(sq)
+        if p is not None and p.color == opp:
+            return True                      # own piece boxes the king
+        return board.is_attacked_by(own, sq)  # or we cover the flight square
+    blocked = all(_forward_blocked(sq) for sq in front_squares)
     if not blocked:
         return []
 
@@ -1185,6 +1192,113 @@ def _own_back_rank_lines(board: chess.Board, own: bool) -> list[str]:
     ]
 
 
+def _nearest_passer_distance(board: chess.Board, color: bool) -> int | None:
+    """Min promotion distance (in pawn pushes) over `color`'s pawns that are passed
+    NOW or become passed after ONE legal pawn move (a breakthrough — WRHef: c5 isn't
+    the runner, but after c6 bxc6 the b6-pawn is a passer 2 from queening). Returns
+    None if no such pawn. Used only to decide whether the agent is in a real pawn
+    RACE (so the opponent-promotion warning offers 'race, don't reflexively defend'
+    instead of prescribing defence). Heuristic distance, not a proof; the agent
+    still calculates the race with imagine_line."""
+    def passed_on(b: chess.Board, sq: int, c: bool) -> bool:
+        f, r = chess.square_file(sq), chess.square_rank(sq)
+        ahead = range(r + 1, 8) if c == chess.WHITE else range(0, r)
+        for x in (f - 1, f, f + 1):
+            if not 0 <= x <= 7:
+                continue
+            for rr in ahead:
+                p = b.piece_at(chess.square(x, rr))
+                if p is not None and p.piece_type == chess.PAWN and p.color != c:
+                    return False
+        return True
+
+    def dist(sq: int, c: bool) -> int:
+        r = chess.square_rank(sq)
+        return (7 - r) if c == chess.WHITE else r
+
+    best: int | None = None
+    # passed now
+    for sq in board.pieces(chess.PAWN, color):
+        if passed_on(board, sq, color):
+            d = dist(sq, color)
+            best = d if best is None else min(best, d)
+    # passed after one of the agent's legal pawn moves (push or capture), AND the
+    # classic 2-ply BREAKTHROUGH: agent pushes a pawn that the opponent captures,
+    # and after that capture an agent pawn is passed (WRHef: c6 bxc6 leaves b6 a
+    # passer). We look one opponent pawn-capture deep for this.
+    if board.turn == color:
+        for mv in board.legal_moves:
+            pc = board.piece_at(mv.from_square)
+            if pc is None or pc.piece_type != chess.PAWN:
+                continue
+            b2 = board.copy(stack=False)
+            b2.push(mv)
+            for sq in b2.pieces(chess.PAWN, color):
+                if passed_on(b2, sq, color):
+                    d = dist(sq, color) + 1  # +1 tempo to make the breakthrough
+                    best = d if best is None else min(best, d)
+            # 2-ply breakthrough: opponent pawn-capture in reply, then agent passed
+            for rep in b2.legal_moves:
+                if not b2.is_capture(rep):
+                    continue
+                rpc = b2.piece_at(rep.from_square)
+                if rpc is None or rpc.piece_type != chess.PAWN:
+                    continue
+                b3 = b2.copy(stack=False)
+                b3.push(rep)
+                for sq in b3.pieces(chess.PAWN, color):
+                    if passed_on(b3, sq, color):
+                        d = dist(sq, color) + 2  # +2 tempi (push + their capture)
+                        best = d if best is None else min(best, d)
+    return best
+
+
+def _breakthrough_pushes(board: chess.Board, color: bool) -> list[str]:
+    """Pawn PUSH moves by `color` that, after a forced/likely opponent pawn capture,
+    leave `color` with a passed pawn (the classic breakthrough sacrifice). Returns
+    their SANs. Requires that the push is itself a non-capturing pawn advance the
+    opponent CAN capture with a pawn. Mechanics; the agent calculates whether the
+    resulting passer actually queens in time."""
+    def passed_on(b: chess.Board, sq: int, c: bool) -> bool:
+        f, r = chess.square_file(sq), chess.square_rank(sq)
+        ahead = range(r + 1, 8) if c == chess.WHITE else range(0, r)
+        for x in (f - 1, f, f + 1):
+            if not 0 <= x <= 7:
+                continue
+            for rr in ahead:
+                p = b.piece_at(chess.square(x, rr))
+                if p is not None and p.piece_type == chess.PAWN and p.color != c:
+                    return False
+        return True
+
+    if board.turn != color:
+        return []
+    out: set[str] = set()
+    for mv in board.legal_moves:
+        pc = board.piece_at(mv.from_square)
+        if pc is None or pc.piece_type != chess.PAWN or board.is_capture(mv):
+            continue
+        b2 = board.copy(stack=False)
+        try:
+            san = board.san(mv)
+        except Exception:
+            continue
+        b2.push(mv)
+        # opponent must have a pawn capture; after it, do we get a passer?
+        for rep in b2.legal_moves:
+            if not b2.is_capture(rep):
+                continue
+            rpc = b2.piece_at(rep.from_square)
+            if rpc is None or rpc.piece_type != chess.PAWN:
+                continue
+            b3 = b2.copy(stack=False)
+            b3.push(rep)
+            if any(passed_on(b3, sq, color) for sq in b3.pieces(chess.PAWN, color)):
+                out.add(san)
+                break
+    return sorted(out)
+
+
 def _passed_pawn_lines(board: chess.Board, own: bool) -> list[str]:
     """List passed pawns for both sides with distance to promotion."""
     def passed(sq: int, color: bool) -> bool:
@@ -1208,13 +1322,87 @@ def _passed_pawn_lines(board: chess.Board, own: bool) -> list[str]:
                 out.append(f"{chess.square_name(sq)} ({dist} move(s) from promotion)")
         return out
 
+    def safe_pushes(color: bool) -> list[str]:
+        """SAN of a passed pawn's single-step advance when the pawn is close
+        (≤3 from promotion) and the advance square is safe (empty and not lost to
+        SEE) — the concrete 'push the passer' move so the agent acts, not just
+        notes the pawn. Only when it's `color`'s turn.
+
+        King-safety guard: do NOT recommend pushing while your OWN king is in
+        danger — if you are in check, or if after the push the opponent has a
+        CHECK or a material-winning reply, the push ignores a threat and the
+        advice is bad (pushing a pawn while getting mated). A human pushes a
+        passer when it's quiet, not under fire."""
+        if board.turn != color:
+            return []
+        if board.is_check():
+            return []  # deal with the check first; never advise a pawn push in check
+        out = []
+        for sq in board.pieces(chess.PAWN, color):
+            if not passed(sq, color):
+                continue
+            r = chess.square_rank(sq)
+            dist = (7 - r) if color == chess.WHITE else r
+            if dist > 3:
+                continue
+            fwd = sq + 8 if color == chess.WHITE else sq - 8
+            if not (0 <= fwd < 64) or board.piece_at(fwd) is not None:
+                continue
+            mv = chess.Move(sq, fwd)
+            # promotion move needs a promotion piece to be legal
+            if dist == 1:
+                mv = chess.Move(sq, fwd, promotion=chess.QUEEN)
+            if mv not in board.legal_moves:
+                continue
+            after = board.copy(stack=False)
+            after.push(mv)
+            # advance is unsafe if the pawn/queen is simply lost on the new sq …
+            if _eval.static_exchange_eval(after, fwd, not color) >= 150:
+                continue
+            # … OR if it ignores a real threat: after the push the opponent has a
+            # reply that WINS MATERIAL (≥ a minor) by SEE — including a
+            # capture-with-check. (A bare check that wins nothing is a harmless
+            # spite check and must NOT suppress the push — pWCJd promotes through
+            # Rxe3+/Rg2+.) A material-winning reply means pushing was reckless;
+            # the agent should deal with the threat, so don't prompt the push.
+            danger = False
+            for opp_mv in after.legal_moves:
+                if after.is_capture(opp_mv):
+                    a2 = after.copy(stack=False); a2.push(opp_mv)
+                    if _eval.static_exchange_eval(a2, opp_mv.to_square, color) >= 300:
+                        danger = True; break
+            if danger:
+                continue
+            try:
+                out.append(board.san(mv))
+            except Exception:
+                pass
+        return sorted(set(out))
+
     mine, theirs = describe(own), describe(not own)
     lines = []
     if mine:
+        pushes = safe_pushes(own)
+        push_note = (f" **Push it now: {', '.join(pushes)}** (the advance is safe) — a passer "
+                     f"that runs is decisive; every tempo counts in a pawn race."
+                     if pushes else "")
         lines.append(
             f"- Your passed pawn(s): {', '.join(mine)}. A passed pawn escorted "
-            f"by its king promotes — read `{_PAGE_KP}`."
+            f"by its king promotes — read `{_PAGE_KP}`.{push_note}"
         )
+    # BREAKTHROUGH: even with NO current passer, a pawn push the opponent must
+    # capture can leave you a passed pawn (WRHef: c6! bxc6 b7→b8=Q). The agent, faced
+    # with the opponent's own promotion threat, never spots its own breakthrough.
+    # Surface the push move(s) that create a passer as candidates to calculate.
+    if not mine and board.turn == own:
+        bt = _breakthrough_pushes(board, own)
+        if bt:
+            lines.append(
+                f"- **POSSIBLE BREAKTHROUGH: {', '.join(bt)}.** You have no passed pawn YET, but "
+                f"this pawn push forces the enemy to capture and leaves you a passed pawn that runs "
+                f"to promotion. In a pawn race a breakthrough (even sacrificing a pawn) can queen "
+                f"first or with tempo — calculate it with `imagine_line` before defending."
+            )
     if theirs:
         # Categorize opponent pawns by urgency: 2 moves away, 1 move away, or already promoting
         critical = []
@@ -1231,12 +1419,31 @@ def _passed_pawn_lines(board: chess.Board, own: bool) -> list[str]:
                 f"You MUST block/capture the promotion square or give check NOW, or they win."
             )
         elif warning:
-            lines.append(
-                f"- **WARNING: Opponent pawn(s) {', '.join(warning)} promote in 1 move.** "
-                f"Your next move MUST deal with this threat (block, capture, or check) or "
-                f"you will face a new queen. If you can deliver checkmate in 1, do it — "
-                f"otherwise stop the pawns first."
-            )
+            # Is the agent ALSO in the race? If it has a passed pawn just as close
+            # to promoting (and especially one whose promotion gives check), the
+            # right call may be to PUSH OWN PAWN / break through rather than defend
+            # — a panic "stop the pawns first" loses won races (WRHef: c6! bxc6 b7
+            # queens with the agent's own passer while the agent instead defended
+            # the g2-pawn with Kh2). Surface the race instead of prescribing defence.
+            own_dist = _nearest_passer_distance(board, own)
+            race = own_dist is not None and own_dist <= 3
+            if race:
+                lines.append(
+                    f"- **PAWN RACE: opponent pawn(s) {', '.join(warning)} promote in 1 move — but "
+                    f"you have a passed pawn ~{own_dist} move(s) from queening too.** Do NOT reflexively "
+                    f"defend: calculate whether PUSHING your own pawn (or a breakthrough pawn sacrifice "
+                    f"that clears its path) queens first or WITH CHECK — if so, race, don't defend. Use "
+                    f"`imagine_line` to play the race out to both queens. Defend only if your pawn is "
+                    f"genuinely slower."
+                )
+            else:
+                lines.append(
+                    f"- **WARNING: Opponent pawn(s) {', '.join(warning)} promote in 1 move.** "
+                    f"Your next move should deal with this threat (block, capture, check, or queen "
+                    f"your own pawn first with check) or you will face a new queen. If you can deliver "
+                    f"checkmate in 1, do it. Before defending, check whether a faster counter-promotion "
+                    f"or a forcing move wins the race."
+                )
         else:
             lines.append(f"- Opponent passed pawn(s): {', '.join(theirs)} — do not let them run.")
     return lines

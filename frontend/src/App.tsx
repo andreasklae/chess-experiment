@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { LobbyPage } from './LobbyPage';
 import { BoardPage } from './BoardPage';
 import { BatchPage } from './BatchPage';
+import { PuzzlePage } from './PuzzlePage';
 import { subscribeBusy } from './api';
 
 /** A thin top progress bar shown whenever a backend request has been pending
@@ -28,6 +29,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<LobbyPage />} />
         <Route path="/batch" element={<BatchPage />} />
+        <Route path="/puzzles" element={<PuzzlePage />} />
         <Route path="/games/:gameId" element={<BoardPage />} />
       </Routes>
     </>

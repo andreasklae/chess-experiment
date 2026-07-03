@@ -39,6 +39,25 @@ def _gate_full(mm, fen: str, uci: str):
     return mm._blunder_gate(board, move)
 
 
+class TestWalksIntoMate:
+    def test_walking_into_mate_in_1_flagged(self, mm):
+        # Real loss (game 3e83ce50): the king marched Kg2-Kf3-Kg4 and was mated ...Rg3#.
+        # The move Kg4 walks into a forced mate-in-1 — the gate must flag it.
+        w = _gate(mm, "2b1k1n1/r2p1p2/p3p1p1/1p6/3QPP2/1B3K1r/PPP4q/R1B2R2 w - - 2 23", "f3g4")
+        assert w is not None and "WALKS INTO MATE" in w
+
+    def test_normal_move_not_flagged_as_mate(self, mm):
+        # A quiet developing move does not allow any opponent mate.
+        w = _gate(mm, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "e2e4")
+        assert w is None or "WALKS INTO MATE" not in (w or "")
+
+    def test_walk_into_mate_is_soft(self, mm):
+        # It is SOFT (hard=False): sometimes every legal move loses and the agent must
+        # still be able to play the toughest.
+        res = _gate_full(mm, "2b1k1n1/r2p1p2/p3p1p1/1p6/3QPP2/1B3K1r/PPP4q/R1B2R2 w - - 2 23", "f3g4")
+        assert res is not None and "WALKS INTO MATE" in res[0] and res[1] is False
+
+
 class TestFreeCaptures:
     def test_abandoning_rook_defender_flagged(self, mm):
         # Game 62427a9b: 27.Kd6?? left Rb7 to Kxb7 after 54 plies of drill.
@@ -219,3 +238,55 @@ class TestSEELosingTrades:
             "f3e5",
         )
         assert res is not None and "LOSE MATERIAL" in res[0]
+
+
+class TestDangerousCheckGate:
+    """Soft gate on committing a move that allows a SEE-safe opponent check
+    which captures material or forks a winnable piece — the class that decided
+    2 of 4 iteration-2 losses (d02026 Rd1?? -> Ne3+ forking the rook; 7f8176
+    Nxb3?? -> Bxf3+ zwischenzug)."""
+
+    def _gate(self, mm, fen, uci):
+        import chess as _c
+        b = _c.Board(fen)
+        return mm._blunder_gate(b, _c.Move.from_uci(uci))
+
+    def test_rd1_flags_ne3_fork_check(self, mm):
+        import json, glob, chess as _c
+        sf = [f for f in glob.glob('games/line-proof-audit/*.json')
+              if 'd02026' in f and not f.endswith('_agent.json')]
+        if not sf:
+            import pytest; pytest.skip('game record not present')
+        sd = json.load(open(sf[0]))
+        b = _c.Board()
+        for u in sd['uci_moves'][:84]: b.push_uci(u)
+        gate = mm._blunder_gate(b, _c.Move.from_uci('b1d1'))
+        assert gate is not None
+        warning, severe = gate
+        assert "DANGEROUS CHECK" in warning
+        assert severe is False
+
+    def test_quiet_opening_move_silent(self, mm):
+        gate = self._gate(mm, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "e2e4")
+        assert gate is None
+
+
+class TestUndoShuffleGate:
+    def _board(self):
+        import chess as _c
+        b = _c.Board("6k1/8/8/8/8/5N2/8/R3K3 w - - 0 40")
+        b.push_san("Nd4"); b.push_san("Kh8")
+        return b
+
+    def test_undoing_own_move_warns_soft(self, mm):
+        import chess as _c
+        b = self._board()
+        gate = mm._blunder_gate(b, b.parse_san("Nf3"))  # exactly un-does Nd4
+        assert gate is not None
+        warning, severe = gate
+        assert "UN-DOES" in warning and severe is False
+        assert "standing plan" in warning
+
+    def test_progress_move_silent(self, mm):
+        b = self._board()
+        assert mm._blunder_gate(b, b.parse_san("Ra8+")) is None

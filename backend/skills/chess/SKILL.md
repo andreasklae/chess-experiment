@@ -15,7 +15,7 @@ You are the white player in a live chess game. **Your only job this turn is to c
 
 **This is not a chess analysis task. You are not writing a report. You are making a move.**
 
-The skill name is `chess`. Calling `use_skill("chess")` ONCE (at the start of the game) reveals the chess tools listed below — they appear in your tool list as `chess__show_position`, `chess__imagine_move`, `chess__imagine_line`, `chess__list_legal_moves`, `chess__search_wiki`, and `chess__make_move`, and they stay available for the whole game. Do not call `use_skill` again on later turns; these instructions remain in your context.
+The skill name is `chess`. Calling `use_skill("chess")` ONCE (at the start of the game) reveals the chess tools listed below — they appear in your tool list as `chess__show_position`, `chess__imagine_move`, `chess__imagine_line`, `chess__imagine_trade`, `chess__list_legal_moves`, `chess__opening_book`, `chess__opening_guide`, `chess__search_wiki`, and `chess__make_move`, and they stay available for the whole game. Do not call `use_skill` again on later turns; these instructions remain in your context.
 
 Before each tool call, write one sentence on what you are about to do and why. After each result, reflect on what it told you. Keep it brief — this is your reasoning trace, not an essay.
 
@@ -65,6 +65,34 @@ chess__make_move(move="a5a6", reasoning="Pushed the passer. Queen on b7 guards a
 
 This page tells you what tools exist and how to use them well.
 
+## In the opening — play the London System
+
+You play the **London System** as White. The setup is **1.d4, 2.Bf4** (dark bishop
+OUTSIDE the pawn chain, BEFORE e3), then **e3, Nf3, Bd3** (or **Be2** vs a ...g6
+fianchetto), **c3, Nbd2, O-O**; then aim a knight at **e5**. Once developed, pick a
+plan: the **kingside attack** (Ne5 → f4 → Rf3–h3 → h4–h5 → Bxh7+) or the **central
+e4 break** (Qe2, Re1, e4). The `openings/` wiki has a page for each plan and for
+every common Black reply — reach them through the two tools below.
+
+In the opening (roughly the first ~10 moves), before anything else, call
+**`chess__opening_book`**: it returns our **prepared, memorised** London move for this
+position (with the line name and the idea) if there is one — this is studied theory,
+you may play it, but read the idea and confirm it fits, then commit. When it says
+**"out of book"**, you are past prepared theory: think for yourself and use the wiki.
+If the book names an **exception** (the position has moved on, a tactic is present),
+reason it out from the page rather than playing the move reflexively.
+
+Call **`chess__opening_guide`** when you are unsure what to do or what the opponent's
+move means — it names the exact `openings/` theory page that fits (e.g. Black's ...Qb6
+hitting b2, an early ...c5 on d4, ...Bf5/...Bg4 out early, ...g6 fianchetto, ...Nh5
+hitting your bishop, or your Bd3 aiming at h7). Once you are developed it also points
+to the two plan pages (kingside attack / central break).
+**Read the page it names before deciding** — especially before any **Bxh7+** sacrifice
+(it works only under strict conditions; a premature sac just loses a piece).
+
+`chess__opening_book` gives the move; `chess__opening_guide` gives the page. Neither
+replaces your judgement — but in the opening, prepared theory beats guessing.
+
 ## Trust your tools over your intuition
 
 Your chess intuition is unreliable — you will misread tactics, miscount
@@ -107,6 +135,67 @@ priority every move:
   the material.** Reflexively confirming through a blunder is exactly how this
   agent loses won games. If you cannot name the regaining line, the move is a
   blunder: pick a safe move instead.
+
+## ALWAYS look at forcing moves FIRST (checks, captures, threats)
+
+Before you settle on any quiet or "safe" move, **scan the forcing moves** — in
+this order: **Checks, Captures, Threats (CCT).** This is the single discipline
+that most often separates the best move from a mediocre one, and the mistake
+this agent makes most in tactical positions is **grabbing a small safe gain (a
+free pawn, a quiet improvement, a recapture) while a stronger forcing move was
+available.**
+
+The procedure, every move, before committing:
+
+1. **List your checks.** For each check you have, ask: after the king is forced
+   to move (or block), do I then win material or mate? A check is the most
+   forcing move — the opponent's replies are few and forced, which is exactly
+   what makes a combination work. **Calculate each promising check with
+   `chess__imagine_line`** (your check → their forced reply → your follow-up).
+   Many wins are "check first, THEN capture" — the check drives the king or
+   deflects a defender so the piece you want falls next move. A quiet recapture
+   that wins the same piece *without* the check is usually worse: the check may
+   win MORE.
+2. **List your captures**, especially captures that give check or hit an
+   undefended/more-valuable piece. The position assessment marks free material
+   (★ WIN MATERIAL) and checks — start there.
+3. **List your threats** — moves that attack something that can't escape (a
+   piece you've pinned, an undefended piece, the king).
+
+**A forcing move that wins material or mates beats a quiet move — even if the
+forcing move is a capture or a sacrifice that looks scary at one ply.** Your
+`chess__imagine_move` material number is one ply deep: a check or sac that
+"loses material" on move 1 often wins it back with interest on move 2–3 (the
+recapture, the in-between check, the fork). **Do not reject a forcing move on
+the one-ply number — play the line out with `chess__imagine_line` first.**
+
+This does **not** contradict "play safe / distrust sacrifices" above: the gate
+is the same — a forcing sacrifice is played **only when `chess__imagine_line`
+shows the exact line that wins material or mates.** The change is *what you look
+at first*: calculate the forcing moves before defaulting to the quiet one, so a
+sound combination is never missed for a smaller safe gain. If the forcing moves
+don't work out, then play the solid move.
+
+## Before ANY capture or trade — `chess__imagine_trade`
+
+Your most common misjudgement is a **trade**: you stop counting one capture too
+early and either grab a "free" piece that is defended, or decline a capture that
+actually wins. **Whenever you consider a capture, or the opponent offers a trade,
+call `chess__imagine_trade(target="<square>")`** — it plays the exchange on that
+square to the end and shows the running material balance after every recapture,
+the SEE verdict (winning / even / losing the exchange), and any *alternative*
+first capture (taking with a different piece) with its own result.
+
+- `chess__imagine_trade(target="e5")` — all the ways the e5 exchange can go.
+- `chess__imagine_trade(target="Nxe5")` — force that capture first, see what follows.
+
+Read the verdict literally: "playing it LOSES ~-2" means the capture drops a
+piece — **do not play it**; "WINS ~+3" means it's free material — **take it**;
+when several first captures are shown, the one marked *best for you* wins the
+most. It counts **material only** — it does not see a pin, a back-rank mate, or a
+zwischenzug, so still confirm with `chess__imagine_line` when the position is
+sharp. But never again hang a piece in a trade you could have counted: when in
+doubt about a capture, `imagine_trade` it first.
 
 ## When to stop investigating and commit
 
@@ -180,6 +269,37 @@ enough information is to play. Concretely:
   changes is how games drag to a grind. Trust the math: if you checked it,
   and the opponent has no good reply, play it.
 
+## The "Position assessment" section — read it every turn
+
+`chess__show_position` (and `chess__imagine_move` / `chess__imagine_line` for the
+resulting position) print a **Position assessment** listing the strengths,
+weaknesses, and potentials on the board, split into two clearly-labelled groups:
+
+- **YOURS** — features of *your* position: your weaknesses to fix, your strengths
+  and potentials to use (e.g. "your knight on e5 forks their K+Q", "the d-file is
+  open — consider Rd1", "your bishop on c5 is attacked and UNDEFENDED").
+- **OPPONENT — watch for these** — what the opponent has or threatens: a square
+  their knight could fork you on, their passed pawn, their loose piece you can
+  target. **Never confuse the two** — YOURS is you, OPPONENT is them.
+
+Each finding may carry **suggested moves** ("→ consider: Bb6, Be7 …") and a
+**page to read** ("· read `…`"). Treat both as help, not orders:
+
+- The suggested moves are *candidates that fit the idea* — **you are free to play
+  a different move** if the concrete position calls for it. Always **calculate
+  the suggestions (and your own ideas) with `chess__imagine_move` /
+  `chess__imagine_line`** before committing; the assessment finds the idea, you
+  verify the move.
+- **(passive) Whenever a finding names a page, reading it is worthwhile** — it is
+  the theory behind the feature. You may always read further, follow links inside
+  a page, or `chess__search_wiki` for a related idea on your own initiative.
+- **(phase) The assessment names the game phase and its fundamentals page**
+  (`fundamentals/opening.md` / `middlegame.md` / `endgame.md`). Read the one for
+  the current phase if you are unsure what to aim for.
+
+You are encouraged to **discover on your own** beyond any suggestion — the
+assessment is a starting point, not the whole truth of the position.
+
 ## Your knowledge wiki — READ IT WHEN TRIGGERED, it is how you play well
 
 You have a bundled wiki of chess knowledge — openings, principles,
@@ -215,6 +335,7 @@ games.
 
 | If the position is… | read this folder's index |
 |---|---|
+| you're unsure where to start, or want the every-move checklist / what to aim for in this phase | `fundamentals/index.md` |
 | the enemy king is matable (basic K+Q/K+R/K+2R drills OR a named mating net) | `mates/index.md` |
 | a tactic is in the air (loose piece, overworked defender, combination) | `tactics/index.md` |
 | few pieces left, no immediate mate (king+pawn, promotion, opposition) | `endgames/index.md` |
@@ -275,7 +396,12 @@ well under ten tool calls. Between each tool call/step, do some reasoning, think
 3. **Write your plan** (2–3 sentences) citing the page you just read.
 4. **Then proceed to pick candidates and move** (see below).
 
-**EVERY TURN:**
+**EVERY TURN — the checklist, in order:** *(1) what did the opponent's last move
+threaten? answer it. (2) does my move blunder? verify with `chess__imagine_move`.
+(3) do I have a check/capture/threat that wins? (4) else, improve my worst piece /
+follow my plan.* The full version with the tactical and positional cross-links is
+`fundamentals/every-move-checklist.md` — read it once if you're unsure how to think
+through a position. The numbered steps below expand this same order.
 
 0. **Always check for checkmate first.** Before anything else, ask
    yourself: can I deliver checkmate this turn? In endgame positions

@@ -145,6 +145,10 @@ def test_render_position_smoke(sp):
     assert "pawn on e5" in output
     assert "knight on f3" in output
     assert "knight on c6" in output
+    # Counts stated explicitly (board-visualization benchmark 2026-06-24): the
+    # e5 pawn line reads "attacked by your 1 (knight on f3); defended by 1 (...)".
+    assert "attacked by your 1 (knight on f3)" in output
+    assert "defended by 1 (knight on c6)" in output
     # Move 3, full piece count -> early opening.
     assert "**Phase:** early opening" in output
     # Material balance line is now embedded in show_position output.
@@ -316,3 +320,37 @@ class TestSafeSquaresForHangingPiece:
         line = sp._safe_squares_line(board, chess.H5, chess.WHITE)
         # Either lists safe squares or, if none, advises alternatives.
         assert line is None or "safe squares" in line or "no safe square" in line
+
+
+def test_under_attack_line_carries_see_verdict_and_trade_pointer(sp):
+    """Attacker/defender COUNTS invite wrong prose exchange-reasoning; the line
+    must carry the SEE verdict + the imagine_trade call for a losing square
+    (2358c1: 'attacked by 2, defended by 1' read as 'a trade'; SEE says -320)."""
+    import chess as _c
+    board = _c.Board("6r1/p4p2/4k3/1p1pP2p/7P/Pn4P1/2rN2K1/3R4 w - - 7 34")
+    out = sp.attack_defense_section(
+        board, _c.WHITE, _c.BLACK, "## Your pieces under attack",
+        action="attacked by", show_safe_squares=True)
+    assert "WINS ~320cp" in out
+    assert 'imagine_trade(target="d2")' in out
+
+
+def test_threat_priority_names_imagine_trade_target():
+    import chess as _c
+    import _features as feats
+    board = _c.Board("6r1/p4p2/4k3/1p1pP2p/7P/Pn4P1/2rN2K1/3R4 w - - 7 34")
+    sit = feats.situation_summary(board) if hasattr(feats, "situation_summary") else None
+    if sit is None:
+        import inspect
+        fn = [f for n, f in inspect.getmembers(feats, inspect.isfunction)
+              if "situation" in n or "priority" in n]
+        assert fn, "no situation renderer found"
+        sit = fn[0](board)
+    text = "\n".join(sit["lines"]) if isinstance(sit, dict) else str(sit)
+    assert 'imagine_trade(target="d2")' in text
+
+
+def test_opening_radar_silent_in_endgame(sp):
+    import chess as _c
+    assert sp._opening_radar(_c.Board("4k3/8/8/4K3/5N2/4P3/8/8 w - - 9 67")) == []
+    assert sp._opening_radar(_c.Board()) != []
