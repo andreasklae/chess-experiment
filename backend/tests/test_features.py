@@ -903,3 +903,13 @@ class TestPromotePriority:
         b = chess.Board("4k3/8/8/4K3/5N2/3B4/8/8 w - - 0 40")
         sit = assess_situation(b)
         assert not sit["priority"].startswith("PROMOTE")
+
+    def test_promote_defers_to_mate_with_queen_or_rook(self):
+        from _features import assess_situation
+        # K+Q+P vs bare K: the job is MATE, not more promotion (iter-4 batch:
+        # PROMOTE kept firing post-promotion, competing with the mate radar).
+        b = chess.Board("4k3/8/8/4K3/8/4P3/8/4Q3 w - - 0 60")
+        assert not assess_situation(b)["priority"].startswith("PROMOTE")
+        # K+N+P vs bare K still says PROMOTE.
+        b2 = chess.Board("4k3/8/8/4K3/5N2/4P3/8/8 w - - 9 67")
+        assert assess_situation(b2)["priority"].startswith("PROMOTE")

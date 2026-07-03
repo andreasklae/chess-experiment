@@ -1612,8 +1612,13 @@ def assess_situation(board: chess.Board, perspective: bool | None = None) -> dic
                 f"attackers; the capture ORDER decides who wins it.**")
     elif diff >= 3 and phase != "opening" and not any(
             board.pieces(pt, not stm)
-            for pt in (chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN)) and [
+            for pt in (chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN)) and not any(
+            board.pieces(pt, stm) for pt in (chess.QUEEN, chess.ROOK)) and [
             sq for sq in board.pieces(chess.PAWN, stm) if _is_passed(board, sq, stm)]:
+        # (With a queen or rook of our own vs the bare king, the JOB is the
+        # basic mate — the mate radar owns that priority; iter-4 batch showed
+        # PROMOTE kept firing post-promotion, telling a K+Q/K+R side to keep
+        # pushing pawns while it should mate.)
         # The opponent has NO pieces and we have a passed pawn: the plan is not
         # "consolidate", it is PROMOTE. Observed (game 9eddc039, K+N+P vs bare
         # K): 15 knight checks/shuffles while the e-pawn stood still — the old
