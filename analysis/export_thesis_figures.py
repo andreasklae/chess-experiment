@@ -102,25 +102,76 @@ fig.tight_layout()
 fig.savefig(OUT / "loss-profile.pdf")
 plt.close(fig)
 
-# ── 4. Wiki growth + Elo: stacked shared-time panels ────────────────────────
-fig, (a1, a2) = plt.subplots(2, 1, figsize=(6.2, 3.6), sharex=True,
-                             gridspec_kw=dict(hspace=0.15))
-a1.plot(wiki.date, wiki.words / 1000, lw=1.4, color="#0072B2")
-a1.set_ylabel("wiki size (k words)")
-a2.plot(ranked.datetime, ranked.elo_after.astype(float), lw=1.2, color=INK)
-a2.set_ylabel("ranked Elo")
-for d, lbl in [("2026-05-26", "PR1"), ("2026-06-15", "PR2"), ("2026-06-20", "PR3"),
-               ("2026-06-23", "PR4"), ("2026-07-03", "PR5")]:
-    for a in (a1, a2):
-        a.axvline(pd.Timestamp(d), color="#888", ls=":", lw=0.7)
-    a1.annotate(lbl, (pd.Timestamp(d), a1.get_ylim()[1]), fontsize=7,
-                ha="center", va="bottom", color="#555")
-for a in (a1, a2):
-    a.grid(axis="x", visible=False)
-fig.align_ylabels()
-fig.autofmt_xdate(rotation=0, ha="center")
+# ── 4. Wiki growth + Elo: one graph, Elo coloured by phase ──────────────────
+# (Author's requested form: both lines on the same graph; the twin axis is a
+# deliberate exception to the one-axis rule, with the wiki curve kept visually
+# recessive so the Elo line reads as the primary series.)
+import numpy as np
+fig, ax = plt.subplots(figsize=(6.2, 3.2))
+axw = ax.twinx()
+# interpolate wiki size (words) at each ranked game's timestamp -> game axis
+wdates = wiki.date.map(pd.Timestamp.timestamp).to_numpy()
+gdates = ranked.datetime.dt.tz_localize(None).map(pd.Timestamp.timestamp).to_numpy()
+wiki_at_game = np.interp(gdates, wdates, wiki.words.to_numpy(),
+                         left=0.0) / 1000
+WIKI_C = "#CC79A7"
+axw.fill_between(ranked.game_no, wiki_at_game, color=WIKI_C, alpha=0.12, lw=0)
+axw.plot(ranked.game_no, wiki_at_game, color=WIKI_C, lw=1.2, alpha=0.9,
+         label="knowledge store")
+axw.set_ylabel("knowledge-store size (k words)", color=WIKI_C)
+axw.tick_params(axis="y", labelcolor=WIKI_C)
+axw.grid(visible=False)
+axw.spines["right"].set_visible(True)
+for ph in PHASES:
+    sub = ranked[ranked.phase == ph]
+    if len(sub):
+        # extend each segment to the next phase's first game so the line is
+        # continuous across phase boundaries
+        nxt = ranked[ranked.game_no == sub.game_no.max() + 1]
+        xs = list(sub.game_no) + list(nxt.game_no)
+        ys = list(sub.elo_after.astype(float)) + list(nxt.elo_after.astype(float))
+        ax.plot(xs, ys, lw=1.7, color=PHASE_COLOR[ph], label=PHASE_LABEL_PLAIN[ph])
+ax.set_xlabel("ranked game")
+ax.set_ylabel("ranked Elo")
+ax.set_zorder(axw.get_zorder() + 1)
+ax.patch.set_visible(False)
+ax.legend(loc="upper left", frameon=False, fontsize=7.5)
 fig.tight_layout()
 fig.savefig(OUT / "wiki-growth-elo.pdf")
+plt.close(fig)
+
+# ── 5. Opening accuracy: the training-prior switch ──────────────────────────
+od = pd.read_csv(HERE / "data" / "opening_accuracy.csv", parse_dates=["datetime"])
+od = od.sort_values("datetime").reset_index(drop=True)
+od["game_no"] = range(1, len(od) + 1)
+FM_COLOR = {"e4": "#D55E00", "d4": "#0072B2"}
+fig, ax = plt.subplots(figsize=(6.2, 3.0))
+for fm, lbl in [("e4", "opens 1.e4 (parametric prior)"), ("d4", "opens 1.d4 (London)")]:
+    sub = od[od.first_move == fm]
+    ax.scatter(sub.game_no, sub.opening_acc, s=7, color=FM_COLOR[fm], alpha=0.55,
+               lw=0, label=lbl)
+other = od[~od.first_move.isin(FM_COLOR)]
+if len(other):
+    ax.scatter(other.game_no, other.opening_acc, s=7, color="#999999", alpha=0.5, lw=0)
+# rolling mean over 15 games
+od["roll"] = od.opening_acc.rolling(15, min_periods=8).mean()
+ax.plot(od.game_no, od.roll, color=INK, lw=1.3)
+# markers: instruction-only start; theory (book + wiki) added
+instr = od[od.first_move == "d4"].game_no.min()
+theory_dt = pd.Timestamp("2026-06-30T20:34:00+00:00")  # commit d923439 (theory ingest)
+theory = od[od.datetime >= theory_dt].game_no.min()
+for x, lbl, y, halign, dx in [
+        (instr, "London instructed\n(no theory)", 74, "right", -4),
+        (theory, "opening book\n+ theory pages", 74, "left", 4)]:
+    ax.axvline(x - 0.5, color="#555", ls=":", lw=0.9)
+    ax.annotate(lbl, (x - 0.5, y), fontsize=7, color="#555",
+                ha=halign, va="top", xytext=(dx, 0), textcoords="offset points")
+ax.set_xlabel("full game (chronological)")
+ax.set_ylabel("opening accuracy (%)")
+ax.set_ylim(65, 101)
+ax.legend(loc="lower left", frameon=False, fontsize=7.5, markerscale=1.8)
+fig.tight_layout()
+fig.savefig(OUT / "opening-accuracy.pdf")
 plt.close(fig)
 
 print("wrote 4 PDFs ->", OUT)
