@@ -14,3 +14,9 @@ chess-experiment-backend = { workspace = true }
 
 [tool.uv.workspace]
 members = ["backend"]
+
+[dependency-groups]
+dev = [
+    "matplotlib>=3.11.0",
+    "pandas>=3.0.3",
+]
