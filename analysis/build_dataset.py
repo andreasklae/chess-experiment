@@ -207,7 +207,7 @@ def wiki_growth() -> list[dict]:
     for day, sha in sorted(per_day.items()):
         ls = subprocess.run(["git", "ls-tree", "-r", "--name-only", sha, ref],
                             cwd=REPO, capture_output=True, text=True).stdout.splitlines()
-        pages = [p for p in ls if p.endswith(".md")]
+        pages = [p for p in ls if p.endswith(".md") and "/raw/" not in p]
         words = 0
         for p in pages:
             blob = subprocess.run(["git", "show", f"{sha}:{p}"], cwd=REPO,
